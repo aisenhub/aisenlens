@@ -1,0 +1,19 @@
+{
+  "name": "aisen-lens",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "npm run dev --workspace=@aisenlens/web",
+    "dev:api": "npm run dev --workspace=@aisenlens/api",
+    "build": "npm run build --workspace=@aisenlens/web",
+    "build:web": "npm run build --workspace=@aisenlens/web",
+    "preview": "npm run preview --workspace=@aisenlens/web",
+    "test": "npm run test --workspace=@aisenlens/api",
+    "audit": "npm audit --audit-level=high"
+  }
+}
