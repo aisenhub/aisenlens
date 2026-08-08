@@ -9,7 +9,6 @@ export function createRuntimeState({ playbackRate = 1 } = {}) {
     shotGroupSelectionAnchorId: null,
     customFieldNames: [],
     shotGroupSelectionMode: false,
-    saveDirectoryHandle: null,
     currentVideoFile: null,
     videoDecodeFailed: false,
     fieldOptionsDraft: null,

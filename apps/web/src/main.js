@@ -6,38 +6,26 @@ import { createAudioWaveformState } from './app/state.js';
 import { onDomReady } from './app/dom-ready.js';
 import { createEntryRuntime } from './app/entry-runtime.js';
 import { createTemplateRuntime } from './app/template-runtime.js';
-import { normalizeProjectShots, normalizeProjectGroups } from './features/project/project-data.js';
+import { normalizeProjectGroups, normalizeProjectShots } from './features/project/project-data.js';
 import {
   createProjectRecord,
-  deleteProjectRecord,
-  findProjectByUuid,
   getProjectBundle,
   getProjectRecord,
   updateProjectRecord
 } from './features/project/project-service.js';
-import {
-  restoreProjectVideoFile,
-  resolveProjectVideoFile,
-  saveProjectDirectoryHandle as persistProjectDirectoryHandle
-} from './features/project/project-files.js';
+import { loadProjectVideo, saveProjectVideo } from './features/project/project-media.js';
 import { createProjectController } from './features/project/project-controller.js';
-import { createProjectImportController } from './features/project/project-import-controller.js';
-import { migrateProjectBundle } from './features/project/project-migrations.js';
 import { createModalFocusManager } from './dom/modal-focus.js';
 import { createProjectNavigationController } from './dom/project-navigation.js';
 import { createVideoUiController } from './dom/video-ui.js';
 import { createVideoInfoPopoverController } from './dom/video-info-popover.js';
-import {
-  buildProjectDocument,
-  serializeProjectGroups,
-  serializeProjectShots
-} from './features/project/project-serialization.js';
+import { serializeProjectGroups, serializeProjectShots } from './features/project/project-serialization.js';
 import {
   deleteProjectScreenshotAssets,
+  loadProjectScreenshotAssets,
   pruneProjectScreenshotAssets,
   saveProjectScreenshotAssets,
-  estimateScreenshotStorage,
-  loadProjectScreenshotAssets
+  estimateScreenshotStorage
 } from './features/screenshots/screenshot-assets.js';
 import { hydrateEntryFullScreenshots, releaseHydratedScreenshots } from './dom/screenshot-service.js';
 import { createScreenshotAbortState, requestScreenshotStop } from './features/screenshots/screenshot-state.js';
@@ -58,7 +46,6 @@ import { createTemplateSystemRuntime } from './app/template-system-runtime.js';
 import { createProjectStateRuntime } from './app/project-state-runtime.js';
 import { createSettingsRuntime } from './app/settings-runtime.js';
 import { createRuntimeState } from './app/runtime-state.js';
-import { createProjectExportFileNameResolver } from './app/project-export-runtime.js';
 import { createProjectContextAdapter } from './app/project-context.js';
 import { createFeedbackController } from './dom/feedback-controller.js';
 import { createShotGroupFromSelection as createShotGroupFromSelectionDom } from './dom/shot-group-workflow.js';
@@ -74,7 +61,6 @@ import { createHistoryControls } from './dom/history-controls.js';
 import { createStatusController } from './app/status-matrix.js';
 import { createTableDisplayModalController } from './dom/table-display-modal.js';
 import { createTemplateSelectionAdapter } from './dom/template-selection.js';
-import { buildHtmlExport as buildHtmlExportDocument } from './features/export/html-export.js';
 import { escapeTemplateText } from './utils/text.js';
 import { formatTime, parseTimecode } from './utils/time.js';
 import { getEntryThumbnail } from './utils/shots.js';
@@ -84,8 +70,6 @@ import {
   formatVideoInfoFileName
 } from './utils/video-info.js';
 import { createEntityId, createProjectUuid } from './utils/ids.js';
-import { sanitizeFolderName } from './utils/files.js';
-import { parseProjectImportJson, validateProjectImportManifest, validateProjectImportSchema } from './utils/project-schema.js';
 import { getTemplateEntryValue, normalizeTemplateFields, normalizeFieldPool, normalizeReferenceOptions } from './utils/templates.js';
 import { serializeShotGroups } from './features/groups/group-persistence.js';
 import {
@@ -101,20 +85,20 @@ import {
   normalizeAppSettings
 } from './utils/settings.js';
 import {
+  dbDeleteSetting,
   dbGetSetting,
   dbSetSetting,
   openDB
 } from './platform/indexeddb.js';
-import {
-  copyVideoToProjectFolder,
-  readTextFile
-} from './platform/filesystem.js';
 import { readJsonStorage, writeJsonStorage, removeStorageKeys } from './platform/browser-storage.js';
+import { requestStoragePersistence } from './platform/opfs-storage.js';
 import { createSettingsService } from './features/settings/settings-service.js';
 import { createTemplateController } from './dom/template-controller.js';
 import { formatUserError } from './app/diagnostics.js';
 import { normalizeStorageError } from './app/storage-diagnostics.js';
 import { normalizeTimelineViewState } from './features/project/project-view-state.js';
+import { createProjectBackupService } from './platform/project-backup-service.js';
+import { getAppRoute, getEditorPath } from './app/routes.js';
 
 const projectController = createProjectController({
   getProjectRecord,
@@ -123,16 +107,11 @@ const projectController = createProjectController({
   normalizeGroups: normalizeProjectGroups,
   createProjectUuid
 });
-const projectImportController = createProjectImportController({
-  readTextFile,
-  parseProject: parseProjectImportJson,
-  validateManifest: validateProjectImportManifest,
-  validateProject: validateProjectImportSchema,
-  normalizeShots: normalizeProjectShots,
-  normalizeGroups: normalizeProjectGroups,
-  resolveVideo: resolveProjectVideoFile,
-  findProjectByUuid,
-  migrateBundle: migrateProjectBundle
+const projectBackupService = createProjectBackupService({
+  getProject: getProjectRecord,
+  getProjectBundle,
+  loadVideo: loadProjectVideo,
+  loadScreenshots: loadProjectScreenshotAssets
 });
 
 /* ===================================================================
@@ -144,6 +123,7 @@ initTheme(() => renderAudioWaveform());
  *  File System Access Utilities (for import/export project folders)
  * =================================================================== */
 const APP_SETTINGS_KEY = 'ashenVideoAppSettings';
+const PENDING_PROJECT_SAVE_KEY = 'pendingProjectSave';
 const showStorageError = (error, operation = '本地数据操作') => {
   const diagnostic = normalizeStorageError(error, {
     operation,
@@ -182,6 +162,7 @@ const saveAppSettings = settingsService.save;
 const runtimeState = createRuntimeState({
   playbackRate: Number(localStorage.getItem('playbackRate')) || 1
 });
+let storagePersistence = { status: 'checking', persisted: false };
 const savedPlaybackRate = runtimeState.playbackRate;
 const projectContext = createProjectContextAdapter({ target: window });
 
@@ -212,8 +193,6 @@ actionRegistry.register('history.redo', async () => {
   isActive: () => commandHistory.canRedo()
 });
 
-const getExportFileName = createProjectExportFileNameResolver({ getSettings: getAppSettings });
-
 let templateSelection = null;
 let projectStateRuntime = null;
 const templateRuntime = createTemplateRuntime({
@@ -225,8 +204,6 @@ const templateRuntime = createTemplateRuntime({
 });
 const entryRuntime = createEntryRuntime({
   getProjectContext: projectContext.getVideoContext,
-  persistProjectDirectoryHandle,
-  warn: (...args) => console.warn(...args),
   getProjectNavigationController: () => projectNavigationController,
   getTemplateRuntime: () => templateRuntime,
   getShotGroupController: () => shotRuntime?.shotGroupController,
@@ -263,13 +240,10 @@ const {
   updateCustomFieldNames: updateCustomFieldNamesRuntime
 } = entryRuntime;
 
-const saveProjectDirectoryHandle = entryRuntime.saveProjectDirectoryHandle;
-
 /* ===================================================================
  *  Import Project from Folder
  * =================================================================== */
 const updateCurrentProjectBtn = entryRuntime.updateCurrentProjectButton;
-const toggleProjectDropdown = entryRuntime.toggleProjectDropdown;
 
 /* 顶栏模板面板：集中放模板选项、编辑字段、自定义模板 */
 const openTemplateMenu = entryRuntime.openTemplateMenu;
@@ -406,6 +380,8 @@ projectStateRuntime = createProjectStateRuntime({
     window.__dirty = dirty;
     window.__lastEditAt = timestamp;
   },
+  markSavePending: pendingSave => dbSetSetting(PENDING_PROJECT_SAVE_KEY, pendingSave),
+  clearSavePending: () => dbDeleteSetting(PENDING_PROJECT_SAVE_KEY),
   getResetAutoSaveSnapshot: () => resetAutoSaveShotSnapshot(),
   onSaveDiagnostic: diagnostic => {
     const error = diagnostic?.error || diagnostic;
@@ -431,7 +407,14 @@ const {
   resetAutoShotSegmentState,
   getAutoShotSegmentState
 } = projectStateRuntime;
-setCurrentProject = projectStateRuntime.setCurrentProject;
+const setProjectState = projectStateRuntime.setCurrentProject;
+setCurrentProject = (...args) => {
+  setProjectState(...args);
+  const projectId = Number(args[0]);
+  if (!projectId) return;
+  const route = getAppRoute(window.location);
+  if (route.projectId !== projectId) window.history.replaceState({}, '', getEditorPath(projectId));
+};
 resetAutoSaveShotSnapshot = projectStateRuntime.resetAutoSaveShotSnapshot;
 markDirty = projectStateRuntime.markDirty;
 
@@ -458,23 +441,9 @@ const {
   undoBtn,
   redoBtn,
   saveBtn,
-  projectCurrentBtn,
-  projectDropdown,
-  newProjectBtn,
-  deleteProjectBtn,
+  editorBackBtn,
+  projectTitleInput,
   homeLogo,
-  importProjectFromFolderBtn,
-  importProjectBtn2,
-  guideModal,
-  guideNewProjectBtn,
-  guideImportBtn,
-  videoPickModal,
-  videoPickBtn,
-  videoPickBtn2,
-  videoPickSkipBtn,
-  vpStep1,
-  vpStep2,
-  vpStep2Desc,
   videoInfoFileName,
   videoInfoFileBaseName,
   videoInfoFileExtension,
@@ -631,8 +600,10 @@ const {
   importUserConfigInput,
   cacheManagerConfigStatus,
   cacheManagerProjectStatus,
+  storagePersistenceStatus,
+  recoveryStatus,
+  recoveryProjectList,
   clearConfigCacheBtn,
-  clearProjectCacheBtn,
   settingsBtn,
   settingsModal,
   settingsModalClose,
@@ -705,15 +676,12 @@ createVideoInfoPopoverController({
 
 const projectNavigationController = createProjectNavigationController({
   elements: {
-    currentButton: projectCurrentBtn,
-    dropdown: projectDropdown,
+    titleInput: projectTitleInput,
     templateMenu,
     templateMenuButton: templateMenuBtn,
     templateMenuLabel,
     templateSelect
   },
-  getCurrentProjectId: projectContext.getId,
-  showGuide: () => showGuideModal(),
   documentTarget: document,
   escapeText: escapeTemplateText
 });
@@ -939,8 +907,8 @@ const mediaRuntime = createMediaRuntime({
   updateProjectRecord,
   getTimelineViewState: projectContext.getTimelineViewState,
   setTimelineViewState: updateTimelineViewState,
-  restoreProjectVideoFile,
-  copyVideoToProjectFolder,
+  restoreProjectVideo: loadProjectVideo,
+  saveProjectVideo,
   setCurrentProject,
   getExportController: () => exportController,
   getShotListController: () => shotListController,
@@ -963,8 +931,6 @@ const mediaRuntime = createMediaRuntime({
   clearShotHeight: shotId => shotListController?.state.heights.delete(shotId),
   getCurrentVideoFile: () => runtimeState.currentVideoFile,
   setCurrentVideoFile: file => { runtimeState.currentVideoFile = file; },
-  getSaveDirectory: () => runtimeState.saveDirectoryHandle,
-  setSaveDirectory: handle => { runtimeState.saveDirectoryHandle = handle; }
 });
 const {
   shotModalController,
@@ -977,7 +943,7 @@ const {
   getCurrentVideoFileName,
   clearCurrentVideo,
   loadVideoFile,
-  restoreVideoFromProjectFolder,
+  restoreVideoFromProjectStorage,
   recordingState,
   ensureLoadedProjectScreenshots,
   releaseLoadedProjectScreenshots,
@@ -997,65 +963,34 @@ const startAutoShotWithRange = (...args) => autoShotController.start(...args);
 const projectSessionRuntime = createProjectSessionRuntime({
   elements: {
     videoEmpty,
-    guideModal,
-    guideNewProjectBtn,
-    guideImportBtn,
-    videoPickModal,
-    videoPickBtn,
-    videoPickBtn2,
-    videoPickSkipBtn,
-    vpStep1,
-    vpStep2,
-    vpStep2Desc,
-    projectCurrentBtn,
-    newProjectBtn,
-    deleteProjectBtn,
-    homeLogo,
-    importProjectFromFolderBtn,
-    importProjectBtn2,
-    projectDropdown,
-    toggleProjectDropdown,
-    closeProjectDropdown
+    projectTitleInput
   },
-  projectImportController,
   projectController,
-  createProjectRecord,
-  deleteProjectRecord,
   updateProjectRecord,
   getProjectRecord,
-  sanitizeFolderName,
-  createProjectUuid,
   getProjectContext: projectContext.getVideoContext,
   setCurrentProject,
-  getSaveDirectory: () => runtimeState.saveDirectoryHandle,
-  setSaveDirectory: handle => { runtimeState.saveDirectoryHandle = handle; },
-  saveProjectDirectoryHandle,
   clearCurrentVideo,
-  loadVideoFile,
-  restoreVideoFromProjectFolder,
-  copyVideoToProjectFolder,
+  restoreVideoFromProjectStorage,
   restoreAutoShotSegmentState,
   runtimeState,
   syncShotGroupsWithEntries,
   renderShots: () => renderShots(),
   updateCurrentProjectButton: updateCurrentProjectBtn,
   updateCustomFieldNames: () => updateCustomFieldNames(),
-  resetAutoSaveShotSnapshot,
-  flushShotGroupsToDB,
   applyTemplate,
   ensureLoadedProjectScreenshots,
   releaseLoadedProjectScreenshots,
-  saveImportedScreenshotAssets: saveProjectScreenshotAssets,
   pruneImportedScreenshotAssets: pruneProjectScreenshotAssets,
-  generateScreenshotsForAllEntries,
   openDatabase: openDB,
-  getDatabaseSetting: dbGetSetting,
+  consumePendingSave: async () => {
+    const pendingSave = await dbGetSetting(PENDING_PROJECT_SAVE_KEY);
+    if (pendingSave) await dbDeleteSetting(PENDING_PROJECT_SAVE_KEY);
+    return pendingSave;
+  },
   locationTarget: window.location,
-  sessionStorageTarget: sessionStorage,
-  localStorageTarget: localStorage,
   getTemplateName: getTemplateSelection,
   setTemplateName: name => templateSelection?.setValue(name),
-  escapeText: escapeTemplateText,
   getEntries: () => runtimeState.entries,
   setEntries: value => { runtimeState.entries = value; },
   getProjectId: projectContext.getId,
@@ -1067,7 +1002,6 @@ const projectSessionRuntime = createProjectSessionRuntime({
   setActiveShot: (...args) => setActiveShot(...args),
   markDirty,
   showToast,
-  documentTarget: document,
   commandHistory,
   getVideoDuration: () => toolVideo?.duration || 0,
   pauseAutosave: () => shotAutosaveController?.pause?.(),
@@ -1077,19 +1011,7 @@ const projectSessionRuntime = createProjectSessionRuntime({
 const {
   projectSessionController,
   shotActions,
-  resetProjectSessionState,
-  startNewSession,
-  showGuideModal,
-  hideGuideModal,
-  guideNewProject,
-  guideImportProject,
-  showVideoPickModal,
-  hideVideoPickModal,
-  showEmptyVideoHint,
-  importProjectFromFolder,
-  loadLocalProject,
-  createProjectFromVideo,
-  createNewProject
+  loadLocalProject
 } = projectSessionRuntime;
 
 actionRegistry.register('shot.delete', entry => shotActions.deleteShot(entry), {
@@ -1177,8 +1099,6 @@ shotRuntime = createShotRuntime({
   onLoadVideo: () => loadVideoBtn?.click(),
   onCaptureShot: () => actionRegistry.invoke('shot.capture'),
   getHasProject: () => !!projectContext.getId(),
-  onNewProject: () => createNewProject(),
-  onImportProject: () => importProjectFromFolder(),
   invokeAction: (id, args) => actionRegistry.invoke(id, args),
   documentTarget: document,
   windowTarget: window,
@@ -1247,46 +1167,21 @@ const startupRuntime = createStartupRuntime({
       serializeGroups: serializeProjectGroups,
       saveShots: saveProjectShots,
       pruneScreenshotAssets: pruneProjectScreenshotAssets,
-      loadScreenshotAssets: loadProjectScreenshotAssets,
       saveShotGroups: saveProjectShotGroups,
       serializeAutoShotState: serializeAutoShotSegmentState,
       getCurrentVideoFileName,
-      getCurrentVideoFile: () => runtimeState.currentVideoFile,
       getTemplateName: getTemplateSelection,
-      getVideoDuration: () => toolVideo?.duration || 0,
-      buildProjectDocument,
-      updateProgressMessage: (...args) => startupRuntime?.updateProgressMessage?.(...args),
-      getExportSettings: getAppSettings,
-      buildHtmlExport: buildHtmlExportDocument,
-      buildPdfExport: (...args) => startupRuntime?.exportController?.buildPdfExport?.(...args),
-      buildXlsx: (...args) => startupRuntime?.exportController?.buildXlsx?.(...args),
-      getTableColumns: getShotTableColumns,
-      getTableTitle: () => getAppSettings().exportTitle,
-      getGroupRows: (...args) => startupRuntime?.exportController?.getGroupRows?.(...args),
-      getCellValue: getShotTableCellValue,
-      getVisibleFields: getVisibleTableFields,
-      ensureJsZipLoaded: (...args) => startupRuntime?.exportController?.ensureJsZipLoaded?.(...args),
-      getExportFileName
+      getVideoDuration: () => toolVideo?.duration || 0
     },
     controller: {
       elements: { saveButton: saveBtn },
       getProjectContext: projectContext.getVideoContext,
-      getSaveDirectory: () => runtimeState.saveDirectoryHandle,
-      setSaveDirectory: handle => { runtimeState.saveDirectoryHandle = handle; },
-      setCurrentProject,
-      updateProjectRecord,
-      sanitizeFolderName,
-      saveProjectDirectoryHandle,
-      hydrateScreenshots: (projectId, projectEntries = runtimeState.entries) => hydrateEntryFullScreenshots(projectId, projectEntries),
-      releaseScreenshots: releaseHydratedScreenshots,
       showProgress: (...args) => startupRuntime?.showProgress?.(...args),
       updateProgressMessage: (...args) => startupRuntime?.updateProgressMessage?.(...args),
       hideProgress: (...args) => startupRuntime?.hideProgress?.(...args),
-      updateCurrentProjectButton: updateCurrentProjectBtn,
       updateSaveStatus: () => updateSaveStatus(),
       invokeAction: (id, args) => actionRegistry.invoke(id, args),
       showToast,
-      windowTarget: window,
       setDirty: value => {
         window.__dirty = value;
         window.__lastSaveAt = Date.now();
@@ -1337,12 +1232,12 @@ const {
   exportController,
   serializeProjectShots: getSerializedProjectShots,
   flushShotsToDatabase: flushShotsToDB,
-  saveToFolder: saveProjectToFolder,
+  saveToBrowser: saveProjectToBrowser,
   shotClearController
 } = startupRuntime;
 
 actionRegistry.register('project.save', () => {
-  return saveProjectToFolder();
+  return saveProjectToBrowser();
 }, {
   metadata: getActionDefinition('project.save'),
   isActive: () => !!projectContext.getId()
@@ -1433,10 +1328,14 @@ const settingsRuntime = createSettingsRuntime({
     importUserConfigBtn,
     exportUserConfigBtn,
     importUserConfigInput,
+    projectBackupMode,
+    exportProjectBackupBtn,
     cacheManagerConfigStatus,
     cacheManagerProjectStatus,
+    storagePersistenceStatus,
+    recoveryStatus,
+    recoveryProjectList,
     clearConfigCacheBtn,
-    clearProjectCacheBtn,
     settingsBtn,
     settingsModal,
     settingsModalClose,
@@ -1480,7 +1379,11 @@ const settingsRuntime = createSettingsRuntime({
   showToast,
   onStorageError: error => showStorageError(error, '用户配置导入'),
   getTemplateName: getTemplateSelection,
+  getCurrentProjectId: projectContext.getId,
+  getCurrentProjectTitle: projectContext.getTitle,
+  exportProjectBackup: projectBackupService.exportProject,
   getStorageEstimate: estimateScreenshotStorage,
+  getStoragePersistence: () => storagePersistence,
   getConfiguredFields: getConfiguredTemplateFields,
   saveTemplateEditorDraft,
   saveCustomTemplateDraft,
@@ -1499,24 +1402,32 @@ const {
   renderCacheStatus,
   importUserConfigFile,
   exportUserConfig,
-  clearLocalConfigCache,
-  clearLocalProjectCache,
-  projectCacheAdapter
+  clearLocalConfigCache
 } = settingsRuntime;
 
-/* ===================================================================
- *  Project Button Events
- * =================================================================== */
-/* ===================================================================
- *  Guide Modal & Cache Events
- * =================================================================== */
 onDomReady(() => {
-  projectSessionController.bind();
+  const returnToLibrary = async () => {
+    try {
+      await shotAutosaveController?.flush?.();
+      await flushShotsToDB();
+      window.location.assign('/');
+    } catch (error) {
+      showStorageError(error, '返回工程库前保存');
+    }
+  };
+  editorBackBtn?.addEventListener('click', returnToLibrary);
+  homeLogo?.addEventListener('click', returnToLibrary);
 });
 
 /* ===================================================================
  *  DB Init on Load
  * =================================================================== */
+const initializeStoragePersistence = async () => {
+  storagePersistence = await requestStoragePersistence();
+  if (isSettingsModalOpen()) renderCacheStatus();
+};
+
+void initializeStoragePersistence();
 startupRuntime.start({
   projectSessionController,
   autosaveController: shotAutosaveController,

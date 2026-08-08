@@ -45,9 +45,10 @@ import { getShotsMissingScreenshots, applyShotScreenshot } from '../features/sho
 import {
   ensureEntryThumbnails,
   hydrateEntryFullScreenshots,
-  releaseHydratedScreenshotUrls
+  releaseHydratedScreenshotUrls,
+  dataUrlToBlob
 } from '../dom/screenshot-service.js';
-import { loadProjectScreenshotAssets } from '../features/screenshots/screenshot-assets.js';
+import { loadProjectScreenshotAssets, saveProjectScreenshotAssets } from '../features/screenshots/screenshot-assets.js';
 import {
   runScreenshotWorkflow,
   yieldToScreenshotWorkflow
@@ -90,8 +91,8 @@ export function createMediaRuntime({
   updateProjectRecord,
   getTimelineViewState = () => projectContext?.getTimelineViewState?.() || null,
   setTimelineViewState = () => {},
-  restoreProjectVideoFile,
-  copyVideoToProjectFolder,
+  restoreProjectVideo,
+  saveProjectVideo,
   setCurrentProject,
   getExportController = () => null,
   getShotListController = () => null,
@@ -119,8 +120,6 @@ export function createMediaRuntime({
   clearShotHeight = () => {},
   getCurrentVideoFile = () => runtimeState.currentVideoFile,
   setCurrentVideoFile = file => { runtimeState.currentVideoFile = file; },
-  getSaveDirectory = () => runtimeState.saveDirectoryHandle,
-  setSaveDirectory = value => { runtimeState.saveDirectoryHandle = value; },
   setDecodeFailed = value => { runtimeState.videoDecodeFailed = value; }
 } = {}) {
   const autoShotStateController = autoShotSessionController;
@@ -325,6 +324,7 @@ export function createMediaRuntime({
     getEntries,
     getActiveShotNumber: () => runtimeState.activeShotNumber,
     createScreenshotVariants,
+    dataUrlToBlob,
     applyShotScreenshot,
     renderShots: getRenderShots,
     markDirty,
@@ -337,6 +337,7 @@ export function createMediaRuntime({
     releaseHydratedScreenshots: releaseHydratedScreenshotUrls,
     getShotsMissingScreenshots,
     getScreenshotAssetKey,
+    saveScreenshotAssets: saveProjectScreenshotAssets,
     getCurrentProjectId,
     flushShotsToDB: getFlushShotsToDB,
     runScreenshotWorkflow,
@@ -462,8 +463,6 @@ export function createMediaRuntime({
     },
     setCurrentVideoFile,
     getCurrentVideoFile,
-    getSaveDirectory,
-    setSaveDirectory,
     stopRecording: () => recordingRuntime.controller?.stop(),
     clearAutoShotCache: autoShotStateController.clearSignatureCache,
     resetAutoShot: autoShotStateController.resetState,
@@ -474,8 +473,8 @@ export function createMediaRuntime({
     enableVideoButtons: elements.enableVideoButtons,
     setDecodeFailed,
     updateProjectRecord,
-    restoreProjectVideoFile,
-    copyVideoToProjectFolder,
+    restoreProjectVideo,
+    saveProjectVideo,
     showToast,
     documentTarget,
     windowTarget
@@ -621,7 +620,7 @@ export function createMediaRuntime({
     getCurrentVideoFileName: videoSession.getCurrentVideoFileName,
     clearCurrentVideo: videoSession.clearCurrentVideo,
     loadVideoFile: videoSession.loadVideoFile,
-    restoreVideoFromProjectFolder: videoSession.restoreVideoFromProjectFolder,
+    restoreVideoFromProjectStorage: videoSession.restoreVideoFromProjectStorage,
     recordingState,
     recordingTable: recordingRuntime.table,
     recordingController: recordingRuntime.controller,

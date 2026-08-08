@@ -25,6 +25,8 @@ export function createShotAutosaveController({
   setCurrentProject = () => {},
   setDirtyState = () => {},
   updateSaveStatus = () => {},
+  markSavePending = async () => {},
+  clearSavePending = async () => {},
   onSaveDiagnostic = () => {}
 } = {}) {
   let coordinator = null;
@@ -60,6 +62,11 @@ export function createShotAutosaveController({
     state.pending = false;
     state.lastError = null;
     updateSaveStatus();
+    try {
+      await markSavePending({ projectId, revision: state.revision, startedAt: Date.now() });
+    } catch (error) {
+      console.warn('Unable to record pending project save:', error);
+    }
     const revision = state.revision;
     const currentState = buildShotState();
     if (state.snapshotProjectId !== projectId) {
@@ -91,6 +98,11 @@ export function createShotAutosaveController({
     mergeSnapshot(projectId, currentState, deletedShotIds);
     state.status = 'saved';
     state.lastSuccessAt = Date.now();
+    try {
+      await clearSavePending(projectId);
+    } catch (error) {
+      console.warn('Unable to clear pending project save:', error);
+    }
     if (revision === state.revision && getProjectId() === projectId) {
       setDirtyState(false, state.lastSuccessAt);
     }

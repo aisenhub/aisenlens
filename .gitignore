@@ -7,3 +7,4 @@ vite-audit*.log
 .env.*
 !.env.example
 apps/api/data/
+opencut/

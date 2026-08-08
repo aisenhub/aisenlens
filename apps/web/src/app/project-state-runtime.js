@@ -36,6 +36,8 @@ export function createProjectStateRuntime({
   serializeAutoShotState,
   createProjectUuid,
   updateDirtyState,
+  markSavePending,
+  clearSavePending,
   getResetAutoSaveSnapshot = () => {},
   getProjectTitleForSave = getProjectTitle,
   onSaveDiagnostic = () => {}
@@ -109,7 +111,9 @@ export function createProjectStateRuntime({
     serializeAutoShotState: serializeAutoShotState || autoShotSessionController.serializeState,
     setCurrentProject: currentProjectSetter,
     setDirtyState: updateDirtyState,
-    updateSaveStatus
+    updateSaveStatus,
+    markSavePending,
+    clearSavePending
   });
   resetAutoSaveShotSnapshot = shotAutosaveController.resetSnapshot;
 

@@ -1,12 +1,14 @@
 import { createProjectUuid } from '../utils/ids.js';
 import { createTimelineViewState } from '../features/project/project-view-state.js';
+import { DATABASE_MIGRATION_LOG_PREFIX, runDatabaseMigrations } from './indexeddb-migrations.js';
 
 /* ===================================================================
  *  IndexedDB Layer
  * =================================================================== */
-const DB_NAME = 'AshenVideoLocalDB';
-const DB_VERSION = 4;
+export const DB_NAME = 'AshenVideoLocalDB';
+export const DB_VERSION = 6;
 let db = null;
+let lastMigrationFailure = null;
 
 export function openDB() {
   return new Promise((resolve, reject) => {
@@ -40,9 +42,26 @@ export function openDB() {
         as.createIndex('projectId', 'projectId', { unique: false });
         as.createIndex('shotId', 'shotId', { unique: false });
       }
+      if (!d.objectStoreNames.contains('mediaAssets')) {
+        const ms = d.createObjectStore('mediaAssets', { keyPath: 'id' });
+        ms.createIndex('projectId', 'projectId', { unique: false });
+        ms.createIndex('projectKind', ['projectId', 'kind'], { unique: false });
+      } else {
+        const ms = e.target.transaction.objectStore('mediaAssets');
+        if (ms.indexNames.contains('projectKind')) ms.deleteIndex('projectKind');
+        ms.createIndex('projectKind', ['projectId', 'kind'], { unique: false });
+      }
+      runDatabaseMigrations({ transaction: e.target.transaction, oldVersion: e.oldVersion });
     };
     req.onsuccess = function(e) { db = e.target.result; resolve(db); };
-    req.onerror = function(e) { reject(e.target.error); };
+    req.onerror = function(e) {
+      lastMigrationFailure = {
+        code: 'DATABASE_MIGRATION_FAILED',
+        message: String(e.target.error?.message || 'IndexedDB upgrade failed'),
+        at: new Date().toISOString()
+      };
+      reject(e.target.error);
+    };
   });
 }
 
@@ -51,12 +70,37 @@ export function dbOp(storeName, mode, fn) {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, mode);
       const store = tx.objectStore(storeName);
-      const result = fn(store);
-      if (result && typeof result.then === 'function') {
-        result.then(resolve).catch(reject);
+      let finished = false;
+      let transactionComplete = false;
+      let operationComplete = false;
+      let operationResult;
+      const fail = error => {
+        if (finished) return;
+        finished = true;
+        reject(error);
+      };
+      const complete = () => {
+        if (!finished && transactionComplete && operationComplete) {
+          finished = true;
+          resolve(operationResult);
+        }
+      };
+      tx.oncomplete = function() {
+        transactionComplete = true;
+        complete();
+      };
+      tx.onerror = function(event) { fail(event.target.error); };
+      tx.onabort = function(event) { fail(event.target.error || tx.error); };
+      try {
+        const result = fn(store);
+        Promise.resolve(result).then(value => {
+          operationResult = value;
+          operationComplete = true;
+          complete();
+        }, fail);
+      } catch (error) {
+        fail(error);
       }
-      tx.oncomplete = function() { if (!(result && typeof result.then === 'function')) resolve(result); };
-      tx.onerror = function(e) { reject(e.target.error); };
     });
   });
 }
@@ -332,14 +376,14 @@ export function dbSaveScreenshotAssets(projectId, assets) {
           projectId: Number(projectId),
           shotId: String(asset.shotId),
           type: asset.type,
-          storage: asset.storage || 'indexeddb',
+          storage: asset.storage || 'opfs',
+          status: asset.status || 'ready',
           resourceName: asset.resourceName || '',
           size: Number(asset.size) || Number(asset.blob?.size) || 0,
           width: Number(asset.width) || 0,
           height: Number(asset.height) || 0,
           updatedAt: new Date().toISOString()
         };
-        if (record.storage === 'indexeddb') record.blob = asset.blob;
         const request = store.put(record);
         request.onsuccess = () => { pending -= 1; if (!pending) resolve(assets.length); };
         request.onerror = event => reject(event.target.error);
@@ -390,6 +434,51 @@ export function dbPruneScreenshotAssets(projectId, validShotIds) {
   });
 }
 
+export function dbGetMediaAsset(projectId, kind = 'video') {
+  if (!projectId) return Promise.resolve(null);
+  return dbOp('mediaAssets', 'readonly', store => {
+    return new Promise((resolve, reject) => {
+      const request = store.index('projectKind').getAll(IDBKeyRange.only([Number(projectId), String(kind)]));
+      request.onsuccess = () => {
+        const assets = (request.result || [])
+          .filter(asset => asset.status === 'ready' || asset.status === undefined)
+          .sort((left, right) => String(right.updatedAt || '').localeCompare(String(left.updatedAt || '')));
+        resolve(assets[0] || null);
+      };
+      request.onerror = event => reject(event.target.error);
+    });
+  });
+}
+
+export function dbSaveMediaAsset(asset) {
+  if (!asset?.id || !asset?.projectId || !asset?.kind) return Promise.reject(new Error('Media asset metadata is required'));
+  return dbOp('mediaAssets', 'readwrite', store => {
+    return new Promise((resolve, reject) => {
+      const request = store.put({ ...asset, projectId: Number(asset.projectId), updatedAt: new Date().toISOString() });
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = event => reject(event.target.error);
+    });
+  });
+}
+
+export function dbDeleteMediaAssets(projectId) {
+  if (!projectId) return Promise.resolve(0);
+  return dbOp('mediaAssets', 'readwrite', store => {
+    return new Promise((resolve, reject) => {
+      let deleted = 0;
+      const request = store.index('projectId').openCursor(IDBKeyRange.only(Number(projectId)));
+      request.onsuccess = event => {
+        const cursor = event.target.result;
+        if (!cursor) { resolve(deleted); return; }
+        cursor.delete();
+        deleted += 1;
+        cursor.continue();
+      };
+      request.onerror = event => reject(event.target.error);
+    });
+  });
+}
+
 export function dbGetSetting(key) {
   return dbOp('settings', 'readonly', store => {
     return new Promise((resolve, reject) => {
@@ -418,4 +507,27 @@ export function dbDeleteSetting(key) {
       req.onerror = function(e) { reject(e.target.error); };
     });
   });
+}
+
+export function dbGetDatabaseMigrationLogs() {
+  return dbOp('settings', 'readonly', store => {
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve((request.result || [])
+        .filter(entry => String(entry.key || '').startsWith(DATABASE_MIGRATION_LOG_PREFIX))
+        .map(entry => entry.value)
+        .sort((left, right) => Number(left.version) - Number(right.version)));
+      request.onerror = event => reject(event.target.error);
+    });
+  });
+}
+
+export function getLastDatabaseMigrationFailure() {
+  return lastMigrationFailure ? { ...lastMigrationFailure } : null;
+}
+
+export function resetDatabaseConnectionForTests() {
+  db?.close();
+  db = null;
+  lastMigrationFailure = null;
 }

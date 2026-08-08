@@ -61,7 +61,7 @@ export function createStartupRuntime({
     projectSaveController,
     serializeProjectShots: projectPersistenceRuntime.serializeProjectShots,
     flushShotsToDatabase: projectPersistenceRuntime.flushShotsToDatabase,
-    saveToFolder: projectPersistenceRuntime.saveToFolder,
+    saveToBrowser: projectPersistenceRuntime.saveToBrowser,
     shotClearController,
     start,
     bindWorkerLifecycle

@@ -2,29 +2,18 @@ import { bindProjectEvents } from '../dom/project-bindings.js';
 import { createProjectSessionController } from '../dom/project-session.js';
 import { createProjectSessionStateController } from './project-session-state.js';
 import { createShotActions } from './shot-actions.js';
-import { createNewSessionWorkflow } from './new-session-workflow.js';
 import { formatUserError } from './diagnostics.js';
 import { normalizeStorageError } from './storage-diagnostics.js';
 
 export function createProjectSessionRuntime({
   elements = {},
-  projectImportController,
   projectController,
-  createProjectRecord,
-  deleteProjectRecord,
   updateProjectRecord,
   getProjectRecord,
-  sanitizeFolderName,
-  createProjectUuid,
   getProjectContext,
   setCurrentProject,
-  getSaveDirectory,
-  setSaveDirectory,
-  saveProjectDirectoryHandle,
   clearCurrentVideo,
-  loadVideoFile,
-  restoreVideoFromProjectFolder,
-  copyVideoToProjectFolder,
+  restoreVideoFromProjectStorage,
   restoreAutoShotSegmentState,
   runtimeState,
   syncShotGroupsWithEntries,
@@ -32,22 +21,16 @@ export function createProjectSessionRuntime({
   updateCurrentProjectButton,
   updateCustomFieldNames,
   resetAutoSaveShotSnapshot,
-  flushShotGroupsToDB,
   applyTemplate,
   ensureLoadedProjectScreenshots,
   releaseLoadedProjectScreenshots = () => {},
-  saveImportedScreenshotAssets = async () => {},
   pruneImportedScreenshotAssets = async () => {},
-  generateScreenshotsForAllEntries,
   openDatabase,
-  getDatabaseSetting,
+  consumePendingSave,
   locationTarget = { search: '' },
-  sessionStorageTarget = {},
-  localStorageTarget = {},
   windowTarget = globalThis,
   getTemplateName,
   setTemplateName,
-  escapeText,
   getEntries,
   setEntries,
   getProjectId,
@@ -84,58 +67,28 @@ export function createProjectSessionRuntime({
     return resetProjectState(...args);
   };
 
-  const startNewSessionWorkflow = createNewSessionWorkflow({
-    setCurrentProject,
-    resetProjectState: resetProjectSessionState,
-    updateCurrentProjectButton,
-    renderShots
-  }).start;
-  const startNewSession = (...args) => {
-    releaseLoadedProjectScreenshots();
-    return startNewSessionWorkflow(...args);
-  };
-
   const projectSessionController = createProjectSessionController({
-    elements,
-    projectImportController,
     projectController,
-    createProjectRecord,
-    deleteProjectRecord,
     updateProjectRecord,
     getProjectRecord,
-    sanitizeFolderName,
-    createProjectUuid,
     getProjectContext,
     setCurrentProject,
-    getSaveDirectory,
-    setSaveDirectory,
-    saveProjectDirectoryHandle,
     clearCurrentVideo,
-    loadVideoFile,
-    restoreVideoFromProjectFolder,
-    copyVideoToProjectFolder,
+    restoreVideoFromProjectStorage,
     restoreAutoShotSegmentState,
     resetProjectState: resetProjectSessionState,
     syncShotGroupsWithEntries,
     renderShots,
     updateCurrentProjectButton,
     updateCustomFieldNames,
-    resetAutoSaveShotSnapshot,
-    flushShotGroupsToDB,
     applyTemplate,
     ensureLoadedProjectScreenshots,
     releaseLoadedProjectScreenshots,
-    saveImportedScreenshotAssets,
     pruneImportedScreenshotAssets,
-    generateScreenshotsForAllEntries,
     openDatabase,
-    getDatabaseSetting,
+    consumePendingSave,
     locationTarget,
-    sessionStorageTarget,
-    localStorageTarget,
     windowTarget,
-    documentTarget,
-    onNewSession: startNewSession,
     onDatabaseError: error => showToast(
       formatUserError(normalizeStorageError(error, {
         operation: '本地数据库初始化',
@@ -151,7 +104,6 @@ export function createProjectSessionRuntime({
     getTemplateName,
     setTemplateName,
     showToast,
-    escapeText,
     pauseAutosave,
     resumeAutosave,
     flushAutosave
@@ -176,56 +128,16 @@ export function createProjectSessionRuntime({
     setGroups: value => { runtimeState.shotGroups = value; }
   });
 
-  const {
-    showGuideModal,
-    hideGuideModal,
-    guideNewProject,
-    guideImportProject,
-    showVideoPickModal,
-    hideVideoPickModal,
-    showEmptyVideoHint,
-    importProjectFromFolder,
-    loadLocalProject,
-    createProjectFromVideo,
-    createNewProject
-  } = projectSessionController;
-
   bindProjectEvents({
     elements: {
-      currentButton: elements.projectCurrentBtn,
-      newButton: elements.newProjectBtn,
-      deleteButton: elements.deleteProjectBtn,
-      logo: elements.homeLogo,
-      importButton: elements.importProjectFromFolderBtn,
-      secondaryImportButton: elements.importProjectBtn2,
-      dropdown: elements.projectDropdown
+      titleInput: elements.projectTitleInput
     },
-    documentTarget,
-    locationTarget,
-    onToggle: elements.toggleProjectDropdown,
-    onNew: createNewProject,
-    onImport: importProjectFromFolder,
-    onFolderImport: importProjectFromFolder,
-    onDelete: () => projectSessionController.deleteCurrentProject(),
-    onCloseDropdown: elements.closeProjectDropdown,
-    onProjectId: loadLocalProject
+    onRename: title => projectSessionController.renameCurrentProject(title)
   });
 
   return {
     projectSessionController,
     shotActions,
-    resetProjectSessionState,
-    startNewSession,
-    showGuideModal,
-    hideGuideModal,
-    guideNewProject,
-    guideImportProject,
-    showVideoPickModal,
-    hideVideoPickModal,
-    showEmptyVideoHint,
-    importProjectFromFolder,
-    loadLocalProject,
-    createProjectFromVideo,
-    createNewProject
+    loadLocalProject: projectSessionController.loadLocalProject
   };
 }

@@ -1,19 +1,19 @@
-import { screenshotResourceStore } from '../../platform/screenshot-resource-store.js';
+import { mediaStorageService } from '../../platform/media-storage-service.js';
 import { screenshotObjectUrls } from '../../platform/object-url-registry.js';
 
-export const estimateScreenshotStorage = () => screenshotResourceStore.estimate();
+export const estimateScreenshotStorage = () => mediaStorageService.estimate();
 
 export function loadProjectScreenshotAssets(projectId) {
-  return screenshotResourceStore.load(projectId);
+  return mediaStorageService.loadScreenshots(projectId);
 }
 
 export function saveProjectScreenshotAssets(projectId, assets) {
-  return screenshotResourceStore.save(projectId, assets);
+  return mediaStorageService.saveScreenshots(projectId, assets);
 }
 
 export function deleteProjectScreenshotAssets(projectId, shotIds) {
   releaseProjectScreenshotUrls(projectId, shotIds);
-  return screenshotResourceStore.remove(projectId, shotIds);
+  return mediaStorageService.removeScreenshots(projectId, shotIds);
 }
 
 export function pruneProjectScreenshotAssets(projectId, validShotIds) {
@@ -22,17 +22,17 @@ export function pruneProjectScreenshotAssets(projectId, validShotIds) {
     .filter(key => key.startsWith(`${Number(projectId)}:`))
     .filter(key => !valid.has(key.split(':')[1]))
     .forEach(key => screenshotObjectUrls.revoke(key));
-  return screenshotResourceStore.prune(projectId, validShotIds);
+  return mediaStorageService.pruneScreenshots(projectId, validShotIds);
 }
 
 export function removeProjectScreenshotAssets(projectId) {
   releaseProjectScreenshotUrls(projectId);
-  return screenshotResourceStore.removeProject(projectId);
+  return mediaStorageService.removeProjectScreenshots(projectId);
 }
 
 export function clearAllScreenshotAssets() {
   screenshotObjectUrls.clear();
-  return screenshotResourceStore.clearAll();
+  return mediaStorageService.clearScreenshots();
 }
 
 export function releaseProjectScreenshotUrls(projectId, shotIds = null) {

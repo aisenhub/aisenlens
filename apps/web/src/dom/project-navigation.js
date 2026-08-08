@@ -1,26 +1,20 @@
 export function createProjectNavigationController({
   elements = {},
-  getCurrentProjectId = () => null,
-  showGuide = () => {},
   documentTarget = document,
   escapeText = value => String(value ?? '')
 } = {}) {
-  const { currentButton, dropdown, templateMenu, templateMenuButton, templateMenuLabel, templateSelect } = elements;
-  const folderIcon = '<svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h5l1.7 2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 .5-2Z"/></svg>';
+  const { titleInput, templateMenu, templateMenuButton, templateMenuLabel, templateSelect } = elements;
 
-  const closeProjectDropdown = () => dropdown?.classList.remove('show');
+  const closeProjectDropdown = () => {};
   const closeTemplateMenu = () => {
     templateMenu?.classList.remove('show');
     templateMenuButton?.setAttribute('aria-expanded', 'false');
   };
   const updateCurrentProjectButton = title => {
-    if (currentButton) currentButton.innerHTML = `${folderIcon}<span class="project-current-label">${escapeText(title || '无项目')}</span>`;
-  };
-  const toggleProjectDropdown = () => {
-    if (!getCurrentProjectId()) { showGuide(); return; }
-    if (!dropdown) return;
-    if (!dropdown.classList.contains('show')) closeTemplateMenu();
-    dropdown.classList.toggle('show');
+    if (!titleInput) return;
+    titleInput.value = escapeText(title || '无项目');
+    titleInput.title = title ? '点击编辑项目名称' : '无项目';
+    titleInput.disabled = !title;
   };
   const openTemplateMenu = () => {
     if (!templateMenu) return;
@@ -36,14 +30,12 @@ export function createProjectNavigationController({
   };
   const bind = () => {
     documentTarget.addEventListener('click', event => {
-      if (dropdown?.classList.contains('show') && !currentButton?.contains(event.target) && !dropdown.contains(event.target)) closeProjectDropdown();
       if (templateMenu?.classList.contains('show') && !templateMenuButton?.contains(event.target) && !templateMenu.contains(event.target)) closeTemplateMenu();
     });
   };
   return {
     bind,
     updateCurrentProjectButton,
-    toggleProjectDropdown,
     openTemplateMenu,
     closeTemplateMenu,
     closeProjectDropdown,

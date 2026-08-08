@@ -5,6 +5,12 @@ function formatCacheSize(bytes) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatSavedAt(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '未记录保存时间';
+  return date.toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 function getStorageBytes(keys = null, storage = globalThis.localStorage) {
   const cacheKeys = Array.isArray(keys)
     ? keys
@@ -12,18 +18,6 @@ function getStorageBytes(keys = null, storage = globalThis.localStorage) {
   return cacheKeys.reduce((total, key) => (
     total + key.length * 2 + String(storage.getItem(key) || '').length * 2
   ), 0);
-}
-
-function estimateStructuredBytes(value, seen = new WeakSet()) {
-  if (value === null || value === undefined) return 0;
-  if (typeof value === 'string') return value.length * 2;
-  if (typeof value === 'number' || typeof value === 'boolean') return 8;
-  if (typeof value !== 'object') return 0;
-  if (typeof Blob !== 'undefined' && value instanceof Blob) return value.size;
-  if (seen.has(value)) return 0;
-  seen.add(value);
-  if (Array.isArray(value)) return value.reduce((total, item) => total + estimateStructuredBytes(item, seen), 16);
-  return Object.entries(value).reduce((total, [key, item]) => total + key.length * 2 + estimateStructuredBytes(item, seen), 32);
 }
 
 export function createSettingsPanelController({
@@ -45,8 +39,12 @@ export function createSettingsPanelController({
   writeStorage,
   removeStorageKeys,
   getProjectStats,
+  getRecoverySummary,
+  getStoragePersistence = async () => ({ status: 'checking' }),
   getStorageEstimate = async () => null,
-  clearProjectStores,
+  getCurrentProjectId = () => null,
+  getCurrentProjectTitle = () => '',
+  exportProjectBackup = async () => null,
   closeProjectDropdown = () => {},
   closeTemplateMenu = () => {},
   download,
@@ -66,10 +64,14 @@ export function createSettingsPanelController({
     importUserConfigBtn,
     exportUserConfigBtn,
     importUserConfigInput,
+    projectBackupMode,
+    exportProjectBackupBtn,
     cacheManagerConfigStatus,
     cacheManagerProjectStatus,
+    storagePersistenceStatus,
+    recoveryStatus,
+    recoveryProjectList,
     clearConfigCacheBtn,
-    clearProjectCacheBtn,
     settingsBtn,
     settingsModal,
     settingsModalClose,
@@ -122,12 +124,38 @@ export function createSettingsPanelController({
     const fields = getFieldPool?.() || [];
     if (cacheManagerConfigStatus) cacheManagerConfigStatus.textContent = `${configSummary}；${Object.keys(templates).length} 个模板 · ${fields.length} 个字段`;
     try {
-      const stats = await getProjectStats?.();
-      const estimate = await getStorageEstimate?.();
+      const [stats, estimate, recovery, persistence] = await Promise.all([
+        getProjectStats?.(),
+        getStorageEstimate?.(),
+        getRecoverySummary?.(),
+        getStoragePersistence?.()
+      ]);
       const quotaText = Number.isFinite(estimate?.available) ? ` · 可用 ${formatCacheSize(estimate.available)}` : '';
-      if (cacheManagerProjectStatus) cacheManagerProjectStatus.textContent = `${stats.projects} 个项目 · ${stats.shots} 个分镜 · ${stats.groups} 个镜头组 · 截图 ${stats.screenshotAssets || 0} 个 · 占用 ${formatCacheSize(stats.bytes)}${quotaText}`;
+      const totalBytes = (Number(stats?.bytes) || 0) + (Number(stats?.resourceBytes) || 0);
+      if (cacheManagerProjectStatus) cacheManagerProjectStatus.textContent = `${stats.projects} 个项目 · ${stats.shots} 个分镜 · ${stats.groups} 个镜头组 · 视频和截图 ${stats.mediaAssets || 0}/${stats.screenshotAssets || 0} 个 · 占用 ${formatCacheSize(totalBytes)}${quotaText}`;
+      if (recoveryStatus) recoveryStatus.textContent = recovery?.pendingSave
+        ? '检测到上次写入中断，已保留最近一次成功保存的项目版本。'
+        : '未检测到中断写入，项目数据已保存在浏览器本地。';
+      if (storagePersistenceStatus) {
+        const messages = {
+          protected: '浏览器存储保护已开启。清除站点数据仍会删除项目，请定期导出备份。',
+          unprotected: '浏览器未授予存储保护。项目仍可使用，但应定期导出备份。',
+          unsupported: '当前浏览器无法报告存储保护状态，建议使用 Chromium 浏览器并定期导出备份。',
+          unavailable: '暂时无法读取存储保护状态，项目仍可正常使用。'
+        };
+        storagePersistenceStatus.textContent = messages[persistence?.status] || '正在检查浏览器存储保护状态。';
+      }
+      if (recoveryProjectList) {
+        const recentProjects = recovery?.projects || [];
+        recoveryProjectList.textContent = recentProjects.length
+          ? `最近保存：${recentProjects.map(project => `${project.title || '未命名项目'}（${formatSavedAt(project.updatedAt)}）`).join('；')}`
+          : '暂未创建项目。';
+      }
     } catch (_) {
       if (cacheManagerProjectStatus) cacheManagerProjectStatus.textContent = '暂时无法读取';
+      if (storagePersistenceStatus) storagePersistenceStatus.textContent = '暂时无法读取存储保护状态';
+      if (recoveryStatus) recoveryStatus.textContent = '暂时无法读取恢复状态';
+      if (recoveryProjectList) recoveryProjectList.textContent = '暂时无法读取最近项目';
     }
   };
 
@@ -148,6 +176,32 @@ export function createSettingsPanelController({
       fieldPool: [...(getFieldPool?.() || [])],
       fieldProperties: Object.fromEntries((getFieldPool?.() || []).map(field => [field, getFieldReferenceOptions(field)]))
     };
+  };
+
+  const exportProject = async () => {
+    const projectId = getCurrentProjectId?.();
+    if (!projectId) {
+      showToast?.('请先打开一个项目，再导出项目备份', 'warning');
+      return;
+    }
+    const mode = projectBackupMode?.value || 'full';
+    if (exportProjectBackupBtn) exportProjectBackupBtn.disabled = true;
+    try {
+      const blob = await exportProjectBackup(projectId, { mode });
+      const stamp = new Date().toISOString().replace(/[T:]/g, '-').replace(/\.\d{3}Z$/, '');
+      const title = String(getCurrentProjectTitle?.() || 'AisenLens').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'AisenLens';
+      download?.(`${title}-${stamp}.aisenlens.zip`, blob);
+      showToast?.('项目备份已导出', 'success');
+    } catch (error) {
+      console.error('项目备份导出失败:', error);
+      showToast?.('项目备份导出失败，请稍后重试', 'error');
+    } finally {
+      if (exportProjectBackupBtn) exportProjectBackupBtn.disabled = false;
+    }
+  };
+
+  const bindProjectBackup = () => {
+    exportProjectBackupBtn?.addEventListener('click', exportProject);
   };
 
   const exportConfig = () => {
@@ -210,29 +264,11 @@ export function createSettingsPanelController({
   };
 
   const clearConfig = () => {
-    if (!window.confirm('确定清除本机配置缓存吗？项目文件夹和项目缓存不会删除。')) return;
+    if (!window.confirm('确定恢复默认配置吗？浏览器中的项目和媒体资源不会删除。')) return;
     removeStorageKeys?.([settingsKey, templateDefinitionsKey, fieldPoolKey, 'theme', 'playbackRate']);
     close();
     showToast?.('配置缓存已清除，页面即将刷新', 'success');
     setTimeout(() => window.location.reload(), 350);
-  };
-
-  const clearProjects = async () => {
-    if (!window.confirm('确定清除浏览器中的全部项目缓存吗？项目文件夹中的文件不会删除。')) return;
-    if (clearProjectCacheBtn) clearProjectCacheBtn.disabled = true;
-    try {
-      await clearProjectStores?.();
-      localStorage.removeItem('lastProjectId');
-      localStorage.removeItem('lastProjectTitle');
-      sessionStorage.removeItem('sessionActive');
-      close();
-      showToast?.('项目缓存已清除，页面即将刷新', 'success');
-      setTimeout(() => window.location.reload(), 350);
-    } catch (error) {
-      console.error(error);
-      showToast?.('清除项目缓存失败', 'error');
-      if (clearProjectCacheBtn) clearProjectCacheBtn.disabled = false;
-    }
   };
 
   const bindFeedback = (button, input, label, copiedText, resetText, message) => {
@@ -259,8 +295,8 @@ export function createSettingsPanelController({
     exportUserConfigBtn?.addEventListener('click', exportConfig);
     importUserConfigBtn?.addEventListener('click', () => importUserConfigInput?.click());
     importUserConfigInput?.addEventListener('change', event => importConfig(event.target.files?.[0]));
+    bindProjectBackup();
     clearConfigCacheBtn?.addEventListener('click', clearConfig);
-    clearProjectCacheBtn?.addEventListener('click', clearProjects);
     bindFeedback(copyFeedbackEmailBtn, feedbackEmail, copyFeedbackEmailLabel, '已复制', '复制邮箱', '反馈邮箱已复制');
     bindFeedback(copyFeedbackXhsBtn, feedbackXhs, copyFeedbackXhsLabel, '已复制', '复制小红书账号', '小红书账号已复制');
   };
@@ -273,8 +309,9 @@ export function createSettingsPanelController({
     setPanel,
     renderCacheStatus,
     exportConfig,
+    exportProject,
+    bindProjectBackup,
     importConfig,
-    clearConfig,
-    clearProjects
+    clearConfig
   };
 }

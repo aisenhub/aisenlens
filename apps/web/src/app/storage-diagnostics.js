@@ -6,8 +6,11 @@ function getErrorName(error) {
 
 export function getStorageErrorKind(error) {
   const name = getErrorName(error);
-  const code = Number(error?.code);
-  if (name.includes('quota') || code === 22 || code === 1014) return 'quota';
+  const code = String(error?.code || '').toLowerCase();
+  const numericCode = Number(error?.code);
+  if (name.includes('quota') || code.includes('quota') || numericCode === 22 || numericCode === 1014) return 'quota';
+  if (name.includes('version') || name.includes('constraint')) return 'database';
+  if (name.includes('abort')) return 'interrupted';
   if (name.includes('notallowed') || name.includes('permission')) return 'permission';
   if (name.includes('security') || name.includes('invalidstate') || name.includes('notsupported')) return 'unavailable';
   return 'unknown';
@@ -22,12 +25,22 @@ export function normalizeStorageError(error, {
     quota: {
       code: 'STORAGE_QUOTA_EXCEEDED',
       title: '浏览器存储空间不足',
-      action: '请清理项目截图或网站缓存后重试。'
+      action: '请删除不再使用的项目或释放浏览器站点空间后重试。'
     },
     permission: {
       code: 'STORAGE_PERMISSION_DENIED',
-      title: '没有存储或文件夹权限',
-      action: '请在浏览器权限设置中允许访问，或重新选择有权限的文件夹。'
+      title: '浏览器未允许本地存储',
+      action: '请检查站点存储权限，并通过 localhost 或 HTTPS 重新打开应用。'
+    },
+    interrupted: {
+      code: 'STORAGE_WRITE_INTERRUPTED',
+      title: '本地写入已中断',
+      action: '请重新打开项目；系统会保留最近一次成功保存的版本。'
+    },
+    database: {
+      code: 'STORAGE_DATABASE_UNAVAILABLE',
+      title: '本地数据库无法使用',
+      action: '请关闭其他打开此应用的标签页后重试；问题持续时请保留错误码反馈。'
     },
     unavailable: {
       code: 'STORAGE_UNAVAILABLE',

@@ -47,9 +47,6 @@ export function createShotRuntime({
   setActiveShot,
   onLoadVideo = () => {},
   onCaptureShot = () => {},
-  getHasProject = () => true,
-  onNewProject = () => {},
-  onImportProject = () => {},
   invokeAction = null,
   history = null,
   documentTarget = document,
@@ -144,9 +141,6 @@ export function createShotRuntime({
       if (video?.src) onCaptureShot();
       else onLoadVideo();
     },
-    getHasProject,
-    onEmptyNewProject: () => onNewProject(),
-    onEmptyImportProject: () => onImportProject(),
     onCloseDetail: () => { runtimeState.expandedShotNumber = null; }
   });
 

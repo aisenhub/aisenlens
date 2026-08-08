@@ -8,20 +8,31 @@
 <meta name="description" content="AisenLens 本地编辑器，提供高效的视频拉片、标注、截图与导出功能。">
 </head>
 <body>
+<main class="project-library-view" id="projectLibraryView" hidden>
+  <header class="project-library-header">
+    <div><span class="project-library-kicker">AisenLens</span><h1>工程库</h1><p>所有工程仅保存在当前浏览器，可随时导出 ZIP 备份。</p></div>
+    <div class="project-library-header-actions"><button id="projectLibraryImport" type="button">导入工程</button><button id="projectLibraryNew" type="button">新建工程</button><input id="projectLibraryImportInput" type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden></div>
+  </header>
+  <section class="project-library-toolbar" aria-label="工程库筛选">
+    <input id="projectLibrarySearch" type="search" placeholder="搜索工程或视频文件" aria-label="搜索工程">
+    <select id="projectLibrarySort" aria-label="工程排序"><option value="updated">最近保存</option><option value="title">工程名称</option></select>
+    <div class="project-library-view-switch" role="group" aria-label="视图方式"><button type="button" data-library-view="grid" aria-pressed="true">网格</button><button type="button" data-library-view="list" aria-pressed="false">列表</button></div>
+  </section>
+  <p id="projectLibraryEmpty" class="project-library-empty" hidden>还没有工程。新建工程或导入 ZIP 备份后会显示在这里。</p>
+  <p id="projectLibraryNotice" class="project-library-notice" role="status" aria-live="polite" hidden></p>
+  <section id="projectLibraryList" class="project-library-list" aria-live="polite"></section>
+</main>
+<div id="editorShell" hidden>
 
 <!-- ===== Header ===== -->
 <header class="site-header">
   <div class="header-left">
+    <button id="editorBackBtn" class="editor-back-btn" type="button">工程库</button>
     <div class="header-logo" id="homeLogo" title="点击切换项目">
       <span>AisenLens</span>
     </div>
     <div class="project-selector">
-      <button id="projectCurrentBtn" class="project-current-btn" title="项目管理"><span class="project-current-label">无项目</span></button>
-      <div class="project-dropdown" id="projectDropdown">
-        <button class="project-menu-btn" id="newProjectBtn" type="button"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5h5l1.7 2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 .5-2Z"/><path d="M12 11v5M9.5 13.5h5"/></svg><span>新建项目</span></button>
-        <button class="project-menu-btn" id="importProjectBtn2" type="button"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span>导入项目</span></button>
-        <button class="project-menu-btn project-delete-btn" id="deleteProjectBtn" type="button"><svg class="header-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M6.5 7l.7 13h9.6l.7-13M9 7V4h6v3"/></svg><span>删除当前项目</span></button>
-      </div>
+      <input id="projectTitleInput" class="project-title-input" type="text" value="无项目" aria-label="项目名称" title="点击编辑项目名称" readonly>
     </div>
     <div class="header-template" id="headerTemplate">
       <button id="templateMenuBtn" class="header-template-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="templateMenu" title="拉片模板">
@@ -483,47 +494,6 @@
   </div>
 </div>
 
-<!-- ===== Guide Modal ===== -->
-<div class="modal-overlay" id="guideModal">
-  <div class="modal-content guide-card" role="dialog" aria-modal="true" aria-labelledby="guideModalTitle">
-    <div class="guide-logo"><span id="guideModalTitle">AisenLens</span></div>
-    <div class="guide-subtitle">新建/导入项目开始逐镜拉片分析</div>
-    <div class="guide-actions">
-      <button class="guide-new" id="guideNewProjectBtn">
-        <span class="guide-icon">📁</span>
-        <span>新建项目</span>
-      </button>
-      <button class="guide-import" id="guideImportBtn">
-        <span class="guide-icon">📥</span>
-        <span>导入项目</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-
-<!-- ===== Video Pick Modal ===== -->
-<div class="modal-overlay" id="videoPickModal">
-  <div class="modal-content video-pick-card" role="dialog" aria-modal="true" aria-labelledby="videoPickModalTitle">
-    <!-- Step 1: Choose folder -->
-    <div id="vpStep1"><h2 id="videoPickModalTitle" class="sr-only">选择视频</h2>
-      <div class="vp-icon">📁</div>
-      <div class="vp-title">选择项目文件夹</div>
-      <div class="vp-desc">选择一个文件夹来保存项目数据，之后点击保存会自动写入此文件夹</div>
-      <button class="btn btn-primary vp-btn" id="videoPickBtn">📁 选择项目文件夹</button>
-    </div>
-    <!-- Step 2: Choose video -->
-    <div id="vpStep2" style="display:none">
-      <div class="vp-icon">🎬</div>
-      <div class="vp-title">选择视频文件</div>
-      <div class="vp-desc" id="vpStep2Desc">项目文件夹已就绪，选择一个视频文件开始拉片分析</div>
-      <button class="btn btn-primary vp-btn" id="videoPickBtn2">🎬 选择视频文件</button>
-      <div style="margin-top:12px">
-        <button class="btn btn-secondary btn-sm" id="videoPickSkipBtn">跳过，仅创建空项目</button>
-      </div>
-    </div>
-  </div>
-</div>
 <!-- ===== Documentation Modal ===== -->
 
 <!-- ===== Settings Modal ===== -->
@@ -544,7 +514,7 @@
         </button>
         <button class="settings-nav-item" type="button" role="tab" aria-selected="false" aria-controls="settingsPanelCache" data-settings-panel="cache">
           <svg class="settings-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
-          <span class="settings-nav-text"><strong>本地数据</strong><small>配置与项目索引缓存、导入导出</small></span>
+          <span class="settings-nav-text"><strong>本地数据</strong><small>配置、项目恢复与存储状态</small></span>
         </button>
         <button class="settings-nav-item" type="button" role="tab" aria-selected="false" aria-controls="settingsPanelFeedback" data-settings-panel="feedback">
           <svg class="settings-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/><path d="M8 9h8M8 13h5"/></svg>
@@ -570,7 +540,7 @@
             <ul class="account-benefits">
               <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span><strong>永久使用</strong><small>一次购买，长期使用当前功能。</small></span></li>
               <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span><strong>持续更新</strong><small>后续发布的最新版本将持续提供。</small></span></li>
-              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span><strong>本地优先</strong><small>项目文件保存在您选择的本地文件夹中。</small></span></li>
+              <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><span><strong>本地优先</strong><small>项目保存在当前浏览器的本地存储中。</small></span></li>
             </ul>
           </section>
           <section class="account-section account-update-guide">
@@ -589,7 +559,7 @@
         <section class="settings-panel" id="settingsPanelCache" role="tabpanel" data-settings-panel="cache" hidden>
           <div class="settings-page-hero settings-page-hero-muted">
             <div class="settings-page-hero-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div>
-            <div><span class="settings-page-badge">本地优先</span><h4>本地数据</h4><p>项目文件夹是保存来源，浏览器仅保留恢复项目所需的索引与缓存。</p></div>
+            <div><span class="settings-page-badge">本地优先</span><h4>本地数据</h4><p>浏览器本地存储是项目保存来源；视频和截图以本地资源形式保存。</p></div>
           </div>
           <section class="settings-feature-card settings-feature-card-muted cache-manager-card">
             <div class="settings-feature-card-head"><div class="settings-feature-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></div><div><h5>配置与偏好</h5><p>模板、字段、自动分镜参数、主题和播放速度。</p></div></div>
@@ -601,12 +571,22 @@
               <button id="clearConfigCacheBtn" class="cache-manager-danger" type="button">恢复默认配置</button>
               <input id="importUserConfigInput" type="file" accept=".json,application/json" hidden>
             </div>
+            <div class="cache-manager-actions project-backup-actions">
+              <select id="projectBackupMode" aria-label="项目备份范围">
+                <option value="data">仅工程数据</option>
+                <option value="screenshots">工程数据 + 截图</option>
+                <option value="full" selected>完整工程 + 视频</option>
+              </select>
+              <button id="exportProjectBackupBtn" type="button">导出项目备份</button>
+            </div>
           </section>
           <section class="settings-feature-card settings-feature-card-muted cache-manager-card">
-            <div class="settings-feature-card-head"><div class="settings-feature-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div><h5>项目索引缓存</h5><p>用于恢复最近项目、会话数据与资源缓存。</p></div></div>
+            <div class="settings-feature-card-head"><div class="settings-feature-card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><div><h5>项目恢复</h5><p>查看正式项目数据、最近保存和异常写入恢复状态。</p></div></div>
             <div class="cache-manager-status" id="cacheManagerProjectStatus">正在读取</div>
-            <div class="settings-inline-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>清除缓存不会删除项目文件夹，但会移除最近项目记录与目录授权。</span></div>
-            <div class="cache-manager-actions"><button id="clearProjectCacheBtn" class="cache-manager-danger" type="button">清除项目索引缓存</button></div>
+            <div class="cache-manager-status" id="storagePersistenceStatus">正在检查浏览器存储保护状态</div>
+            <div class="cache-manager-status" id="recoveryStatus">正在读取恢复状态</div>
+            <div class="cache-manager-status" id="recoveryProjectList">正在读取最近项目</div>
+            <div class="settings-inline-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>项目记录和媒体资源属于正式数据，不会在此处被当作缓存清理。</span></div>
           </section>
         </section>
         <section class="settings-panel" id="settingsPanelFeedback" role="tabpanel" data-settings-panel="feedback" hidden>
@@ -753,6 +733,7 @@
 
 <!-- ===== Toast Container ===== -->
 <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+</div>
 
 <script type="module" src="src/app/bootstrap.js"></script>
 

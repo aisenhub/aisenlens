@@ -4,6 +4,7 @@ export function createScreenshotController({
   getEntries,
   getActiveShotNumber,
   createScreenshotVariants,
+  dataUrlToBlob,
   applyShotScreenshot,
   renderShots,
   markDirty,
@@ -16,6 +17,7 @@ export function createScreenshotController({
   releaseHydratedScreenshots,
   getShotsMissingScreenshots,
   getScreenshotAssetKey,
+  saveScreenshotAssets = async () => {},
   getCurrentProjectId,
   flushShotsToDB,
   runScreenshotWorkflow,
@@ -114,6 +116,25 @@ export function createScreenshotController({
       restore: restoreCapture,
       onBatchComplete: renderShots
     });
+    const projectId = getCurrentProjectId?.();
+    if (projectId) {
+      const assets = targets.flatMap(entry => [
+        { type: 'first', image: entry.image, width: entry.width, height: entry.height },
+        { type: 'last', image: entry.lastFrameImage, width: entry.lastFrameWidth, height: entry.lastFrameHeight }
+      ].map(({ type, image, width, height }) => {
+        const blob = dataUrlToBlob?.(image);
+        if (!blob) return null;
+        return {
+          key: getScreenshotAssetKey(projectId, entry.shotId, type),
+          shotId: entry.shotId,
+          type,
+          blob,
+          width: Number(width) || 0,
+          height: Number(height) || 0
+        };
+      }).filter(Boolean));
+      if (assets.length) await saveScreenshotAssets(projectId, assets);
+    }
     if (recordHistory) {
       const afterEntries = new Map(targets.map(entry => [entry.shotId, cloneEntry(entry)]));
       const applySnapshot = snapshot => {
@@ -149,15 +170,19 @@ export function createScreenshotController({
 
   const ensureLoaded = async () => {
     const entries = getEntries?.() || [];
+    const isCurrentEntries = () => getEntries?.() === entries;
     releaseLoaded();
     if (await ensureEntryThumbnails(entries)) {
+      if (!isCurrentEntries()) return;
       renderShots?.();
       if (getCurrentProjectId?.()) await flushShotsToDB?.();
     }
+    if (!isCurrentEntries()) return;
     let storedAssets = [];
     if (getCurrentProjectId?.()) {
       try { storedAssets = await loadProjectScreenshotAssets(getCurrentProjectId()); } catch (_) {}
     }
+    if (!isCurrentEntries()) return;
     if (storedAssets.length && getCurrentProjectId?.() && hydrateEntryFullScreenshots) {
       hydratedProjectScreenshots = await hydrateEntryFullScreenshots(
         getCurrentProjectId(),
@@ -166,6 +191,7 @@ export function createScreenshotController({
       );
       if (hydratedProjectScreenshots.length) renderShots?.();
     }
+    if (!isCurrentEntries()) return;
     const storedKeys = new Set(storedAssets.map(asset => asset.key));
     const missing = getShotsMissingScreenshots(entries, 'first').filter(entry => !storedKeys.has(getScreenshotAssetKey(getCurrentProjectId(), entry.shotId, 'first')));
     if (!video?.src || !missing.length) return;

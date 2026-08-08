@@ -26,7 +26,6 @@ export function bindTemplateEvents({
     importInput,
     exportButton,
     clearConfigButton,
-    clearProjectButton,
     settingsButton,
     settingsModal,
     settingsCloseButton,
@@ -48,7 +47,6 @@ export function bindTemplateEvents({
     onImportConfig = () => {},
     onExportConfig = () => {},
     onClearConfig = () => {},
-    onClearProject = () => {},
     isSettingsOpen = () => false,
     openSettings = () => {},
     setSettingsPanel = () => {}
@@ -105,7 +103,6 @@ export function bindTemplateEvents({
   });
   exportButton?.addEventListener('click', onExportConfig);
   clearConfigButton?.addEventListener('click', onClearConfig);
-  clearProjectButton?.addEventListener('click', onClearProject);
   settingsButton?.addEventListener('click', () => {
     if (isSettingsOpen()) closeSettings(); else openSettings();
   });

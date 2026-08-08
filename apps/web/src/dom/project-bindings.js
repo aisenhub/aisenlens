@@ -1,50 +1,39 @@
 export function bindProjectEvents({
   elements = {},
-  documentTarget = null,
-  locationTarget = null,
-  onToggle = () => {},
-  onNew = () => {},
-  onImport = () => {},
-  onFolderImport = () => {},
-  onDelete = () => {},
-  onCloseDropdown = () => {},
-  onProjectId = () => {},
-  onReady = () => {}
+  onRename = async () => false
 } = {}) {
-  const {
-    currentButton,
-    newButton,
-    logo,
-    importButton,
-    secondaryImportButton,
-    deleteButton,
-    dropdown
-  } = elements;
-  currentButton?.addEventListener('click', event => {
-    event.stopPropagation();
-    onToggle();
+  const { titleInput } = elements;
+  if (!titleInput) return;
+
+  let originalTitle = titleInput.value;
+  const finish = async save => {
+    if (titleInput.readOnly) return;
+    const title = titleInput.value.trim();
+    titleInput.readOnly = true;
+    if (!save || !title || title === originalTitle) {
+      titleInput.value = originalTitle;
+      return;
+    }
+    const renamed = await onRename(title);
+    if (!renamed) titleInput.value = originalTitle;
+  };
+
+  titleInput.addEventListener('click', () => {
+    if (titleInput.readOnly) {
+      originalTitle = titleInput.value;
+      titleInput.readOnly = false;
+      titleInput.select();
+    }
   });
-  newButton?.addEventListener('click', () => {
-    onCloseDropdown();
-    onNew();
+  titleInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      titleInput.blur();
+    }
+    if (event.key === 'Escape') {
+      titleInput.value = originalTitle;
+      void finish(false);
+    }
   });
-  secondaryImportButton?.addEventListener('click', () => {
-    onCloseDropdown();
-    onImport();
-  });
-  deleteButton?.addEventListener('click', () => {
-    onCloseDropdown();
-    onDelete();
-  });
-  logo?.addEventListener('click', onToggle);
-  importButton?.addEventListener('click', onFolderImport);
-  documentTarget?.addEventListener('click', event => {
-    if (dropdown?.classList.contains('show')
-      && !currentButton?.contains(event.target)
-      && !dropdown.contains(event.target)) onCloseDropdown();
-  });
-  const query = locationTarget?.search || '';
-  const projectId = new URLSearchParams(query).get('project_id');
-  if (projectId) setTimeout(() => onProjectId(projectId), 300);
-  onReady();
+  titleInput.addEventListener('blur', () => { void finish(true); });
 }

@@ -1,5 +1,3 @@
-import { clearAllScreenshotAssets } from '../features/screenshots/screenshot-assets.js';
-
 export function createProjectCacheAdapter({ openDatabase } = {}) {
   const estimateBytes = value => {
     if (value === null || value === undefined) return 0;
@@ -12,7 +10,7 @@ export function createProjectCacheAdapter({ openDatabase } = {}) {
   };
 
   const getStats = () => openDatabase().then(database => new Promise((resolve, reject) => {
-    const storeNames = ['projects', 'shots', 'shotGroups', 'settings', 'screenshotAssets'];
+    const storeNames = ['projects', 'shots', 'shotGroups', 'settings', 'screenshotAssets', 'mediaAssets'];
     const transaction = database.transaction(storeNames, 'readonly');
     const records = {};
     let pending = storeNames.length;
@@ -21,33 +19,46 @@ export function createProjectCacheAdapter({ openDatabase } = {}) {
       request.onsuccess = () => {
         records[storeName] = request.result || [];
         pending -= 1;
-        if (pending === 0) resolve({
-          projects: records.projects.length,
-          shots: records.shots.length,
-          groups: records.shotGroups.length,
-          screenshotAssets: records.screenshotAssets.length,
-          settings: records.settings.length,
-          bytes: estimateBytes(records)
-        });
+        if (pending === 0) {
+          const screenshotBytes = records.screenshotAssets.reduce((total, asset) => total + (Number(asset.size) || 0), 0);
+          const mediaBytes = records.mediaAssets.reduce((total, asset) => total + (Number(asset.size) || 0), 0);
+          resolve({
+            projects: records.projects.length,
+            shots: records.shots.length,
+            groups: records.shotGroups.length,
+            screenshotAssets: records.screenshotAssets.length,
+            mediaAssets: records.mediaAssets.length,
+            settings: records.settings.length,
+            resourceBytes: screenshotBytes + mediaBytes,
+            bytes: estimateBytes(records)
+          });
+        }
       };
-      request.onerror = event => reject(event.target.error || new Error('读取项目缓存失败'));
+      request.onerror = event => reject(event.target.error || new Error('Failed to read project storage'));
     });
-    transaction.onerror = event => reject(event.target.error || new Error('读取项目缓存失败'));
+    transaction.onerror = event => reject(event.target.error || new Error('Failed to read project storage'));
   }));
 
-  const clearDatabase = () => openDatabase().then(database => new Promise((resolve, reject) => {
-    const stores = ['projects', 'shots', 'shotGroups', 'settings', 'screenshotAssets'];
-    const transaction = database.transaction(stores, 'readwrite');
-    stores.forEach(name => transaction.objectStore(name).clear());
-    transaction.oncomplete = resolve;
-    transaction.onerror = event => reject(event.target.error || new Error('清除项目缓存失败'));
-    transaction.onabort = event => reject(event.target.error || new Error('清除项目缓存失败'));
+  const getRecoverySummary = () => openDatabase().then(database => new Promise((resolve, reject) => {
+    const transaction = database.transaction(['projects', 'settings'], 'readonly');
+    const projectsRequest = transaction.objectStore('projects').getAll();
+    const pendingSaveRequest = transaction.objectStore('settings').get('pendingProjectSave');
+    let projects = [];
+    let pendingSave = null;
+
+    projectsRequest.onsuccess = () => { projects = projectsRequest.result || []; };
+    projectsRequest.onerror = event => reject(event.target.error || new Error('Failed to read project recovery status'));
+    pendingSaveRequest.onsuccess = () => { pendingSave = pendingSaveRequest.result?.value || null; };
+    pendingSaveRequest.onerror = event => reject(event.target.error || new Error('Failed to read project recovery status'));
+    transaction.oncomplete = () => resolve({
+      pendingSave,
+      projects: projects
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        .slice(0, 5)
+        .map(({ id, title, updatedAt }) => ({ id, title, updatedAt }))
+    });
+    transaction.onerror = event => reject(event.target.error || new Error('Failed to read project recovery status'));
   }));
 
-  const clear = async () => {
-    await clearDatabase();
-    await clearAllScreenshotAssets();
-  };
-
-  return { getStats, clear };
+  return { getStats, getRecoverySummary };
 }

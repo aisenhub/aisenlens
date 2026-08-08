@@ -9,8 +9,6 @@ export function createVideoSessionController({
   setProjectVideoName,
   setCurrentVideoFile,
   getCurrentVideoFile,
-  getSaveDirectory,
-  setSaveDirectory,
   stopRecording,
   clearAutoShotCache,
   resetAutoShot,
@@ -21,9 +19,8 @@ export function createVideoSessionController({
   enableVideoButtons,
   setDecodeFailed,
   updateProjectRecord,
-  restoreProjectVideoFile,
-  copyVideoToProjectFolder,
-  saveProjectDirectoryHandle,
+  restoreProjectVideo,
+  saveProjectVideo,
   showToast,
   pickVideoFile = null,
   documentTarget = document,
@@ -164,32 +161,39 @@ export function createVideoSessionController({
     try {
       const selectedFile = await pickVideo(fileInput);
       if (!selectedFile) return;
-      loadVideoFile(selectedFile);
-      const directory = getSaveDirectory?.();
-      if (directory) {
-        const copied = await copyVideoToProjectFolder?.(selectedFile, directory);
-        if (!copied) showToast?.('视频已加载，但复制到项目文件夹失败', 'warning');
+      const project = getProjectContext?.() || {};
+      if (project.id) {
+        const asset = await saveProjectVideo?.(project.id, selectedFile);
+        await updateProjectRecord?.(project.id, {
+          videoFileName: selectedFile.name,
+          videoAssetId: asset?.id || null
+        });
       }
+      loadVideoFile(selectedFile);
       showToast?.(`已加载视频：${selectedFile.name}`, 'success');
     } catch (error) {
       if (error?.name !== 'AbortError') {
         console.error(error);
-        showToast?.('加载视频失败', 'error');
+        showToast?.(
+          error?.code === 'STORAGE_QUOTA_LOW'
+            ? '浏览器存储空间不足，无法导入该视频。请释放空间后重试。'
+            : '加载视频失败',
+          'error'
+        );
       }
     }
   };
 
-  const restoreVideoFromProjectFolder = async project => {
+  const restoreVideoFromProjectStorage = async project => {
     if (!project?.id) return false;
     try {
-      const restored = await restoreProjectVideoFile?.(project);
+      const restored = await restoreProjectVideo?.(project.id);
       if (!restored) return false;
-      const { dirHandle, file, fileName } = restored;
-      setSaveDirectory?.(dirHandle);
+      const { asset, file } = restored;
       loadVideoFile(file);
-      if (fileName && fileName !== project.videoFileName) {
-        setProjectVideoName?.(fileName, project);
-        updateProjectRecord?.(project.id, { videoFileName: fileName }).catch(() => {});
+      if (asset.originalName !== project.videoFileName || asset.id !== project.videoAssetId) {
+        setProjectVideoName?.(asset.originalName, project);
+        updateProjectRecord?.(project.id, { videoFileName: asset.originalName, videoAssetId: asset.id }).catch(() => {});
       }
       return true;
     } catch (error) {
@@ -216,6 +220,6 @@ export function createVideoSessionController({
     clearCurrentVideo,
     loadVideoFile,
     chooseVideoForPlayer,
-    restoreVideoFromProjectFolder
+    restoreVideoFromProjectStorage
   };
 }

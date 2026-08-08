@@ -32,6 +32,10 @@ export function createSettingsRuntime({
   onOpenPanel = () => {},
   getTemplateName,
   getStorageEstimate = async () => null,
+  getStoragePersistence = async () => ({ status: 'checking' }),
+  getCurrentProjectId = () => null,
+  getCurrentProjectTitle = () => '',
+  exportProjectBackup = async () => null,
   getConfiguredFields,
   getAppSettings = getSettings,
   saveTemplateEditorDraft,
@@ -57,10 +61,14 @@ export function createSettingsRuntime({
       importUserConfigBtn: elements.importUserConfigBtn,
       exportUserConfigBtn: elements.exportUserConfigBtn,
       importUserConfigInput: elements.importUserConfigInput,
+      projectBackupMode: elements.projectBackupMode,
+      exportProjectBackupBtn: elements.exportProjectBackupBtn,
       cacheManagerConfigStatus: elements.cacheManagerConfigStatus,
       cacheManagerProjectStatus: elements.cacheManagerProjectStatus,
+      storagePersistenceStatus: elements.storagePersistenceStatus,
+      recoveryStatus: elements.recoveryStatus,
+      recoveryProjectList: elements.recoveryProjectList,
       clearConfigCacheBtn: elements.clearConfigCacheBtn,
-      clearProjectCacheBtn: elements.clearProjectCacheBtn,
       settingsBtn: elements.settingsBtn,
       settingsModal: elements.settingsModal,
       settingsModalClose: elements.settingsModalClose,
@@ -83,8 +91,12 @@ export function createSettingsRuntime({
     writeStorage,
     removeStorageKeys,
     getProjectStats: projectCacheAdapter.getStats,
+    getRecoverySummary: projectCacheAdapter.getRecoverySummary,
+    getStoragePersistence,
     getStorageEstimate,
-    clearProjectStores: projectCacheAdapter.clear,
+    getCurrentProjectId,
+    getCurrentProjectTitle,
+    exportProjectBackup,
     closeProjectDropdown,
     closeTemplateMenu,
     download,
@@ -92,6 +104,8 @@ export function createSettingsRuntime({
     onStorageError,
     onOpenPanel
   });
+
+  settingsPanelController.bindProjectBackup();
 
   const {
     open: openSettings,
@@ -101,8 +115,7 @@ export function createSettingsRuntime({
     renderCacheStatus,
     importConfig,
     exportConfig,
-    clearConfig,
-    clearProjects
+    clearConfig
   } = settingsPanelController;
 
   templateController.bindInteractions({
@@ -146,7 +159,6 @@ export function createSettingsRuntime({
       importInput: elements.importUserConfigInput,
       exportButton: elements.exportUserConfigBtn,
       clearConfigButton: elements.clearConfigCacheBtn,
-      clearProjectButton: elements.clearProjectCacheBtn,
       settingsButton: elements.settingsBtn,
       settingsModal: elements.settingsModal,
       settingsCloseButton: elements.settingsModalClose,
@@ -172,7 +184,6 @@ export function createSettingsRuntime({
       onImportConfig: importConfig,
       onExportConfig: exportConfig,
       onClearConfig: clearConfig,
-      onClearProject: clearProjects,
       isSettingsOpen,
       openSettings,
       setSettingsPanel: setPanel
@@ -188,8 +199,6 @@ export function createSettingsRuntime({
     renderCacheStatus,
     importUserConfigFile: importConfig,
     exportUserConfig: exportConfig,
-    clearLocalConfigCache: clearConfig,
-    clearLocalProjectCache: clearProjects,
-    projectCacheAdapter
+    clearLocalConfigCache: clearConfig
   };
 }

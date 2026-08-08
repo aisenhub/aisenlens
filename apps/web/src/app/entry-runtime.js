@@ -2,8 +2,6 @@ import { updateShotDurations } from '../features/shots/shot-boundaries.js';
 
 export function createEntryRuntime({
   getProjectContext = () => ({}),
-  persistProjectDirectoryHandle = async () => {},
-  warn = () => {},
   getProjectNavigationController = () => null,
   getTemplateRuntime = () => null,
   getTemplateController = () => null,
@@ -24,19 +22,6 @@ export function createEntryRuntime({
   renderShotView = () => {},
   history = null
 } = {}) {
-  const saveProjectDirectoryHandle = async (
-    dirHandle,
-    projectId = getProjectContext().id,
-    projectUuid = getProjectContext().uuid
-  ) => {
-    if (!dirHandle || !projectId) return;
-    try {
-      await persistProjectDirectoryHandle(dirHandle, projectId, projectUuid);
-    } catch (error) {
-      warn('Unable to save the project directory handle.', error);
-    }
-  };
-
   const updateCurrentProjectButton = () => {
     getProjectNavigationController()?.updateCurrentProjectButton(getProjectContext().title);
   };
@@ -105,7 +90,6 @@ export function createEntryRuntime({
   const updateCustomFieldNames = () => getShotTableController()?.updateCustomFieldNames();
 
   return {
-    saveProjectDirectoryHandle,
     updateCurrentProjectButton,
     toggleProjectDropdown,
     openTemplateMenu,

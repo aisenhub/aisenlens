@@ -52,10 +52,7 @@ export function createShotListController({
   onSetActiveShot,
   onCloseDetail,
   onEmptyAction = () => {},
-  onRender,
-  getHasProject = () => true,
-  onEmptyNewProject = () => {},
-  onEmptyImportProject = () => {}
+  onRender
 } = {}) {
   const state = {
     initialized: false,
@@ -99,14 +96,8 @@ export function createShotListController({
       <strong>暂无分镜</strong>
       <span data-shot-empty-message></span>
       <button type="button" data-shot-empty-action></button>
-      <div class="shot-list-empty-project-actions" data-shot-empty-project-actions hidden>
-        <button type="button" data-shot-empty-new-project>新建项目</button>
-        <button type="button" data-shot-empty-import-project>导入项目</button>
-      </div>
     `;
     card.querySelector('[data-shot-empty-action]').addEventListener('click', () => onEmptyAction());
-    card.querySelector('[data-shot-empty-new-project]').addEventListener('click', () => onEmptyNewProject());
-    card.querySelector('[data-shot-empty-import-project]').addEventListener('click', () => onEmptyImportProject());
     return card;
   };
 
@@ -453,21 +444,12 @@ export function createShotListController({
     if (!ensure()) return;
     const entries = getEntries?.() || [];
     const hasVideo = !!(getCurrentVideo?.()?.src);
-    const hasProject = !!getHasProject?.();
     if (state.emptyCard) {
       const message = state.emptyCard.querySelector('[data-shot-empty-message]');
       const action = state.emptyCard.querySelector('[data-shot-empty-action]');
-      const projectActions = state.emptyCard.querySelector('[data-shot-empty-project-actions]');
       state.emptyCard.style.display = entries.length ? 'none' : 'flex';
-      if (!hasProject) {
-        if (message) message.textContent = '先新建/导入项目，再开始拉片';
-        if (action) action.hidden = true;
-        if (projectActions) projectActions.hidden = false;
-      } else {
-        if (message) message.textContent = hasVideo ? '播放视频并按 Enter 添加第一个分镜' : '先加载视频，再开始拉片分析';
-        if (action) { action.hidden = false; action.textContent = hasVideo ? '添加当前分镜' : '加载视频'; }
-        if (projectActions) projectActions.hidden = true;
-      }
+      if (message) message.textContent = hasVideo ? '播放视频并按 Enter 添加第一个分镜' : '先加载视频，再开始拉片分析';
+      if (action) { action.hidden = false; action.textContent = hasVideo ? '添加当前分镜' : '加载视频'; }
     }
     const displayItems = buildShotListItems({
       entries,

@@ -1,5 +1,11 @@
 export const CURRENT_PROJECT_FORMAT_VERSION = 2;
 
+function createUnsupportedProjectFormatError(version) {
+  const error = new Error(`Unsupported project format version: ${version}`);
+  error.code = 'PROJECT_FORMAT_UNSUPPORTED';
+  return error;
+}
+
 const clone = value => {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
@@ -7,7 +13,12 @@ const clone = value => {
 
 export function migrateProjectDocument(project = {}) {
   const next = { ...clone(project) };
-  if (!next.formatVersion) next.formatVersion = 1;
+  if (next.formatVersion === undefined || next.formatVersion === null || next.formatVersion === '') next.formatVersion = 1;
+  const formatVersion = Number(next.formatVersion);
+  if (!Number.isInteger(formatVersion) || formatVersion < 1 || formatVersion > CURRENT_PROJECT_FORMAT_VERSION) {
+    throw createUnsupportedProjectFormatError(next.formatVersion);
+  }
+  next.formatVersion = formatVersion;
   if (next.formatVersion < 2) {
     next.formatVersion = 2;
     if (!Object.prototype.hasOwnProperty.call(next, 'autoShotState')) next.autoShotState = null;
