@@ -17,6 +17,7 @@ export function createProjectLibraryController({
   elements = {},
   getProjects = async () => [],
   onOpenProject = () => {},
+  onDeleteProject = async () => false,
   onNewProject = () => {},
   onImportProject = () => {},
   storage = globalThis.localStorage
@@ -53,7 +54,19 @@ export function createProjectLibraryController({
         open.type = 'button';
         open.textContent = '打开工程';
         open.addEventListener('click', () => onOpenProject(project));
-        card.append(title, detail, updated, open);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'project-library-delete';
+        remove.textContent = '删除';
+        remove.addEventListener('click', async () => {
+          remove.disabled = true;
+          const deleted = await onDeleteProject(project);
+          if (!deleted) remove.disabled = false;
+        });
+        const actions = document.createElement('div');
+        actions.className = 'project-library-card-actions';
+        actions.append(open, remove);
+        card.append(title, detail, updated, actions);
         return card;
       }));
     }

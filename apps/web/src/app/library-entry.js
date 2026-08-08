@@ -2,7 +2,7 @@ import { dbGetAllProjects } from '../platform/indexeddb.js';
 import { createProjectLibraryController } from '../dom/project-library.js';
 import { getEditorPath, navigateTo } from './routes.js';
 import { importProjectBackup } from '../features/project/project-backup-import.js';
-import { createProjectRecord } from '../features/project/project-service.js';
+import { createProjectRecord, deleteProjectRecord } from '../features/project/project-service.js';
 
 const importInput = document.getElementById('projectLibraryImportInput');
 const notice = document.getElementById('projectLibraryNotice');
@@ -26,6 +26,21 @@ const controller = createProjectLibraryController({
   },
   getProjects: dbGetAllProjects,
   onOpenProject: project => navigateTo(getEditorPath(project.id)),
+  onDeleteProject: async project => {
+    const title = project.title || '未命名项目';
+    if (!window.confirm(`确定删除“${title}”吗？此操作会删除本浏览器中的视频、截图和分镜数据，且无法恢复。`)) return false;
+    showNotice('正在删除工程...');
+    try {
+      await deleteProjectRecord(project.id);
+      await controller.render();
+      showNotice('工程已删除。', 'success');
+      return true;
+    } catch (error) {
+      console.error('工程库删除工程失败:', error);
+      showNotice('工程删除失败，请重试。', 'error');
+      return false;
+    }
+  },
   onNewProject: async () => {
     const projectId = await createProjectRecord({ title: '未命名项目', templateType: 'Default' });
     navigateTo(getEditorPath(projectId));

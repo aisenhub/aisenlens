@@ -23,7 +23,7 @@ test('opens the project library at the root route and edits a selected project t
       return dbCreateProject('Library route project', '', 0, 'default', 'library-route-project');
     });
     await page.reload({ waitUntil: 'networkidle' });
-    await page.locator('#projectLibraryList button').click();
+    await page.locator('#projectLibraryList').getByRole('button', { name: '打开工程' }).click();
     await page.waitForURL(new RegExp(`/editor/${projectId}$`));
     await page.waitForFunction(expected => document.querySelector('#projectTitleInput')?.value === expected, 'Library route project');
 
@@ -36,8 +36,11 @@ test('opens the project library at the root route and edits a selected project t
     await page.waitForURL(/\/$/);
     assert.equal(await page.locator('#projectLibraryView').isVisible(), true, JSON.stringify(errors));
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: 'networkidle' });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    page.once('dialog', dialog => dialog.accept());
+    await page.locator('.project-library-delete').click();
+    await page.waitForFunction(() => !document.querySelector('.project-library-card'));
+    await page.reload({ waitUntil: 'networkidle' });
   } finally {
     await context.close();
     await browser.close();
