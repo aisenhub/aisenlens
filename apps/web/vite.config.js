@@ -35,7 +35,7 @@ function isDependencyModule(id) {
 }
 
 export default defineConfig(({ mode }) => ({
-  base: './',
+  base: '/',
   server: {
     proxy: {
       '/api': {
