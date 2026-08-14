@@ -1,10 +1,19 @@
 node_modules/
+reference-projects/
+.pnpm-store/
+docs/
+ .vercel/
 dist/
-.vite/
-*.local
-vite-audit*.log
-.env
-.env.*
+build/
+test/
+.cache/
+.env*
 !.env.example
-apps/api/data/
-opencut/
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+*-debug.log*
+logs/
+*.log
+.claude-replay.*
+.tmp-*

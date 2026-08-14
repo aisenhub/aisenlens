@@ -1,0 +1,12 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "../../../components/ui/button";
+import { FRAMES_PER_SECOND } from "../constants/editor";
+
+interface FrameCaptureProps { label: string; frameNum: number; imageUrl?: string | null; minFrame?: number; maxFrame?: number; frameRate?: number; onFrameChange?: (frame: number) => void; badge?: string; }
+
+export default function FrameCapture({ label, frameNum, imageUrl, minFrame = 0, maxFrame = Number.MAX_SAFE_INTEGER, frameRate = FRAMES_PER_SECOND, onFrameChange, badge }: FrameCaptureProps) {
+  const seconds = +(frameNum / frameRate).toFixed(2);
+  const clampFrame = (frame: number) => Math.max(minFrame, Math.min(maxFrame, frame));
+  const Stepper = ({ amount, label }: { amount: number; label: string }) => <div className="flex flex-1 items-center gap-1 rounded-lg border border-border bg-bg-deep px-1 py-1"><Button type="button" variant="ghost" size="icon-xs" aria-label={`上一${label}`} onClick={() => onFrameChange?.(clampFrame(frameNum - amount))} className="size-5 text-text-muted hover:text-white"><ChevronLeft className="size-3" /></Button><span className="flex-1 text-center font-mono editor-micro tabular-nums text-text-dim">{label === "帧" ? `F${String(frameNum).padStart(3, "0")}` : `${seconds}s`}</span><Button type="button" variant="ghost" size="icon-xs" aria-label={`下一${label}`} onClick={() => onFrameChange?.(clampFrame(frameNum + amount))} className="size-5 text-text-muted hover:text-white"><ChevronRight className="size-3" /></Button></div>;
+  return <div className="flex flex-col gap-1.5"><div className="flex items-center justify-between"><p className="font-mono editor-heading tracking-wider text-text-muted">{label}</p>{badge && <span className="rounded border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono editor-meta text-accent">{badge}</span>}</div><div className="relative flex w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-bg-deep" style={{ aspectRatio: "16/9" }}>{imageUrl ? <img src={imageUrl} alt={`${label}预览`} className="h-full w-full object-contain" /> : <span className="font-mono editor-meta text-text-muted">尚未采集真实画面</span>}<div className="absolute bottom-1 right-2 font-mono editor-clip-label text-white/60">F{String(frameNum).padStart(3, "0")}</div></div>{onFrameChange && <div className="flex items-center gap-2"><Stepper amount={1} label="帧" /><Stepper amount={Math.max(1, Math.round(frameRate))} label="秒" /></div>}</div>;
+}

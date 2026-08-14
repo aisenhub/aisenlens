@@ -1,0 +1,3640 @@
+import { useCallback, useState, useRef, useEffect } from "react"
+import { toast } from "sonner"
+import {
+  Bookmark,
+  Clapperboard,
+  FileVideo,
+  Grid3X3,
+  Keyboard,
+  LoaderCircle,
+  Music2,
+  Scissors,
+  Settings2,
+  TriangleAlert,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { FRAMES_PER_SECOND } from "../constants/editor"
+import {
+  COLORS,
+  DIMS,
+  MOTIONS,
+  Panel,
+  PanelToolId,
+  ShotData,
+  SHOT_TYPES,
+  SPEEDS,
+} from "../constants/editorData"
+import AnalysisDimensionCard from "./AnalysisDimensionCard"
+import AnalysisFieldInput from "./AnalysisFieldInput"
+import FrameCapture from "./FrameCapture"
+import ShotList from "./ShotList"
+import ShotScreenshotGallery from "../../shot/components/ShotScreenshotGallery"
+import VideoPlaybackControls from "./VideoPlaybackControls"
+import EditorTimeline from "./EditorTimeline"
+import VideoPreviewCanvas, {
+  closestCanvasAspectPreset,
+} from "./VideoPreviewCanvas"
+import useVideoPlayback from "../hooks/useVideoPlayback"
+import useEditorHistory from "../hooks/useEditorHistory"
+import useEditorSaveState from "../hooks/useEditorSaveState"
+import {
+  loadScreenshotUrl,
+  captureVideoFrameScreenshot,
+} from "../../project/services/screenshotService"
+import projectRepository from "../../project/services/projectRepository"
+import formatTimecode from "../utils/formatTimecode"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import { Textarea } from "../../../components/ui/textarea"
+import type { MediaAsset } from "../../project/types"
+import type { ProjectRecord } from "../../project/types"
+import {
+  loadProjectShots,
+  saveProjectShots,
+} from "../../shot/services/shotService"
+import type { ShotRecord } from "../../shot/types"
+import {
+  mergeAdjacentShotRanges,
+  moveSharedShotBoundary,
+} from "../../shot/services/shotBoundaryService"
+import {
+  getManualShotSplitFailureMessage,
+  splitManualShotAtFrame,
+} from "../../shot/services/manualShotService"
+import { loadOrCreateProjectTemplate } from "../../template/services/templateService"
+import {
+  getShotAnalysisCompleteness,
+  normalizeProjectTemplate,
+  normalizeShotAnalysisFields,
+} from "../../template/services/templateValidation"
+import TemplateEditorModal from "../../template/components/TemplateEditorModal"
+import type {
+  AnalysisFieldValue,
+  ProjectTemplateSnapshot,
+} from "../../template/types"
+import AnnotationMarkerPanel from "../../annotation/components/AnnotationMarkerPanel"
+import { loadProjectAnnotationMarkers } from "../../annotation/services/annotationService"
+import type {
+  AnnotationMarker,
+  AnnotationMarkerCategory,
+} from "../../annotation/types"
+import { loadOrGenerateWaveform } from "../../video/services/waveformService"
+import { runAutoShotDetection } from "../../auto-shot/services/autoShotService"
+import type { AutoShotRunRecord } from "../../project/types"
+import ShotGroupPanel from "../../group/components/ShotGroupPanel"
+import ShotGroupInspector from "../../group/components/ShotGroupInspector"
+import {
+  adjustShotGroupRange,
+  createShotGroup,
+  getContiguousShotIds,
+  getShotGroupIndexes,
+  loadProjectShotGroups,
+  reconcileShotGroups,
+  saveProjectShotGroups,
+} from "../../group/services/groupService"
+import type { ShotGroupKind, ShotGroupRecord } from "../../group/types"
+import ReportExportDialog from "../../export/components/ReportExportDialog"
+import { downloadReport } from "../../export/services/reportExportService"
+import type { ExportFormat } from "../../export/types"
+import VideoExportDialog from "../../export/components/VideoExportDialog"
+import {
+  startVideoExport,
+  type VideoExportJob,
+  type VideoExportProgress,
+} from "../../export/services/videoExportService"
+import { requestVideoExportSaveTarget } from "../../export/services/videoExportFileSaveService"
+import type { VideoExportSettings } from "../../export/services/videoExportProtocol"
+import {
+  createProjectRecoverySnapshot,
+  SNAPSHOT_INTERVAL_MS,
+} from "../../project/services/projectRecoveryService"
+import {
+  findMatchingShotIds,
+  type ShotSearchFilters,
+} from "../../shot/services/shotSearchService"
+import CompositionOverlayPanel from "../../composition-overlay/components/CompositionOverlayPanel"
+import {
+  getCompositionOverlayScreenshotSignature,
+  normalizeCompositionOverlaySettings,
+  type CompositionDrawingTool,
+  type CompositionOverlaySettings,
+  type CompositionOverlayShape,
+} from "../../composition-overlay/types"
+import ContentOverlayPanel from "../../content-overlay/components/ContentOverlayPanel"
+import { resolveContentOverlay } from "../../content-overlay/services/contentOverlayResolver"
+import {
+  normalizeContentOverlaySettings,
+  type ContentOverlaySettings,
+} from "../../content-overlay/types"
+import { EDITOR_SHORTCUT_DEFINITIONS } from "../shortcuts/definitions"
+import useEditorShortcuts from "../shortcuts/useEditorShortcuts"
+import AudioTrackPanel from "../../media/components/AudioTrackPanel"
+import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPreview"
+import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
+
+interface EditorWorkspaceProps {
+  onNavigate: (page: number) => void
+  projectTitle: string
+  setProjectTitle: (t: string) => void
+  videoUrl: string
+  projectId: string
+  project: ProjectRecord
+  media: MediaAsset
+  coverScreenshotId: string | null
+  onProjectUpdated: (project: ProjectRecord) => void
+}
+
+interface EditorHistorySnapshot {
+  shots: ShotData[]
+  shotFrames: Record<string, { first: number; last: number }>
+  shotScreenshotIds: Record<string, string[]>
+  primaryShotScreenshotIds: Record<string, string | null>
+  shotBoundaryScreenshotIds: Record<string, {
+    first: string | null
+    last: string | null
+  }>
+  shotNotes: Record<string, { content: string; analysis: string }>
+  shotDims: Record<string, Record<string, AnalysisFieldValue>>
+  annotationMarkers: AnnotationMarker[]
+  shotGroups: ShotGroupRecord[]
+  activeShot: number
+  currentTime: number
+  selectedMarkerId: string | null
+  selectedGroupId: string | null
+}
+
+/* ── constants ── */
+const DIM_REFS: Record<string, { val: string; hint: string }[]> = {
+  shot: [
+    { val: "大远景", hint: "极端疏离，建立宏观环境" },
+    { val: "远景", hint: "人物为环境一部分" },
+    { val: "全景", hint: "完整人物，动作清晰" },
+    { val: "中景", hint: "常见叙事，互动关系" },
+    { val: "近景", hint: "情绪与表情聚焦" },
+    { val: "特写", hint: "局部特征，情绪强化" },
+    { val: "大特写", hint: "极端聚焦，戏剧张力" },
+  ],
+  motion: [
+    { val: "固定", hint: "稳定叙事，观察视角" },
+    { val: "推镜", hint: "聚焦强调，建立悬念" },
+    { val: "拉镜", hint: "揭示背景，疏离感" },
+    { val: "摇镜", hint: "扫视空间，建立关联" },
+    { val: "移镜", hint: "流动跟随，动感强" },
+    { val: "跟镜", hint: "主观跟随，代入感" },
+    { val: "升降", hint: "垂直运动，全知视角" },
+  ],
+  color: [
+    { val: "冷蓝调", hint: "疏离、忧郁、理性" },
+    { val: "暖黄调", hint: "温暖、怀旧、亲密" },
+    { val: "中性", hint: "客观叙事、写实" },
+    { val: "高饱和", hint: "活力、张扬、超现实" },
+    { val: "脱色", hint: "压抑、沉重、末日感" },
+    { val: "绿调", hint: "病态、诡异、监控感" },
+    { val: "红调", hint: "激情、危险、紧迫" },
+  ],
+  sound: [
+    { val: "同期声", hint: "真实感、临场感" },
+    { val: "旁白", hint: "叙事引导、距离感" },
+    { val: "音乐主导", hint: "情绪渲染、主观性" },
+    { val: "静默", hint: "张力营造、留白" },
+    { val: "混合", hint: "层次丰富、真实" },
+  ],
+  rhythm: [
+    { val: "急促", hint: "紧张、动感、不安" },
+    { val: "中速", hint: "平稳、标准叙事" },
+    { val: "舒缓", hint: "写意、抒情、沉思" },
+    { val: "呼吸", hint: "自然流动、纪录感" },
+  ],
+}
+
+const FPS = FRAMES_PER_SECOND
+const CANVAS_BACKGROUND_SWATCHES = [
+  "#000000",
+  "#FFFFFF",
+  "#1E1E1E",
+  "#2563EB",
+  "#DC2626",
+  "#16A34A",
+  "#F59E0B",
+  "#9333EA",
+  "#DB2777",
+  "#0EA5E9",
+]
+
+/* ─────────────────────────────────────────────
+   EDITOR
+───────────────────────────────────────────── */
+export default function EditorWorkspace({
+  onNavigate,
+  project,
+  projectTitle,
+  setProjectTitle,
+  videoUrl,
+  projectId,
+  media,
+  coverScreenshotId,
+  onProjectUpdated,
+}: EditorWorkspaceProps) {
+  const [mediaProject, setMediaProject] = useState(project)
+  const [shots, setShots] = useState<ShotData[]>([])
+  const [activeShot, setActiveShot] = useState(0)
+  const [panel, setPanel] = useState<Panel>("frame")
+  const [activeTool, setActiveTool] = useState<PanelToolId>(null)
+  const [maskOn, setMaskOn] = useState(false)
+  const [canvasBackgroundColor, setCanvasBackgroundColor] =
+    useState<string | null>(null)
+  const [previewZoom, setPreviewZoom] = useState(1)
+  const [previewAspectPreset, setPreviewAspectPreset] = useState(() =>
+    closestCanvasAspectPreset(
+      media.metadata?.width ?? 0,
+      media.metadata?.height ?? 0,
+    ),
+  )
+  const [compositionOverlay, setCompositionOverlay] = useState(() =>
+    normalizeCompositionOverlaySettings(project.compositionOverlay),
+  )
+  const [contentOverlay, setContentOverlay] = useState(() =>
+    normalizeContentOverlaySettings(project.contentOverlay),
+  )
+  const [compositionDrawingTool, setCompositionDrawingTool] =
+    useState<CompositionDrawingTool>("select")
+  const [selectedCompositionShapeId, setSelectedCompositionShapeId] =
+    useState<string | null>(null)
+  const [compositionShapeHistoryIndex, setCompositionShapeHistoryIndex] =
+    useState(0)
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false)
+  const [fullscreenRequest, setFullscreenRequest] = useState(0)
+  const [compositionCancelRequest, setCompositionCancelRequest] = useState(0)
+  const [activeShortcutSurface, setActiveShortcutSurface] =
+    useState<"preview" | "timeline" | null>("preview")
+  const [timelineZoomRequest, setTimelineZoomRequest] = useState<{
+    id: number
+    direction: -1 | 1
+  }>({ id: 0, direction: 1 })
+  const [viewRange, setViewRange] = useState<{
+    inFrame: number | null
+    outFrame: number | null
+  }>({ inFrame: null, outFrame: null })
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(projectTitle)
+  const [liteCache, setLiteCache] = useState(128)
+  const [openRef, setOpenRef] = useState<string | null>(null)
+  const [autoSensitivity, setAutoSensitivity] = useState(50) // 0-100
+  const [autoMinDuration, setAutoMinDuration] = useState(0.8) // seconds
+
+  useEffect(() => setMediaProject(project), [project])
+  const handleMediaProjectUpdated = useCallback(
+    (updatedProject: ProjectRecord) => {
+      setMediaProject(updatedProject)
+      onProjectUpdated(updatedProject)
+    },
+    [onProjectUpdated],
+  )
+  const handleAudioTracksChange = useCallback(
+    (audioTracks: import("../../project/types").AudioTrack[]) => {
+      void saveAudioTracks(mediaProject, audioTracks)
+        .then(handleMediaProjectUpdated)
+        .catch(() => undefined)
+    },
+    [handleMediaProjectUpdated, mediaProject],
+  )
+
+  /* per-shot data */
+  const [shotFrames, setShotFrames] = useState<Record<string, {
+    first: number
+    last: number
+  }>>({})
+  const [shotScreenshotIds, setShotScreenshotIds] =
+    useState<Record<string, string[]>>({})
+  const [primaryShotScreenshotIds, setPrimaryShotScreenshotIds] =
+    useState<Record<string, string | null>>({})
+  const [shotBoundaryScreenshotIds, setShotBoundaryScreenshotIds] =
+    useState<Record<string, { first: string | null; last: string | null }>>({})
+  const [shotScreenshotUrls, setShotScreenshotUrls] =
+    useState<Record<string, string | null>>({})
+  const [screenshotFrames, setScreenshotFrames] =
+    useState<Record<string, number>>({})
+  const [
+    screenshotCompositionOverlayIncluded,
+    setScreenshotCompositionOverlayIncluded,
+  ] = useState<Record<string, boolean>>({})
+  const [
+    screenshotCompositionOverlaySignatures,
+    setScreenshotCompositionOverlaySignatures,
+  ] = useState<Record<string, string>>({})
+  const [hasLoadedScreenshotFrames, setHasLoadedScreenshotFrames] =
+    useState(false)
+  const [boundaryCaptureRevision, setBoundaryCaptureRevision] = useState(0)
+  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false)
+  const [shotNotes, setShotNotes] = useState<Record<string, {
+    content: string
+    analysis: string
+  }>>({})
+  const [shotDims, setShotDims] =
+    useState<Record<string, Record<string, AnalysisFieldValue>>>({})
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null)
+  const [template, setTemplate] = useState<ProjectTemplateSnapshot | null>(null)
+  const [isTemplateEditorOpen, setIsTemplateEditorOpen] = useState(false)
+  const [annotationMarkers, setAnnotationMarkers] =
+    useState<AnnotationMarker[]>([])
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
+  const [visibleMarkerCategories, setVisibleMarkerCategories] =
+    useState<AnnotationMarkerCategory[]>([
+      "important",
+      "composition",
+      "emotion",
+      "turning-point",
+    ])
+  const [waveformPeaks, setWaveformPeaks] = useState<number[] | null>(null)
+  const [waveformUnavailable, setWaveformUnavailable] = useState(false)
+  const [autoShotRun, setAutoShotRun] = useState<AutoShotRunRecord | null>(null)
+  const [shotGroups, setShotGroups] = useState<ShotGroupRecord[]>([])
+  const [selectedShotIds, setSelectedShotIds] = useState<string[]>([])
+  const [groupKindDraft, setGroupKindDraft] = useState<ShotGroupKind>("scene")
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [loadedShotGroupProjectId, setLoadedShotGroupProjectId] =
+    useState<string | null>(null)
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<string[]>([])
+  const [isSelectingGroupShots, setIsSelectingGroupShots] = useState(false)
+  const [shotSearchFilters, setShotSearchFilters] = useState<ShotSearchFilters>(
+    { query: "", groupKind: "all", status: "all" },
+  )
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isVideoExportDialogOpen, setIsVideoExportDialogOpen] =
+    useState(false)
+  const [isVideoExporting, setIsVideoExporting] = useState(false)
+  const [videoExportProgress, setVideoExportProgress] =
+    useState<VideoExportProgress | null>(null)
+  const [videoExportError, setVideoExportError] = useState<string | null>(null)
+  const autoShotAbortRef = useRef<AbortController | null>(null)
+  const shotPlaybackEndRef = useRef<number | null>(null)
+  const boundaryCaptureKeysRef = useRef(new Set<string>())
+  const boundaryCaptureRetriesRef = useRef(new Map<string, number>())
+  const onProjectUpdatedRef = useRef(onProjectUpdated)
+  const compositionShapeHistoryRef = useRef<CompositionOverlayShape[][]>([])
+  const reversePlaybackTimerRef = useRef<number | null>(null)
+  const historyInputActiveRef = useRef(false)
+  const videoExportJobRef = useRef<VideoExportJob | null>(null)
+  const videoExportCancelledRef = useRef(false)
+
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const {
+    videoRef,
+    currentTime,
+    durationSeconds,
+    isPlaying: playing,
+    playbackRate: speed,
+    isMuted,
+    status: playbackStatus,
+    errorMessage: playbackErrorMessage,
+    setCurrentTime,
+    previewCurrentTime,
+    setPlaying,
+    setSpeed,
+    setMuted,
+    retry: retryVideoPlayback,
+    onLoadedMetadata,
+    onTimeUpdate,
+    onPlay,
+    onPause,
+    onEnded,
+    onSeeking,
+    onSeeked,
+    onWaiting,
+    onCanPlay,
+    onError,
+  } = useVideoPlayback({
+    source: videoUrl,
+    initialDurationSeconds: media.metadata?.durationSeconds ?? 0,
+  })
+
+  useMultiTrackAudioPreview({
+    mediaAssets: mediaProject.mediaAssets,
+    audioTracks: mediaProject.audioTracks,
+    frameRate: media.metadata?.frameRate ?? FPS,
+    currentTime,
+    isPlaying: playing,
+  })
+
+  const stopReversePlayback = useCallback(() => {
+    if (reversePlaybackTimerRef.current === null) return
+    window.clearInterval(reversePlaybackTimerRef.current)
+    reversePlaybackTimerRef.current = null
+  }, [])
+
+  useEffect(() => () => stopReversePlayback(), [stopReversePlayback])
+
+  useEffect(
+    () => () => {
+      videoExportJobRef.current?.cancel()
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (playing) stopReversePlayback()
+  }, [playing, stopReversePlayback])
+
+  const getEditorHistorySnapshot = useCallback(
+    (): EditorHistorySnapshot => ({
+      shots: structuredClone(shots),
+      shotFrames: structuredClone(shotFrames),
+      shotScreenshotIds: structuredClone(shotScreenshotIds),
+      primaryShotScreenshotIds: structuredClone(primaryShotScreenshotIds),
+      shotBoundaryScreenshotIds: structuredClone(shotBoundaryScreenshotIds),
+      shotNotes: structuredClone(shotNotes),
+      shotDims: structuredClone(shotDims),
+      annotationMarkers: structuredClone(annotationMarkers),
+      shotGroups: structuredClone(shotGroups),
+      activeShot,
+      currentTime,
+      selectedMarkerId,
+      selectedGroupId,
+    }),
+    [
+      activeShot,
+      annotationMarkers,
+      currentTime,
+      primaryShotScreenshotIds,
+      selectedGroupId,
+      selectedMarkerId,
+      shotBoundaryScreenshotIds,
+      shotDims,
+      shotFrames,
+      shotGroups,
+      shotNotes,
+      shotScreenshotIds,
+      shots,
+    ],
+  )
+
+  const restoreEditorHistorySnapshot = useCallback(
+    (snapshot: EditorHistorySnapshot) => {
+      setShots(snapshot.shots)
+      setShotFrames(snapshot.shotFrames)
+      setShotScreenshotIds(snapshot.shotScreenshotIds)
+      setPrimaryShotScreenshotIds(snapshot.primaryShotScreenshotIds)
+      setShotBoundaryScreenshotIds(snapshot.shotBoundaryScreenshotIds)
+      setShotNotes(snapshot.shotNotes)
+      setShotDims(snapshot.shotDims)
+      setAnnotationMarkers(snapshot.annotationMarkers)
+      setShotGroups(snapshot.shotGroups)
+      setActiveShot(snapshot.activeShot)
+      setCurrentTime(snapshot.currentTime)
+      setSelectedMarkerId(snapshot.selectedMarkerId)
+      setSelectedGroupId(snapshot.selectedGroupId)
+    },
+    [],
+  )
+
+  const editorHistory = useEditorHistory({
+    getSnapshot: getEditorHistorySnapshot,
+    onRestore: restoreEditorHistorySnapshot,
+  })
+  const beginHistoryInput = () => {
+    if (historyInputActiveRef.current) return
+    historyInputActiveRef.current = true
+    editorHistory.commit()
+  }
+  const endHistoryInput = () => {
+    historyInputActiveRef.current = false
+  }
+
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) titleInputRef.current.focus()
+  }, [editingTitle])
+
+  useEffect(() => {
+    setPreviewAspectPreset(
+      closestCanvasAspectPreset(
+        media.metadata?.width ?? 0,
+        media.metadata?.height ?? 0,
+      ),
+    )
+  }, [media.metadata?.height, media.metadata?.width, videoUrl])
+
+  useEffect(() => {
+    const settings = normalizeCompositionOverlaySettings(
+      project.compositionOverlay,
+    )
+    setCompositionOverlay(settings)
+    setContentOverlay(normalizeContentOverlaySettings(project.contentOverlay))
+    compositionShapeHistoryRef.current = [
+      settings.shapes.map((shape) => ({
+        ...shape,
+        start: { ...shape.start },
+        end: { ...shape.end },
+        ...(shape.control ? { control: { ...shape.control } } : {}),
+      })),
+    ]
+    setCompositionShapeHistoryIndex(0)
+    setCompositionDrawingTool("select")
+    setSelectedCompositionShapeId(null)
+  }, [projectId])
+
+  const updateCompositionOverlay = useCallback(
+    (nextSettings: CompositionOverlaySettings) => {
+      const normalizedSettings =
+        normalizeCompositionOverlaySettings(nextSettings)
+      setCompositionOverlay(normalizedSettings)
+    },
+    [],
+  )
+
+  const updateContentOverlay = useCallback(
+    (nextSettings: ContentOverlaySettings) => {
+      setContentOverlay(normalizeContentOverlaySettings(nextSettings))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!template) return
+    const validFieldIds = new Set(template.fields.map((field) => field.id))
+    setContentOverlay((current) => {
+      const fieldIds = current.fieldIds.filter((fieldId) =>
+        validFieldIds.has(fieldId),
+      )
+      return fieldIds.length === current.fieldIds.length
+        ? current
+        : { ...current, fieldIds }
+    })
+  }, [template])
+
+  const updateCompositionShapes = useCallback(
+    (shapes: CompositionOverlayShape[]) => {
+      updateCompositionOverlay({ ...compositionOverlay, shapes })
+    },
+    [compositionOverlay, updateCompositionOverlay],
+  )
+
+  const commitCompositionShapeHistory = useCallback(
+    (shapes: CompositionOverlayShape[]) => {
+      const previous =
+        compositionShapeHistoryRef.current[compositionShapeHistoryIndex] ?? []
+      const next = shapes.map((shape) => ({
+        ...shape,
+        start: { ...shape.start },
+        end: { ...shape.end },
+        ...(shape.control ? { control: { ...shape.control } } : {}),
+      }))
+      if (JSON.stringify(previous) === JSON.stringify(next)) return
+      const history = [
+        ...compositionShapeHistoryRef.current.slice(
+          0,
+          compositionShapeHistoryIndex + 1,
+        ),
+        next,
+      ]
+      compositionShapeHistoryRef.current = history
+      setCompositionShapeHistoryIndex(history.length - 1)
+    },
+    [compositionShapeHistoryIndex],
+  )
+
+  const restoreCompositionShapeHistory = useCallback(
+    (index: number) => {
+      const shapes = compositionShapeHistoryRef.current[index]
+      if (!shapes) return
+      setCompositionShapeHistoryIndex(index)
+      setSelectedCompositionShapeId(null)
+      updateCompositionOverlay({
+        ...compositionOverlay,
+        shapes: shapes.map((shape) => ({
+          ...shape,
+          start: { ...shape.start },
+          end: { ...shape.end },
+          ...(shape.control ? { control: { ...shape.control } } : {}),
+        })),
+      })
+    },
+    [compositionOverlay, updateCompositionOverlay],
+  )
+
+  const undoCompositionShapes = useCallback(
+    () => restoreCompositionShapeHistory(compositionShapeHistoryIndex - 1),
+    [compositionShapeHistoryIndex, restoreCompositionShapeHistory],
+  )
+  const redoCompositionShapes = useCallback(
+    () => restoreCompositionShapeHistory(compositionShapeHistoryIndex + 1),
+    [compositionShapeHistoryIndex, restoreCompositionShapeHistory],
+  )
+  const deleteSelectedCompositionShape = useCallback(() => {
+    if (!selectedCompositionShapeId) return
+    const shapes = compositionOverlay.shapes.filter(
+      (shape) => shape.id !== selectedCompositionShapeId,
+    )
+    updateCompositionShapes(shapes)
+    commitCompositionShapeHistory(shapes)
+    setSelectedCompositionShapeId(null)
+  }, [
+    commitCompositionShapeHistory,
+    compositionOverlay.shapes,
+    selectedCompositionShapeId,
+    updateCompositionShapes,
+  ])
+
+  useEffect(() => {
+    onProjectUpdatedRef.current = onProjectUpdated
+  }, [onProjectUpdated])
+
+  const saveCurrentProject = useCallback(async () => {
+    if (
+      loadedProjectId !== projectId ||
+      loadedShotGroupProjectId !== projectId ||
+      !template
+    )
+      return
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const now = new Date().toISOString()
+    const records: ShotRecord[] = shots.map((shot, index) => {
+      const frames = shotFrames[shot.id] ?? {
+        first: Math.round(shot.start * frameRate),
+        last: Math.max(
+          0,
+          Math.round((shot.start + shot.duration) * frameRate) - 1,
+        ),
+      }
+      const description = shotNotes[shot.id]?.content ?? ""
+      const analysisFields = normalizeShotAnalysisFields(
+        template.fields,
+        shotDims[shot.id] ?? {},
+      )
+      const completeness = getShotAnalysisCompleteness(
+        template.fields,
+        analysisFields,
+        description,
+      )
+      const boundaryScreenshots = shotBoundaryScreenshotIds[shot.id] ?? {
+        first: null,
+        last: null,
+      }
+      return {
+        id: shot.id,
+        projectId,
+        order: index,
+        startFrame: frames.first,
+        endFrame: frames.last + 1,
+        status: completeness.missingRequiredFields.length
+          ? "draft"
+          : "confirmed",
+        detection: { runId: null, kind: "manual", confidence: null },
+        primaryScreenshotId: primaryShotScreenshotIds[shot.id] ?? null,
+        screenshotIds: shotScreenshotIds[shot.id] ?? [],
+        firstFrameScreenshotId: boundaryScreenshots.first,
+        lastFrameScreenshotId: boundaryScreenshots.last,
+        analysisFields,
+        description,
+        notes: shotNotes[shot.id]?.analysis ?? "",
+        createdAt: now,
+        updatedAt: now,
+      }
+    })
+    const reconciledGroups = reconcileShotGroups(
+      shotGroups,
+      shots.map((shot) => shot.id),
+    )
+    const updatedProject = await projectRepository.updateProject({
+      ...project,
+      compositionOverlay,
+      contentOverlay,
+    })
+    await Promise.all([
+      saveProjectShotGroups(projectId, reconciledGroups),
+      projectRepository.replaceProjectAnnotationMarkers(
+        projectId,
+        annotationMarkers,
+      ),
+      projectRepository.saveProjectTemplate(template),
+    ])
+    const projectWithShotCount = await saveProjectShots(projectId, records)
+    onProjectUpdatedRef.current({ ...updatedProject, ...projectWithShotCount })
+  }, [
+    annotationMarkers,
+    compositionOverlay,
+    contentOverlay,
+    loadedProjectId,
+    loadedShotGroupProjectId,
+    media.metadata?.frameRate,
+    primaryShotScreenshotIds,
+    project,
+    projectId,
+    shotBoundaryScreenshotIds,
+    shotDims,
+    shotFrames,
+    shotGroups,
+    shotNotes,
+    shotScreenshotIds,
+    shots,
+    template,
+  ])
+
+  const {
+    status: saveStatus,
+    markDirty,
+    saveNow,
+  } = useEditorSaveState({ projectId, save: saveCurrentProject })
+  const saveDataSignature = JSON.stringify({
+    title: projectTitle,
+    shots,
+    shotFrames,
+    shotScreenshotIds,
+    primaryShotScreenshotIds,
+    shotBoundaryScreenshotIds,
+    shotNotes,
+    shotDims,
+    annotationMarkers,
+    shotGroups,
+    template,
+    compositionOverlay,
+    contentOverlay,
+  })
+  const savedDataSignatureRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const isReady =
+      loadedProjectId === projectId &&
+      loadedShotGroupProjectId === projectId &&
+      template !== null
+    if (!isReady) {
+      savedDataSignatureRef.current = null
+      return
+    }
+    if (savedDataSignatureRef.current === null) {
+      savedDataSignatureRef.current = saveDataSignature
+      return
+    }
+    if (savedDataSignatureRef.current !== saveDataSignature) {
+      savedDataSignatureRef.current = saveDataSignature
+      markDirty()
+    }
+  }, [
+    loadedProjectId,
+    loadedShotGroupProjectId,
+    markDirty,
+    projectId,
+    saveDataSignature,
+    template,
+  ])
+
+  useEffect(() => {
+    const saveSnapshot = () => {
+      void createProjectRecoverySnapshot(projectId).catch(() => undefined)
+    }
+    const interval = window.setInterval(saveSnapshot, SNAPSHOT_INTERVAL_MS)
+    return () => window.clearInterval(interval)
+  }, [projectId])
+
+  useEffect(() => {
+    editorHistory.reset()
+    setLoadedProjectId(null)
+    setShots([])
+    setActiveShot(0)
+    setShotFrames({})
+    setShotScreenshotIds({})
+    setPrimaryShotScreenshotIds({})
+    setShotBoundaryScreenshotIds({})
+    setShotScreenshotUrls({})
+    setScreenshotFrames({})
+    setScreenshotCompositionOverlayIncluded({})
+    setScreenshotCompositionOverlaySignatures({})
+    setHasLoadedScreenshotFrames(false)
+    setShotNotes({})
+    setShotDims({})
+    setShotGroups([])
+    setSelectedShotIds([])
+    setSelectedGroupId(null)
+    setLoadedShotGroupProjectId(null)
+    setCollapsedGroupIds([])
+    setIsSelectingGroupShots(false)
+    setAnnotationMarkers([])
+    void loadProjectShots(projectId).then((savedShots) => {
+      if (savedShots.length) {
+        const frameRate = media.metadata?.frameRate ?? FPS
+        setShots(
+          savedShots.map((shot) => ({
+            id: shot.id,
+            start: shot.startFrame / frameRate,
+            duration: (shot.endFrame - shot.startFrame) / frameRate,
+            type:
+              typeof shot.analysisFields.shot === "string"
+                ? shot.analysisFields.shot
+                : "未分析",
+            motion:
+              typeof shot.analysisFields.motion === "string"
+                ? shot.analysisFields.motion
+                : "未分析",
+            color:
+              typeof shot.analysisFields.color === "string"
+                ? shot.analysisFields.color
+                : "未分析",
+          })),
+        )
+        setShotFrames(
+          Object.fromEntries(
+            savedShots.map((shot) => [
+              shot.id,
+              { first: shot.startFrame, last: shot.endFrame - 1 },
+            ]),
+          ),
+        )
+        setShotScreenshotIds(
+          Object.fromEntries(
+            savedShots
+              .map((shot) => [shot.id, shot.screenshotIds])
+              .filter(([, screenshotIds]) => screenshotIds.length),
+          ),
+        )
+        setPrimaryShotScreenshotIds(
+          Object.fromEntries(
+            savedShots.map((shot) => [shot.id, shot.primaryScreenshotId]),
+          ),
+        )
+        setShotBoundaryScreenshotIds(
+          Object.fromEntries(
+            savedShots.map((shot) => [
+              shot.id,
+              {
+                first: shot.firstFrameScreenshotId ?? null,
+                last: shot.lastFrameScreenshotId ?? null,
+              },
+            ]),
+          ),
+        )
+        const savedScreenshotIds = [
+          ...new Set(
+            savedShots.flatMap((shot) =>
+              [
+                ...shot.screenshotIds,
+                shot.firstFrameScreenshotId,
+                shot.lastFrameScreenshotId,
+              ].filter((screenshotId): screenshotId is string =>
+                Boolean(screenshotId),
+              ),
+            ),
+          ),
+        ]
+        void Promise.all(
+          savedScreenshotIds.map(
+            async (screenshotId) =>
+              [
+                screenshotId,
+                await projectRepository.getScreenshot(screenshotId),
+              ] as const,
+          ),
+        )
+          .then((items) => {
+            setScreenshotFrames(
+              Object.fromEntries(
+                items.flatMap(([id, resource]) =>
+                  resource ? [[id, resource.screenshot.frame] as const] : [],
+                ),
+              ),
+            )
+            setScreenshotCompositionOverlayIncluded(
+              Object.fromEntries(
+                items.flatMap(([id, resource]) =>
+                  resource
+                    ? [
+                        [
+                          id,
+                          Boolean(
+                            resource.screenshot.compositionOverlayIncluded,
+                          ),
+                        ] as const,
+                      ]
+                    : [],
+                ),
+              ),
+            )
+            setScreenshotCompositionOverlaySignatures(
+              Object.fromEntries(
+                items.flatMap(([id, resource]) =>
+                  resource
+                    ? [
+                        [
+                          id,
+                          resource.screenshot.compositionOverlaySignature ??
+                            "none",
+                        ] as const,
+                      ]
+                    : [],
+                ),
+              ),
+            )
+          })
+          .finally(() => setHasLoadedScreenshotFrames(true))
+        setShotDims(
+          Object.fromEntries(
+            savedShots.map((shot) => [shot.id, shot.analysisFields]),
+          ),
+        )
+        setShotNotes(
+          Object.fromEntries(
+            savedShots.map((shot) => [
+              shot.id,
+              { content: shot.description, analysis: shot.notes },
+            ]),
+          ),
+        )
+      } else setHasLoadedScreenshotFrames(true)
+      setLoadedProjectId(projectId)
+    })
+  }, [editorHistory.reset, projectId, videoUrl, media.metadata?.frameRate])
+
+  useEffect(() => {
+    void loadProjectAnnotationMarkers(projectId).then(setAnnotationMarkers)
+  }, [projectId])
+
+  useEffect(() => {
+    void loadProjectShotGroups(projectId).then((groups) => {
+      setShotGroups(groups)
+      setLoadedShotGroupProjectId(projectId)
+    })
+  }, [projectId])
+
+  useEffect(() => {
+    if (!media.source) {
+      setAutoShotRun(null)
+      return
+    }
+    void projectRepository
+      .getProjectAutoShotRun(projectId, media.source)
+      .then(async (run) => {
+        if (run?.status === "running") {
+          const pausedRun = { ...run, status: "paused" as const }
+          await projectRepository.saveProjectAutoShotRun(pausedRun)
+          setAutoShotRun(pausedRun)
+          return
+        }
+        setAutoShotRun(run)
+      })
+    return () => autoShotAbortRef.current?.abort()
+  }, [media.source, projectId])
+
+  useEffect(() => {
+    setTemplate(null)
+    void loadOrCreateProjectTemplate(projectId).then(setTemplate)
+  }, [projectId])
+
+  useEffect(() => {
+    const source = media.source
+    if (!source || !videoUrl || durationSeconds <= 0) {
+      setWaveformPeaks(null)
+      setWaveformUnavailable(false)
+      return
+    }
+    let active = true
+    setWaveformPeaks(null)
+    setWaveformUnavailable(false)
+    const loadWaveform = () => {
+      void loadOrGenerateWaveform({
+        projectId,
+        sourceUrl: videoUrl,
+        mediaFingerprint: source,
+        durationSeconds,
+      })
+        .then((peaks) => {
+          if (active) setWaveformPeaks(peaks)
+        })
+        .catch(() => {
+          if (active) setWaveformUnavailable(true)
+        })
+    }
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    const idleCallbackId = idleWindow.requestIdleCallback?.(loadWaveform, { timeout: 2_000 })
+    const timeoutId = idleCallbackId === undefined
+      ? window.setTimeout(loadWaveform, 750)
+      : null
+    return () => {
+      active = false
+      if (idleCallbackId !== undefined) idleWindow.cancelIdleCallback?.(idleCallbackId)
+      if (timeoutId !== null) window.clearTimeout(timeoutId)
+    }
+  }, [durationSeconds, media.source, projectId, videoUrl])
+
+  useEffect(() => {
+    let active = true
+    const screenshotIds = [
+      ...new Set([
+        ...Object.values(shotScreenshotIds).flat(),
+        ...Object.values(shotBoundaryScreenshotIds).flatMap((frames) =>
+          [frames.first, frames.last].filter(
+            (screenshotId): screenshotId is string => Boolean(screenshotId),
+          ),
+        ),
+      ]),
+    ]
+    void Promise.all(
+      screenshotIds.map(
+        async (screenshotId) =>
+          [screenshotId, await loadScreenshotUrl(screenshotId)] as const,
+      ),
+    ).then((entries) => {
+      if (!active) {
+        entries.forEach(([, url]) => {
+          if (url) URL.revokeObjectURL(url)
+        })
+        return
+      }
+      setShotScreenshotUrls(Object.fromEntries(entries))
+    })
+    return () => {
+      active = false
+    }
+  }, [shotScreenshotIds, shotBoundaryScreenshotIds])
+
+  useEffect(() => {
+    if (
+      loadedProjectId !== projectId ||
+      durationSeconds <= 0 ||
+      shots.length > 0
+    )
+      return
+    const initialShot: ShotData = {
+      id: crypto.randomUUID(),
+      start: 0,
+      duration: durationSeconds,
+      type: "未分析",
+      motion: "未分析",
+      color: "未分析",
+    }
+    setShots([initialShot])
+    setShotFrames({
+      [initialShot.id]: {
+        first: 0,
+        last: Math.max(0, Math.round(durationSeconds * FPS) - 1),
+      },
+    })
+  }, [durationSeconds, shots.length, loadedProjectId, projectId])
+
+  useEffect(() => {
+    if (loadedShotGroupProjectId !== projectId) return
+    const reconciled = reconcileShotGroups(
+      shotGroups,
+      shots.map((shot) => shot.id),
+    )
+    if (JSON.stringify(reconciled) !== JSON.stringify(shotGroups)) {
+      setShotGroups(reconciled)
+      return
+    }
+  }, [loadedShotGroupProjectId, projectId, shotGroups, shots])
+
+  useEffect(() => {
+    if (
+      selectedGroupId &&
+      !shotGroups.some((group) => group.id === selectedGroupId)
+    )
+      setSelectedGroupId(null)
+  }, [selectedGroupId, shotGroups])
+
+  useEffect(() => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    if (
+      !hasLoadedScreenshotFrames ||
+      !videoUrl ||
+      durationSeconds <= 0 ||
+      shots.length === 0
+    )
+      return
+    const targets = shots
+      .flatMap((shot) => {
+        const frames = shotFrames[shot.id] ?? {
+          first: Math.round(shot.start * frameRate),
+          last: Math.max(
+            0,
+            Math.round((shot.start + shot.duration) * frameRate) - 1,
+          ),
+        }
+        return [
+          { shotId: shot.id, edge: "first" as const, frame: frames.first },
+          { shotId: shot.id, edge: "last" as const, frame: frames.last },
+        ]
+      })
+      .filter(({ shotId, edge, frame }) => {
+        const screenshotId = shotBoundaryScreenshotIds[shotId]?.[edge]
+        return !screenshotId || screenshotFrames[screenshotId] !== frame
+      })
+    if (!targets.length) return
+
+    let active = true
+    void (async () => {
+      let shouldRetry = false
+      for (const target of targets) {
+        const key = `${projectId}:${target.shotId}:${target.edge}:${target.frame}`
+        if (boundaryCaptureKeysRef.current.has(key)) continue
+        boundaryCaptureKeysRef.current.add(key)
+        try {
+          const screenshot = await captureVideoFrameScreenshot({
+            projectId,
+            sourceUrl: videoUrl,
+            frame: target.frame,
+            frameRate,
+            durationSeconds,
+          })
+          const url = await loadScreenshotUrl(screenshot.id)
+          if (active) {
+            setShotBoundaryScreenshotIds((current) => ({
+              ...current,
+              [target.shotId]: {
+                ...(current[target.shotId] ?? { first: null, last: null }),
+                [target.edge]: screenshot.id,
+              },
+            }))
+            if (target.edge === "first") {
+              const previousFirstScreenshotId =
+                shotBoundaryScreenshotIds[target.shotId]?.first ?? null
+              setPrimaryShotScreenshotIds((current) => {
+                const primaryScreenshotId = current[target.shotId] ?? null
+                return primaryScreenshotId === null ||
+                  primaryScreenshotId === previousFirstScreenshotId
+                  ? { ...current, [target.shotId]: screenshot.id }
+                  : current
+              })
+            }
+            setShotScreenshotUrls((current) => ({
+              ...current,
+              [screenshot.id]: url,
+            }))
+            setScreenshotFrames((current) => ({
+              ...current,
+              [screenshot.id]: screenshot.frame,
+            }))
+            setScreenshotCompositionOverlayIncluded((current) => ({
+              ...current,
+              [screenshot.id]: screenshot.compositionOverlayIncluded,
+            }))
+            setScreenshotCompositionOverlaySignatures((current) => ({
+              ...current,
+              [screenshot.id]: screenshot.compositionOverlaySignature,
+            }))
+          } else if (url) URL.revokeObjectURL(url)
+        } catch {
+          const retries = boundaryCaptureRetriesRef.current.get(key) ?? 0
+          if (retries < 2) {
+            boundaryCaptureRetriesRef.current.set(key, retries + 1)
+            shouldRetry = true
+          }
+        } finally {
+          boundaryCaptureKeysRef.current.delete(key)
+        }
+      }
+      if (active && shouldRetry)
+        window.setTimeout(
+          () => setBoundaryCaptureRevision((revision) => revision + 1),
+          300,
+        )
+    })()
+    return () => {
+      active = false
+    }
+  }, [
+    boundaryCaptureRevision,
+    durationSeconds,
+    hasLoadedScreenshotFrames,
+    media.metadata?.frameRate,
+    projectId,
+    shotFrames,
+    shots,
+    videoUrl,
+  ])
+
+  const safeDuration = Math.max(durationSeconds, 1)
+  const playhead = (currentTime / safeDuration) * 100
+  const detectedFrameRate = media.metadata?.frameRate ?? null
+  const frameRateLabel = detectedFrameRate
+    ? `${
+        Number.isInteger(detectedFrameRate)
+          ? detectedFrameRate
+          : detectedFrameRate.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")
+      } fps`
+    : "读取中"
+  const videoInfo = [
+    { label: "文件名", val: media.source?.name ?? "—" },
+    {
+      label: "分辨率",
+      val:
+        media.metadata?.width && media.metadata.height
+          ? `${media.metadata.width} × ${media.metadata.height}`
+          : "读取中",
+    },
+    { label: "帧率", val: frameRateLabel },
+    { label: "时长", val: formatTimecode(durationSeconds) },
+    {
+      label: "音频",
+      val:
+        media.metadata?.hasAudio === null ||
+        media.metadata?.hasAudio === undefined
+          ? "读取中"
+          : media.metadata.hasAudio
+            ? "有音轨"
+            : "无音轨",
+    },
+    { label: "格式", val: media.source?.mimeType || "浏览器未提供" },
+    {
+      label: "文件大小",
+      val: media.source
+        ? `${(media.source.size / 1024 / 1024).toFixed(1)} MB`
+        : "—",
+    },
+  ]
+
+  const commitTitle = () => {
+    const t = titleDraft.trim() || projectTitle
+    setProjectTitle(t)
+    setTitleDraft(t)
+    setEditingTitle(false)
+  }
+
+  const startAutoShotDetection = async (restart = false) => {
+    if (!media.source || durationSeconds <= 0) return
+    autoShotAbortRef.current?.abort()
+    if (restart) {
+      await projectRepository.deleteProjectAutoShotRun(projectId)
+      setAutoShotRun(null)
+    }
+    const controller = new AbortController()
+    autoShotAbortRef.current = controller
+    void runAutoShotDetection({
+      projectId,
+      sourceUrl: videoUrl,
+      mediaFingerprint: media.source,
+      durationSeconds,
+      frameRate: media.metadata?.frameRate ?? FPS,
+      sensitivity: autoSensitivity,
+      minimumShotSeconds: autoMinDuration,
+      resumeRun: restart ? null : autoShotRun,
+      signal: controller.signal,
+      onUpdate: setAutoShotRun,
+    })
+  }
+
+  const applyAutoShotCuts = () => {
+    if (!autoShotRun || autoShotRun.status !== "completed") return
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
+    const boundaries = [
+      0,
+      ...autoShotRun.cuts
+        .map((cut) => cut.frame)
+        .filter((frame) => frame > 0 && frame < totalFrames),
+      totalFrames,
+    ]
+    const nextShots = boundaries
+      .slice(0, -1)
+      .map((startFrame, index) => ({
+        id: crypto.randomUUID(),
+        start: startFrame / frameRate,
+        duration: (boundaries[index + 1] - startFrame) / frameRate,
+        type: "未分析",
+        motion: "未分析",
+        color: "未分析",
+      }))
+    editorHistory.commit()
+    setShots(nextShots)
+    setShotFrames(
+      Object.fromEntries(
+        nextShots.map((shot, index) => [
+          shot.id,
+          { first: boundaries[index], last: boundaries[index + 1] - 1 },
+        ]),
+      ),
+    )
+    setShotNotes({})
+    setShotDims({})
+    setShotScreenshotIds({})
+    setPrimaryShotScreenshotIds({})
+    setShotBoundaryScreenshotIds({})
+    setSelectedShotIds([])
+    setSelectedGroupId(null)
+    setActiveShot(0)
+  }
+
+  const playShot = (index: number) => {
+    const shot = shots[index]
+    if (!shot) return
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const storedFrames = shotFrames[shot.id]
+    const startFrame =
+      storedFrames?.first ?? Math.round(shot.start * frameRate)
+    const lastFrame =
+      storedFrames?.last ??
+      Math.max(
+        startFrame,
+        Math.round((shot.start + shot.duration) * frameRate) - 1,
+      )
+    setActiveShot(index)
+    shotPlaybackEndRef.current = lastFrame / frameRate
+    setCurrentTime(startFrame / frameRate)
+    setPlaying(true)
+  }
+
+  const playViewRange = (shouldPlay: boolean) => {
+    if (!shouldPlay) {
+      shotPlaybackEndRef.current = null
+      setPlaying(false)
+      return
+    }
+    const frameRate = media.metadata?.frameRate ?? FPS
+    if (viewRange.inFrame !== null && viewRange.outFrame !== null) {
+      const rangeStart = viewRange.inFrame / frameRate
+      const rangeEnd = (viewRange.outFrame + 1) / frameRate
+      if (currentTime < rangeStart || currentTime >= rangeEnd)
+        setCurrentTime(rangeStart)
+      shotPlaybackEndRef.current = rangeEnd
+    } else {
+      shotPlaybackEndRef.current = null
+    }
+    setPlaying(true)
+  }
+
+  const playShotGroup = (groupId: string) => {
+    const group = shotGroups.find((item) => item.id === groupId)
+    if (!group) return
+    const indexes = getShotGroupIndexes(
+      group,
+      shots.map((shot) => shot.id),
+    )
+    if (!indexes) return
+    const first = shots[indexes.first]
+    const last = shots[indexes.last]
+    setActiveShot(indexes.first)
+    shotPlaybackEndRef.current = last.start + last.duration
+    setCurrentTime(first.start)
+    setPlaying(true)
+  }
+
+  const handleVideoTimeUpdate = (
+    event: React.SyntheticEvent<HTMLVideoElement>,
+  ) => {
+    onTimeUpdate(event)
+    const endTime = shotPlaybackEndRef.current
+    if (endTime !== null && event.currentTarget.currentTime >= endTime) {
+      event.currentTarget.currentTime = endTime
+      shotPlaybackEndRef.current = null
+      setCurrentTime(endTime)
+      setPlaying(false)
+    }
+  }
+
+  const setAnalysisField = (
+    shotId: string,
+    key: string,
+    value: AnalysisFieldValue,
+  ) => {
+    const field = template?.fields.find((item) => item.id === key)
+    const nextValues = field
+      ? normalizeShotAnalysisFields([field], { [key]: value })
+      : { [key]: value }
+    editorHistory.commit()
+    setShotDims((current) => ({
+      ...current,
+      [shotId]: { ...current[shotId], ...nextValues },
+    }))
+  }
+
+  const saveTemplate = (nextTemplate: ProjectTemplateSnapshot) => {
+    const persistedTemplate = {
+      ...normalizeProjectTemplate(nextTemplate),
+      updatedAt: new Date().toISOString(),
+    }
+    setTemplate(persistedTemplate)
+  }
+
+  const updateTemplateField = (
+    fieldId: string,
+    updates: Partial<ProjectTemplateSnapshot["fields"][number]>,
+  ) => {
+    if (!template) return
+    saveTemplate({
+      ...template,
+      fields: template.fields.map((field) =>
+        field.id === fieldId ? { ...field, ...updates } : field,
+      ),
+    })
+  }
+
+  const addTemplateField = () => {
+    if (!template) return
+    saveTemplate({
+      ...template,
+      fields: [
+        ...template.fields,
+        {
+          id: `field_${crypto.randomUUID()}`,
+          label: "新字段",
+          kind: "single-select",
+          order: template.fields.length,
+          options: [],
+          referenceTerms: [],
+          required: false,
+          isFixed: false,
+        },
+      ],
+    })
+  }
+
+  const moveTemplateField = (fieldId: string, direction: -1 | 1) => {
+    if (!template) return
+    const fields = [...template.fields].sort(
+      (left, right) => left.order - right.order,
+    )
+    const index = fields.findIndex((field) => field.id === fieldId)
+    const destinationIndex = index + direction
+    if (
+      index < 0 ||
+      destinationIndex < 0 ||
+      destinationIndex >= fields.length ||
+      fields[destinationIndex].isFixed
+    )
+      return
+    ;[fields[index], fields[destinationIndex]] = [
+      fields[destinationIndex],
+      fields[index],
+    ]
+    saveTemplate({
+      ...template,
+      fields: fields.map((field, order) => ({ ...field, order })),
+    })
+  }
+
+  const deleteTemplateField = (fieldId: string) => {
+    if (!template) return
+    saveTemplate({
+      ...template,
+      fields: template.fields
+        .filter((field) => field.id !== fieldId)
+        .sort((left, right) => left.order - right.order)
+        .map((field, order) => ({ ...field, order })),
+    })
+  }
+
+  const handleBoundaryCommit = (
+    boundaryIndex: number,
+    frame: number,
+    focusShotIndex: number,
+  ) => {
+    const detectedFrameRate = media.metadata?.frameRate
+    const frameRate =
+      Number.isFinite(detectedFrameRate) && detectedFrameRate! > 0
+        ? detectedFrameRate!
+        : FPS
+    const ranges = getShotRanges(frameRate)
+    const updatedRanges = moveSharedShotBoundary(
+      ranges,
+      boundaryIndex,
+      Math.round(frame),
+    )
+    if (updatedRanges === ranges) return
+    editorHistory.commit()
+    const rangeById = new Map(updatedRanges.map((range) => [range.id, range]))
+    setShots((currentShots) =>
+      currentShots.map((shot) => {
+        const range = rangeById.get(shot.id)!
+        return {
+          ...shot,
+          start: range.startFrame / frameRate,
+          duration: (range.endFrame - range.startFrame) / frameRate,
+        }
+      }),
+    )
+    setShotFrames((currentFrames) => ({
+      ...currentFrames,
+      ...Object.fromEntries(
+        updatedRanges.map((range) => [
+          range.id,
+          { first: range.startFrame, last: range.endFrame - 1 },
+        ]),
+      ),
+    }))
+    setShotBoundaryScreenshotIds((current) => ({
+      ...current,
+      [updatedRanges[boundaryIndex].id]: {
+        ...(current[updatedRanges[boundaryIndex].id] ?? {
+          first: null,
+          last: null,
+        }),
+        last: null,
+      },
+      [updatedRanges[boundaryIndex + 1].id]: {
+        ...(current[updatedRanges[boundaryIndex + 1].id] ?? {
+          first: null,
+          last: null,
+        }),
+        first: null,
+      },
+    }))
+    const focusedRange = updatedRanges[focusShotIndex]
+    if (!focusedRange) return
+    const focusFrame =
+      focusShotIndex === boundaryIndex
+        ? focusedRange.endFrame - 1
+        : focusedRange.startFrame
+    setCurrentTime(focusFrame / frameRate)
+  }
+
+  /* Screenshot actions */
+  const handleUpdateScreenshot = async () => {
+    if (!videoUrl || durationSeconds <= 0) return
+    setIsCapturingScreenshot(true)
+    try {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const screenshot = await captureVideoFrameScreenshot({
+        projectId,
+        sourceUrl: videoUrl,
+        frame: Math.round(currentTime * frameRate),
+        frameRate,
+        durationSeconds,
+        compositionOverlay,
+      })
+      const nextUrl = await loadScreenshotUrl(screenshot.id)
+      const activeShotId = shots[activeShot]?.id
+      if (activeShotId) {
+        const replacedScreenshotIds = shotScreenshotIds[activeShotId] ?? []
+        await Promise.all(
+          replacedScreenshotIds.map((screenshotId) =>
+            projectRepository.deleteScreenshot(screenshotId),
+          ),
+        )
+        setShotScreenshotIds((current) => ({
+          ...current,
+          [activeShotId]: [screenshot.id],
+        }))
+        setPrimaryShotScreenshotIds((current) => ({
+          ...current,
+          [activeShotId]: screenshot.id,
+        }))
+        setShotScreenshotUrls((current) => ({
+          ...current,
+          [screenshot.id]: nextUrl,
+        }))
+        setScreenshotFrames((current) => ({
+          ...current,
+          [screenshot.id]: screenshot.frame,
+        }))
+        setScreenshotCompositionOverlayIncluded((current) => ({
+          ...current,
+          [screenshot.id]: screenshot.compositionOverlayIncluded,
+        }))
+        setScreenshotCompositionOverlaySignatures((current) => ({
+          ...current,
+          [screenshot.id]: screenshot.compositionOverlaySignature,
+        }))
+      }
+    } finally {
+      setIsCapturingScreenshot(false)
+    }
+  }
+
+  const getShotRanges = (frameRate: number) =>
+    shots.map((shot) => {
+      const storedFrames = shotFrames[shot.id]
+      const fallbackStartFrame = Math.round(shot.start * frameRate)
+      const fallbackEndFrame = Math.max(
+        fallbackStartFrame + 1,
+        Math.round((shot.start + shot.duration) * frameRate),
+      )
+      const hasValidStoredRange =
+        Number.isFinite(storedFrames?.first) &&
+        Number.isFinite(storedFrames?.last) &&
+        storedFrames!.last >= storedFrames!.first
+      return {
+        id: shot.id,
+        startFrame: hasValidStoredRange
+          ? storedFrames!.first
+          : fallbackStartFrame,
+        endFrame: hasValidStoredRange
+          ? storedFrames!.last + 1
+          : fallbackEndFrame,
+      }
+    })
+
+  useEffect(() => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const ranges = getShotRanges(frameRate)
+    const lastFrame = Math.max(0, Math.round(durationSeconds * frameRate) - 1)
+    const currentFrame = Math.min(
+      lastFrame,
+      Math.max(0, Math.round(currentTime * frameRate)),
+    )
+    const shotIndex = ranges.findIndex(
+      (range) =>
+        currentFrame >= range.startFrame && currentFrame < range.endFrame,
+    )
+    if (shotIndex >= 0 && shotIndex !== activeShot) setActiveShot(shotIndex)
+  }, [
+    activeShot,
+    currentTime,
+    durationSeconds,
+    media.metadata?.frameRate,
+    shots,
+    shotFrames,
+  ])
+
+  const handleMergeShotAtIndex = (index: number) => {
+    if (shots.length <= 1) return
+    const firstIndex = index === 0 ? 0 : index - 1
+    const secondIndex = firstIndex + 1
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const mergedRanges = mergeAdjacentShotRanges(
+      getShotRanges(frameRate),
+      firstIndex,
+    )
+    const mergedRange = mergedRanges[firstIndex]
+    if (!mergedRange) return
+    editorHistory.commit()
+    const first = shots[firstIndex]
+    const second = shots[secondIndex]
+    const mergedShot = {
+      ...first,
+      start: mergedRange.startFrame / frameRate,
+      duration: (mergedRange.endFrame - mergedRange.startFrame) / frameRate,
+    }
+    setShots((previous) => [
+      ...previous.slice(0, firstIndex),
+      mergedShot,
+      ...previous.slice(secondIndex + 1),
+    ])
+    setShotFrames((previous) => ({
+      ...previous,
+      [first.id]: {
+        first: mergedRange.startFrame,
+        last: mergedRange.endFrame - 1,
+      },
+    }))
+    setShotScreenshotIds((previous) => ({
+      ...previous,
+      [first.id]: [
+        ...(previous[first.id] ?? []),
+        ...(previous[second.id] ?? []),
+      ],
+    }))
+    setShotBoundaryScreenshotIds((previous) => ({
+      ...previous,
+      [first.id]: { first: previous[first.id]?.first ?? null, last: null },
+    }))
+    setShotNotes((previous) => ({
+      ...previous,
+      [first.id]: {
+        content: [previous[first.id]?.content, previous[second.id]?.content]
+          .filter(Boolean)
+          .join("\n\n"),
+        analysis: [previous[first.id]?.analysis, previous[second.id]?.analysis]
+          .filter(Boolean)
+          .join("\n\n"),
+      },
+    }))
+    setActiveShot(firstIndex)
+  }
+
+  const getManualSplitResult = (
+    createShotId: () => string = () => crypto.randomUUID(),
+  ) => {
+    if (
+      !videoUrl ||
+      durationSeconds <= 0 ||
+      playbackStatus === "loading" ||
+      playbackStatus === "error"
+    ) {
+      return { ok: false as const, code: "media-not-ready" as const }
+    }
+    const frameRate = media.metadata?.frameRate ?? FPS
+    return splitManualShotAtFrame({
+      ranges: getShotRanges(frameRate),
+      targetShotId: shots[activeShot]?.id ?? null,
+      splitFrame: Math.round(currentTime * frameRate),
+      createShotId,
+    })
+  }
+
+  const handleSplitShotAtPlayhead = () => {
+    const result = getManualSplitResult()
+    if (!result.ok) {
+      toast.error(getManualShotSplitFailureMessage(result.code))
+      return
+    }
+
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const originalShotIndex = shots.findIndex(
+      (shot) => shot.id === result.originalRange.id,
+    )
+    const originalShot = shots[originalShotIndex]
+    if (!originalShot) {
+      toast.error(getManualShotSplitFailureMessage("no-active-shot"))
+      return
+    }
+
+    const now = new Date().toISOString()
+    const newShot: ShotData = {
+      ...originalShot,
+      id: result.newRange.id,
+      start: result.newRange.startFrame / frameRate,
+      duration:
+        (result.newRange.endFrame - result.newRange.startFrame) / frameRate,
+      type: "未分析",
+      motion: "未分析",
+      color: "未分析",
+    }
+    const updatedShotIds = [
+      ...shots.slice(0, originalShotIndex + 1).map((shot) => shot.id),
+      newShot.id,
+      ...shots.slice(originalShotIndex + 1).map((shot) => shot.id),
+    ]
+
+    editorHistory.commit()
+    setShots((current) => [
+      ...current.slice(0, originalShotIndex),
+      {
+        ...originalShot,
+        start: result.originalRange.startFrame / frameRate,
+        duration:
+          (result.originalRange.endFrame - result.originalRange.startFrame) /
+          frameRate,
+      },
+      newShot,
+      ...current.slice(originalShotIndex + 1),
+    ])
+    setShotFrames((current) => ({
+      ...current,
+      [result.originalRange.id]: {
+        first: result.originalRange.startFrame,
+        last: result.originalRange.endFrame - 1,
+      },
+      [result.newRange.id]: {
+        first: result.newRange.startFrame,
+        last: result.newRange.endFrame - 1,
+      },
+    }))
+    setShotScreenshotIds((current) => ({ ...current, [newShot.id]: [] }))
+    setPrimaryShotScreenshotIds((current) => ({ ...current, [newShot.id]: null }))
+    setShotBoundaryScreenshotIds((current) => ({
+      ...current,
+      [result.originalRange.id]: {
+        ...(current[result.originalRange.id] ?? { first: null, last: null }),
+        last: null,
+      },
+      [newShot.id]: { first: null, last: null },
+    }))
+    setShotNotes((current) => ({
+      ...current,
+      [newShot.id]: { content: "", analysis: "" },
+    }))
+    setShotDims((current) => ({ ...current, [newShot.id]: {} }))
+    setAnnotationMarkers((current) =>
+      current.map((marker) =>
+        marker.shotId === result.originalRange.id &&
+        marker.frame >= result.newRange.startFrame
+          ? { ...marker, shotId: newShot.id, updatedAt: now }
+          : marker,
+      ),
+    )
+    setShotGroups((current) => reconcileShotGroups(current, updatedShotIds))
+    setActiveShot(originalShotIndex + 1)
+    setCurrentTime(result.newRange.startFrame / frameRate)
+    toast.success("已在播放头位置分割当前分镜。")
+  }
+
+  const resetShotsToWholeVideo = () => {
+    if (durationSeconds <= 0) return
+    const detectedFrameRate = media.metadata?.frameRate
+    const frameRate =
+      Number.isFinite(detectedFrameRate) && detectedFrameRate! > 0
+        ? detectedFrameRate!
+        : FPS
+    const wholeVideoShot: ShotData = {
+      id: crypto.randomUUID(),
+      start: 0,
+      duration: durationSeconds,
+      type: "未分析",
+      motion: "未分析",
+      color: "未分析",
+    }
+    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
+
+    editorHistory.commit()
+    setShots([wholeVideoShot])
+    setShotFrames({
+      [wholeVideoShot.id]: { first: 0, last: totalFrames - 1 },
+    })
+    setShotScreenshotIds({})
+    setPrimaryShotScreenshotIds({})
+    setShotBoundaryScreenshotIds({})
+    setShotNotes({})
+    setShotDims({})
+    setShotGroups([])
+    setSelectedShotIds([])
+    setSelectedGroupId(null)
+    setActiveShot(0)
+  }
+
+  const toggleTool = (id: PanelToolId) =>
+    setActiveTool((prev) => (prev === id ? null : id))
+
+  const createAnnotationMarker = (category: AnnotationMarkerCategory) => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const now = new Date().toISOString()
+    const categoryLabels: Record<AnnotationMarkerCategory, string> = {
+      important: "重要镜头",
+      composition: "构图精妙",
+      emotion: "情绪高点",
+      "turning-point": "转折点",
+    }
+    const marker: AnnotationMarker = {
+      id: crypto.randomUUID(),
+      projectId,
+      frame: Math.round(currentTime * frameRate),
+      shotId: activeShotId || null,
+      category,
+      label: categoryLabels[category],
+      note: "",
+      createdAt: now,
+      updatedAt: now,
+    }
+    editorHistory.commit()
+    setAnnotationMarkers((current) => [...current, marker])
+    setSelectedMarkerId(marker.id)
+  }
+
+  const updateAnnotationMarker = (marker: AnnotationMarker) => {
+    const updatedMarker = { ...marker, updatedAt: new Date().toISOString() }
+    editorHistory.commit()
+    setAnnotationMarkers((current) =>
+      current.map((item) =>
+        item.id === updatedMarker.id ? updatedMarker : item,
+      ),
+    )
+  }
+
+  const removeAnnotationMarker = (markerId: string) => {
+    editorHistory.commit()
+    setAnnotationMarkers((current) =>
+      current.filter((marker) => marker.id !== markerId),
+    )
+    setSelectedMarkerId((current) => (current === markerId ? null : current))
+  }
+
+  const selectAnnotationMarker = (marker: AnnotationMarker) => {
+    setSelectedMarkerId(marker.id)
+    if (marker.shotId) {
+      const index = shots.findIndex((shot) => shot.id === marker.shotId)
+      if (index >= 0) setActiveShot(index)
+    }
+    setActiveTool("video")
+  }
+
+  const toggleMarkerCategory = (category: AnnotationMarkerCategory) =>
+    setVisibleMarkerCategories((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category],
+    )
+
+  const updateShotSelection = (shotId: string, selected: boolean) => {
+    setSelectedShotIds((current) =>
+      selected
+        ? [...new Set([...current, shotId])]
+        : current.filter((id) => id !== shotId),
+    )
+  }
+
+  const createCurrentShotGroup = () => {
+    const prefix =
+      groupKindDraft === "scene"
+        ? "场景"
+        : groupKindDraft === "section"
+          ? "段落"
+          : "序列"
+    const count =
+      shotGroups.filter((group) => group.kind === groupKindDraft).length + 1
+    const group = createShotGroup({
+      projectId,
+      kind: groupKindDraft,
+      title: `${prefix} ${String(count).padStart(2, "0")}`,
+      selectedShotIds,
+      shotIds: shots.map((shot) => shot.id),
+      existingGroups: shotGroups,
+    })
+    if (!group) return
+    editorHistory.commit()
+    setShotGroups((current) => [...current, group])
+    setSelectedShotIds([])
+    setIsSelectingGroupShots(false)
+    setSelectedGroupId(group.id)
+    setPanel("group")
+  }
+
+  const updateCurrentShotGroup = (
+    groupId: string,
+    patch: Pick<ShotGroupRecord, "title" | "summary" | "kind">,
+  ) => {
+    editorHistory.commit()
+    setShotGroups((current) =>
+      current.map((group) =>
+        group.id === groupId
+          ? { ...group, ...patch, updatedAt: new Date().toISOString() }
+          : group,
+      ),
+    )
+  }
+
+  const exportReport = async (format: ExportFormat) => {
+    setIsExporting(true)
+    try {
+      await downloadReport(
+        {
+          projectTitle,
+          shots: shots.map((shot) => ({
+            ...shot,
+            description: shotNotes[shot.id]?.content ?? "",
+            notes: shotNotes[shot.id]?.analysis ?? "",
+            analysisFields: shotDims[shot.id] ?? {},
+            screenshotId:
+              primaryShotScreenshotIds[shot.id] ??
+              shotBoundaryScreenshotIds[shot.id]?.first ??
+              null,
+          })),
+          groups: shotGroups,
+          fields: template?.fields ?? [],
+          screenshotUrls: shotScreenshotUrls,
+        },
+        format,
+      )
+      setIsExportDialogOpen(false)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const closeVideoExportDialog = () => {
+    if (isVideoExporting) return
+    setIsVideoExportDialogOpen(false)
+    setVideoExportError(null)
+    setVideoExportProgress(null)
+  }
+
+  const cancelAnalysisVideoExport = () => {
+    videoExportCancelledRef.current = true
+    videoExportJobRef.current?.cancel()
+  }
+
+  const exportAnalysisVideo = async (
+    settings: Partial<VideoExportSettings>,
+  ) => {
+    if (isVideoExporting) return
+    setIsVideoExporting(true)
+    setVideoExportError(null)
+    setVideoExportProgress(null)
+    videoExportCancelledRef.current = false
+    try {
+      const saveTarget = await requestVideoExportSaveTarget({
+        title: projectTitle,
+        format: settings.format ?? "mp4",
+      })
+      if (saveTarget.kind === "cancelled") return
+      await saveNow()
+      const job = startVideoExport({
+        project: {
+          ...mediaProject,
+          title: projectTitle,
+          compositionOverlay,
+          contentOverlay,
+        },
+        settings,
+        onProgress: setVideoExportProgress,
+        writable: saveTarget.kind === "stream" ? saveTarget.writable : undefined,
+      })
+      videoExportJobRef.current = job
+      const result = await job.result
+      if (videoExportCancelledRef.current) return
+      if (result.blob) {
+        const extension = result.mimeType.includes("webm") ? "webm" : "mp4"
+        const filenameBase = projectTitle
+          .trim()
+          .replace(/[\\/:*?"<>|]/g, "-")
+          .replace(/\s+/g, " ")
+          .slice(0, 80) || "AisenLens-分析视频"
+        const url = URL.createObjectURL(result.blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `${filenameBase}.${extension}`
+        link.click()
+        window.setTimeout(() => URL.revokeObjectURL(url), 1_000)
+      }
+      setIsVideoExportDialogOpen(false)
+      setVideoExportProgress(null)
+    } catch (error) {
+      if (!videoExportCancelledRef.current) {
+        setVideoExportError(
+          error instanceof Error ? error.message : "视频导出失败，请重试。",
+        )
+      }
+    } finally {
+      videoExportJobRef.current = null
+      setIsVideoExporting(false)
+    }
+  }
+
+  const adjustCurrentShotGroup = (
+    groupId: string,
+    edge: "start" | "end",
+    operation: "extend" | "shrink",
+  ) => {
+    editorHistory.commit()
+    setShotGroups((current) =>
+      adjustShotGroupRange({
+        groups: current,
+        groupId,
+        shotIds: shots.map((shot) => shot.id),
+        edge,
+        operation,
+      }),
+    )
+  }
+
+  /* Toolbar order: home / shot / videoinfo / template / video / mask / shortcuts */
+  const PANEL_TOOLS: {
+    id: Exclude<PanelToolId, null>
+    icon: string
+    label: string
+    short: string
+  }[] = [
+    { id: "shot", icon: "◉", label: "分镜", short: "分镜" },
+    { id: "videoinfo", icon: "▤", label: "视频信息", short: "信息" },
+    { id: "template", icon: "◫", label: "拉片模板", short: "模板" },
+    { id: "video", icon: "◎", label: "视频", short: "视频" },
+    { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
+    { id: "shortcuts", icon: "▧", label: "快捷键", short: "快捷" },
+    { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
+    { id: "audio", icon: "", label: "音频", short: "音频" },
+  ]
+
+  const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
+    videoinfo: FileVideo,
+    settings: Settings2,
+    video: Clapperboard,
+    audio: Music2,
+    markers: Bookmark,
+    mask: Grid3X3,
+    shot: Scissors,
+    shortcuts: Keyboard,
+    template: Settings2,
+  }
+
+  const activeShotId = shots[activeShot]?.id ?? ""
+  const detectedEditorFrameRate = media.metadata?.frameRate
+  const editorFrameRate =
+    Number.isFinite(detectedEditorFrameRate) && detectedEditorFrameRate! > 0
+      ? detectedEditorFrameRate!
+      : FPS
+  const editorShotRanges = getShotRanges(editorFrameRate)
+  const activeShotRange = editorShotRanges[activeShot]
+  const manualSplitResult = getManualSplitResult(
+    () => "manual-shot-preview",
+  )
+  const manualSplitDisabledReason = manualSplitResult.ok
+    ? null
+    : getManualShotSplitFailureMessage(manualSplitResult.code)
+  const currentFrames = activeShotRange
+    ? {
+        first: activeShotRange.startFrame,
+        last: activeShotRange.endFrame - 1,
+      }
+    : { first: 0, last: 0 }
+  const currentDims = shotDims[activeShotId] ?? {}
+  const currentNotes = shotNotes[activeShotId] ?? { content: "", analysis: "" }
+  const currentCompleteness = getShotAnalysisCompleteness(
+    template?.fields ?? [],
+    currentDims,
+    currentNotes.content,
+  )
+  const currentShot = shots[activeShot]
+  const contentOverlayModel = resolveContentOverlay({
+    settings: contentOverlay,
+    fields: template?.fields ?? [],
+    values: currentDims,
+    description: currentNotes.content,
+    analysis: currentNotes.analysis,
+    shotIndex: activeShot,
+    currentTimecode: formatTimecode(currentTime),
+    durationSeconds: currentShot?.duration ?? 0,
+  })
+  const suggestedContentOverlayFieldIds = (template?.fields ?? [])
+    .filter((field) => {
+      const value = currentDims[field.id]
+      return (
+        field.id !== "shot_description" &&
+        (typeof value === "string"
+          ? Boolean(value.trim())
+          : Array.isArray(value)
+            ? value.length > 0
+            : value !== null && value !== undefined)
+      )
+    })
+    .slice(0, 5)
+    .map((field) => field.id)
+  const selectedGroup =
+    shotGroups.find((group) => group.id === selectedGroupId) ?? null
+  const selectedGroupIndexes = selectedGroup
+    ? getShotGroupIndexes(
+        selectedGroup,
+        shots.map((shot) => shot.id),
+      )
+    : null
+  const selectedGroupDuration = selectedGroupIndexes
+    ? shots
+        .slice(selectedGroupIndexes.first, selectedGroupIndexes.last + 1)
+        .reduce((total, shot) => total + shot.duration, 0)
+    : 0
+  const completionByShotId = Object.fromEntries(
+    shots.map((shot) => {
+      const completeness = getShotAnalysisCompleteness(
+        template?.fields ?? [],
+        shotDims[shot.id] ?? {},
+        shotNotes[shot.id]?.content ?? "",
+      )
+      return [
+        shot.id,
+        {
+          filled: completeness.filledFieldCount,
+          total: completeness.totalFieldCount,
+          missingRequired: completeness.missingRequiredFields.length,
+        },
+      ]
+    }),
+  )
+  const matchingShotIds = findMatchingShotIds(
+    {
+      shots,
+      groups: shotGroups,
+      notesByShotId: shotNotes,
+      fieldsByShotId: shotDims,
+      screenshotIdsByShotId: shotScreenshotIds,
+      primaryScreenshotIdsByShotId: primaryShotScreenshotIds,
+      markers: annotationMarkers,
+    },
+    shotSearchFilters,
+  )
+  const isFilteringShots = Boolean(
+    shotSearchFilters.query.trim() ||
+      shotSearchFilters.groupKind !== "all" ||
+      shotSearchFilters.status !== "all",
+  )
+  const saveButton =
+    saveStatus === "saving"
+      ? {
+          label: "保存中",
+          icon: LoaderCircle,
+          statusDotClassName: null,
+          className:
+            "border-border text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white",
+          spinning: true,
+        }
+      : saveStatus === "saved"
+        ? {
+            label: "保存",
+            icon: null,
+            statusDotClassName: null,
+            className:
+              "border-border text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white",
+            spinning: false,
+          }
+        : saveStatus === "error"
+          ? {
+              label: "重试保存",
+              icon: TriangleAlert,
+              statusDotClassName: null,
+              className:
+                "border-red-400/40 text-red-200 hover:border-red-400/60 hover:bg-red-500/10",
+              spinning: false,
+            }
+          : {
+              label: "保存",
+              icon: null,
+              statusDotClassName: "bg-amber-400",
+              className:
+                "border-border text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white",
+              spinning: false,
+            }
+  const SaveStatusIcon = saveButton.icon
+
+  useEditorShortcuts({
+    "file.save": () => {
+      void saveNow().catch(() => undefined)
+    },
+    "playback.toggle": () => {
+      stopReversePlayback()
+      playViewRange(!playing)
+    },
+    "playback.reverse": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      stopReversePlayback()
+      setPlaying(false)
+      reversePlaybackTimerRef.current = window.setInterval(() => {
+        const video = videoRef.current
+        const nextFrame = Math.max(
+          0,
+          Math.round((video?.currentTime ?? currentTime) * frameRate) - 1,
+        )
+        setCurrentTime(nextFrame / frameRate)
+        if (nextFrame === 0) stopReversePlayback()
+      }, 125)
+    },
+    "playback.pause": () => {
+      stopReversePlayback()
+      setPlaying(false)
+    },
+    "playback.forward": () => {
+      stopReversePlayback()
+      playViewRange(true)
+    },
+    "playback.stepBack": () => {
+      stopReversePlayback()
+      setPlaying(false)
+      setCurrentTime(
+        Math.max(
+          0,
+          Math.round(currentTime * (media.metadata?.frameRate ?? FPS) - 1) /
+            (media.metadata?.frameRate ?? FPS),
+        ),
+      )
+    },
+    "playback.stepForward": () => {
+      stopReversePlayback()
+      setPlaying(false)
+      setCurrentTime(
+        Math.min(
+          durationSeconds,
+          Math.round(currentTime * (media.metadata?.frameRate ?? FPS) + 1) /
+            (media.metadata?.frameRate ?? FPS),
+        ),
+      )
+    },
+    "playback.jumpBack": () => {
+      stopReversePlayback()
+      setPlaying(false)
+      const frameRate = media.metadata?.frameRate ?? FPS
+      setCurrentTime(
+        Math.max(0, Math.round(currentTime * frameRate - 5) / frameRate),
+      )
+    },
+    "playback.jumpForward": () => {
+      stopReversePlayback()
+      setPlaying(false)
+      const frameRate = media.metadata?.frameRate ?? FPS
+      setCurrentTime(
+        Math.min(
+          durationSeconds,
+          Math.round(currentTime * frameRate + 5) / frameRate,
+        ),
+      )
+    },
+    "playback.previousBoundary": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const currentFrame = Math.round(currentTime * frameRate)
+      const previousFrame = [
+        ...new Set([
+          0,
+          ...getShotRanges(frameRate).map((range) => range.startFrame),
+        ]),
+      ]
+        .filter((frame) => frame < currentFrame)
+        .pop()
+      if (previousFrame !== undefined) setCurrentTime(previousFrame / frameRate)
+    },
+    "playback.nextBoundary": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const currentFrame = Math.round(currentTime * frameRate)
+      const nextFrame = [
+        ...new Set(getShotRanges(frameRate).map((range) => range.startFrame)),
+      ].find((frame) => frame > currentFrame)
+      if (nextFrame !== undefined) setCurrentTime(nextFrame / frameRate)
+    },
+    "playback.goToStart": () => setCurrentTime(0),
+    "playback.goToEnd": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      setCurrentTime(
+        Math.max(0, Math.round(durationSeconds * frameRate) - 1) / frameRate,
+      )
+    },
+    "playback.goToInPoint":
+      viewRange.inFrame !== null
+        ? () =>
+            setCurrentTime(
+              viewRange.inFrame! / (media.metadata?.frameRate ?? FPS),
+            )
+        : undefined,
+    "playback.goToOutPoint":
+      viewRange.outFrame !== null
+        ? () =>
+            setCurrentTime(
+              viewRange.outFrame! / (media.metadata?.frameRate ?? FPS),
+            )
+        : undefined,
+    "shot.trimStartToPlayhead": () => {
+      if (activeShot <= 0) return
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const range = getShotRanges(frameRate)[activeShot]
+      const currentFrame = Math.round(currentTime * frameRate)
+      if (
+        range &&
+        currentFrame > range.startFrame &&
+        currentFrame < range.endFrame
+      )
+        handleBoundaryCommit(activeShot - 1, currentFrame, activeShot)
+    },
+    "shot.trimEndToPlayhead": () => {
+      if (activeShot >= shots.length - 1) return
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const range = getShotRanges(frameRate)[activeShot]
+      const currentFrame = Math.round(currentTime * frameRate)
+      if (
+        range &&
+        currentFrame >= range.startFrame &&
+        currentFrame < range.endFrame - 1
+      )
+        handleBoundaryCommit(activeShot, currentFrame + 1, activeShot)
+    },
+    "selection.setInPoint": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const frame = Math.max(
+        0,
+        Math.min(
+          Math.round(durationSeconds * frameRate) - 1,
+          Math.round(currentTime * frameRate),
+        ),
+      )
+      setViewRange((range) => ({
+        inFrame: frame,
+        outFrame:
+          range.outFrame !== null && range.outFrame < frame
+            ? null
+            : range.outFrame,
+      }))
+    },
+    "selection.setOutPoint": () => {
+      const frameRate = media.metadata?.frameRate ?? FPS
+      const frame = Math.max(
+        0,
+        Math.min(
+          Math.round(durationSeconds * frameRate) - 1,
+          Math.round(currentTime * frameRate),
+        ),
+      )
+      setViewRange((range) => ({
+        inFrame:
+          range.inFrame !== null && range.inFrame > frame
+            ? null
+            : range.inFrame,
+        outFrame: frame,
+      }))
+    },
+    "marker.create": () => createAnnotationMarker("important"),
+    "shot.splitAtPlayhead":
+      activeShortcutSurface === "preview" || activeShortcutSurface === "timeline"
+        ? handleSplitShotAtPlayhead
+        : undefined,
+    "preview.toggleFullscreen":
+      activeShortcutSurface === "preview"
+        ? () => setFullscreenRequest((request) => request + 1)
+        : undefined,
+    "preview.fitCanvas":
+      activeShortcutSurface === "preview" ? () => setPreviewZoom(1) : undefined,
+    "timeline.zoomIn":
+      activeShortcutSurface === "timeline"
+        ? () =>
+            setTimelineZoomRequest((request) => ({
+              id: request.id + 1,
+              direction: 1,
+            }))
+        : undefined,
+    "timeline.zoomOut":
+      activeShortcutSurface === "timeline"
+        ? () =>
+            setTimelineZoomRequest((request) => ({
+              id: request.id + 1,
+              direction: -1,
+            }))
+        : undefined,
+    "interaction.cancel": () => {
+      setCompositionDrawingTool("select")
+      setSelectedCompositionShapeId(null)
+      setCompositionCancelRequest((request) => request + 1)
+    },
+    "help.show": () => setActiveTool("shortcuts"),
+    "history.undo":
+      activeTool === "mask" && compositionShapeHistoryIndex > 0
+        ? undoCompositionShapes
+        : editorHistory.canUndo
+          ? editorHistory.undo
+          : undefined,
+    "history.redo":
+      activeTool === "mask" &&
+      compositionShapeHistoryIndex <
+        compositionShapeHistoryRef.current.length - 1
+        ? redoCompositionShapes
+        : editorHistory.canRedo
+          ? editorHistory.redo
+          : undefined,
+    "editing.delete":
+      activeTool === "mask" && selectedCompositionShapeId
+        ? deleteSelectedCompositionShape
+        : shots.length > 1
+          ? () => handleMergeShotAtIndex(activeShot)
+          : undefined,
+  })
+
+  return (
+    <div className="h-screen flex flex-col bg-bg overflow-hidden select-none">
+      {/* ══ Topbar ══ */}
+      <header className="flex items-center px-4 h-11 border-b border-border bg-bg-nav shrink-0 gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={() => onNavigate(2)}
+          className="text-text-muted hover:bg-transparent hover:text-white"
+        >
+          ← 项目列表
+        </Button>
+        <div className="w-px h-4 bg-border shrink-0" />
+
+        {editingTitle ? (
+          <Input
+            ref={titleInputRef}
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitTitle()
+              if (e.key === "Escape") {
+                setTitleDraft(projectTitle)
+                setEditingTitle(false)
+              }
+            }}
+            className="h-auto max-w-xs flex-1 border-0 border-b border-accent bg-transparent px-0 py-0 editor-page-title font-semibold text-white focus-visible:ring-0"
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setTitleDraft(projectTitle)
+              setEditingTitle(true)
+            }}
+            title="点击修改项目名称"
+            className="max-w-xs justify-start truncate px-0 editor-page-title font-semibold text-white hover:bg-transparent hover:text-accent"
+          >
+            {projectTitle}
+          </Button>
+        )}
+
+        <div className="flex-1" />
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsExportDialogOpen(true)}
+          className="border-border text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white"
+        >
+          导出
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void saveNow().catch(() => undefined)}
+          disabled={saveStatus === "saving"}
+          title={
+            saveStatus === "saved"
+              ? "项目已保存（Ctrl/Cmd + S）"
+              : "保存项目（Ctrl/Cmd + S）"
+          }
+          className={saveButton.className}
+        >
+          {SaveStatusIcon && (
+            <SaveStatusIcon
+              className={saveButton.spinning ? "animate-spin" : undefined}
+            />
+          )}
+          {saveButton.statusDotClassName && (
+            <span
+              aria-hidden="true"
+              className={`size-1.5 shrink-0 rounded-full ${saveButton.statusDotClassName}`}
+            />
+          )}
+          {saveButton.label}
+        </Button>
+      </header>
+
+      {/* ══ Main body ══ */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* ── Far left: tool column ── */}
+        <div className="flex shrink-0 border-r border-border">
+          <div className="w-16 flex flex-col items-center py-2 gap-0.5 bg-bg-panel">
+            {/* Home button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-lg"
+              onClick={() => onNavigate(2)}
+              aria-label="返回项目列表"
+              className="h-12 w-14 text-text-muted hover:bg-white/6 hover:text-white"
+            >
+              <span className="text-xl leading-none">⌂</span>
+            </Button>
+            <div className="w-10 h-px bg-border my-0.5" />
+            {PANEL_TOOLS.map((tool) => {
+              const ToolIcon = TOOL_ICONS[tool.id]
+              return (
+                <Button
+                  key={tool.id}
+                  type="button"
+                  variant="ghost"
+                  size="icon-lg"
+                  onClick={() => toggleTool(tool.id)}
+                  aria-label={tool.label}
+                  className={`h-14 w-14 flex-col gap-1 ${
+                    activeTool === tool.id
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-muted hover:text-white hover:bg-white/6"
+                  }`}
+                >
+                  <ToolIcon className="size-[18px]" strokeWidth={1.7} />
+                  <span className="editor-micro leading-none font-mono tracking-tight">
+                    {tool.short}
+                  </span>
+                </Button>
+              )
+            })}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-lg"
+              onClick={() => toggleTool("settings")}
+              aria-label="设置"
+              title="设置"
+              className={`mt-auto h-12 w-14 ${
+                activeTool === "settings"
+                  ? "bg-accent/20 text-accent"
+                  : "text-text-muted hover:bg-white/6 hover:text-white"
+              }`}
+            >
+              <Settings2 className="size-[18px]" strokeWidth={1.7} />
+            </Button>
+          </div>
+
+          {/* Expandable detail panel */}
+          {activeTool !== null && (
+            <div className="w-52 border-l border-border bg-bg-panel flex flex-col overflow-hidden">
+              <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
+                <span className="editor-heading font-mono text-text-muted">
+                  {activeTool === "settings"
+                    ? "设置"
+                    : PANEL_TOOLS.find((t) => t.id === activeTool)?.label}
+                </span>
+                {/* collapse icon — only click here folds the panel */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setActiveTool(null)}
+                  aria-label="折叠"
+                  className="text-text-muted hover:text-white"
+                >
+                  ‹
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-3">
+                {/* ── 视频 (speed + zoom) ── */}
+                {activeTool === "video" && (
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
+                        播放倍速
+                      </p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {SPEEDS.map((s) => (
+                          <Button
+                            key={s}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSpeed(s)}
+                            className={`h-7 font-mono editor-body font-normal ${
+                              speed === s
+                                ? "border-accent/50 bg-accent/15 text-accent"
+                                : "border-border text-text-muted hover:border-border-mid hover:text-white"
+                            }`}
+                          >
+                            {s}×
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="editor-meta text-text-muted mt-2">
+                        当前：
+                        <span className="text-accent font-mono">{speed}×</span>
+                      </p>
+                    </div>
+                    <div className="h-px bg-border" />
+                    <div>
+                      <p className="mb-2 font-mono editor-heading tracking-wider text-text-muted">
+                        画布背景
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setCanvasBackgroundColor(null)}
+                        className={`flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left editor-body ${
+                          canvasBackgroundColor === null
+                            ? "bg-accent/15 text-accent"
+                            : "text-text-dim hover:bg-white/6 hover:text-white"
+                        }`}
+                      >
+                        <span
+                          className="size-3 rounded-sm border border-white/20"
+                          style={{
+                            backgroundColor:
+                              document.documentElement.dataset.theme === "light"
+                                ? "#eeede9"
+                                : "#050505",
+                          }}
+                        />
+                        主题默认
+                      </button>
+                      <div className="mt-2 grid grid-cols-5 gap-1.5">
+                        {CANVAS_BACKGROUND_SWATCHES.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`画布背景 ${color}`}
+                            onClick={() => setCanvasBackgroundColor(color)}
+                            className={`size-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                              canvasBackgroundColor?.toLowerCase() ===
+                              color.toLowerCase()
+                                ? "border-accent scale-110"
+                                : "border-white/20"
+                            }`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                      <label className="mt-3 flex items-center justify-between border-t border-border pt-2 editor-meta text-text-muted">
+                        自定义颜色
+                        <input
+                          type="color"
+                          aria-label="自定义画布背景色"
+                          value={
+                            canvasBackgroundColor ??
+                            (document.documentElement.dataset.theme === "light"
+                              ? "#eeede9"
+                              : "#050505")
+                          }
+                          onChange={(event) =>
+                            setCanvasBackgroundColor(event.target.value)
+                          }
+                          className="editor-color-input size-6 cursor-pointer p-0"
+                        />
+                      </label>
+                    </div>
+                    <div className="hidden">
+                      <p className="text-xs text-text-muted mb-2 font-mono tracking-wider">
+                        画面比例
+                      </p>
+                      {(["16:9", "4:3", "2.39:1", "1:1", "9:16"] as const).map(
+                        (ratio) => (
+                          <Button
+                            key={ratio}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mb-1 h-auto w-full justify-start gap-3 whitespace-normal border-border px-3 py-2 text-left text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white"
+                          >
+                            <span className="text-xs font-mono w-14 shrink-0">
+                              {ratio}
+                            </span>
+                            <div className="flex-1 flex items-center">
+                              <div
+                                className="h-3 bg-border-mid rounded-sm"
+                                style={{
+                                  width:
+                                    ratio === "16:9"
+                                      ? 40
+                                      : ratio === "4:3"
+                                        ? 30
+                                        : ratio === "2.39:1"
+                                          ? 48
+                                          : ratio === "1:1"
+                                            ? 20
+                                            : 12,
+                                }}
+                              />
+                            </div>
+                          </Button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 拉片模板 ── */}
+                {activeTool === "audio" && (
+                  <AudioTrackPanel
+                    project={mediaProject}
+                    frameRate={media.metadata?.frameRate ?? FPS}
+                    currentFrame={Math.round(
+                      currentTime * (media.metadata?.frameRate ?? FPS),
+                    )}
+                    onProjectUpdated={handleMediaProjectUpdated}
+                  />
+                )}
+
+                {activeTool === "markers" && (
+                  <div>
+                    <div className="flex items-center justify-center gap-2">
+                      {([
+                        ["important", "bg-yellow-500", "重要镜头"],
+                        ["composition", "bg-blue-500", "构图精妙"],
+                        ["emotion", "bg-purple-500", "情绪高点"],
+                        ["turning-point", "bg-red-500", "转折点"],
+                      ] as const).map(([category, color, label]) => {
+                        const isVisible =
+                          visibleMarkerCategories.includes(category)
+                        return (
+                          <button
+                            key={category}
+                            type="button"
+                            aria-label={`${label}：${
+                              isVisible ? "显示" : "隐藏"
+                            }`}
+                            aria-pressed={isVisible}
+                            title={`${label}：${isVisible ? "显示" : "隐藏"}`}
+                            onClick={() => toggleMarkerCategory(category)}
+                            className={`flex size-5 items-center justify-center rounded-full border transition-opacity ${
+                              isVisible
+                                ? "border-white/30"
+                                : "border-transparent opacity-30"
+                            }`}
+                          >
+                            <span
+                              className={`size-2.5 rounded-full ${color}`}
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="mt-4 border-t border-border pt-4">
+                      <AnnotationMarkerPanel
+                        markers={annotationMarkers}
+                        selectedMarkerId={selectedMarkerId}
+                        frameRate={media.metadata?.frameRate ?? FPS}
+                        onCreate={createAnnotationMarker}
+                        onUpdate={updateAnnotationMarker}
+                        onDelete={removeAnnotationMarker}
+                        onSeek={(frame) =>
+                          setCurrentTime(
+                            frame / (media.metadata?.frameRate ?? FPS),
+                          )
+                        }
+                        onSelect={selectAnnotationMarker}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {activeTool === "template" && (
+                  <div className="flex flex-col gap-2">
+                    {template && (
+                      <div className="rounded-xl border border-accent/25 bg-accent/5 p-3">
+                        <p className="font-mono editor-heading tracking-wider text-accent">
+                          项目模板
+                        </p>
+                        <p className="mt-1 truncate editor-body font-medium text-white">
+                          {template.name}
+                        </p>
+                        <p className="mt-1 editor-meta text-text-muted">
+                          {template.fields.length} 个字段，当前项目独立保存
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsTemplateEditorOpen(true)}
+                          className="mt-3 h-7 w-full editor-body font-normal border-accent/30 text-accent hover:bg-accent/10"
+                        >
+                          编辑模板
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── 分镜 ── */}
+                {activeTool === "shot" && (
+                  <div className="flex flex-col gap-4">
+                    {/* 自动分镜 */}
+                    <div>
+                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
+                        自动分镜
+                      </p>
+                      <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-bg-deep mb-2">
+                        <div className="flex items-center justify-between">
+                          <span className="editor-meta text-text-dim">
+                            切割灵敏度
+                          </span>
+                          <span className="editor-meta font-mono text-accent">
+                            {autoSensitivity}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={100}
+                          value={autoSensitivity}
+                          onChange={(e) => setAutoSensitivity(+e.target.value)}
+                          className="editor-range"
+                          style={
+                            {
+                              "--editor-range-progress": `${((autoSensitivity - 10) / 90) * 100}%`,
+                            } as React.CSSProperties
+                          }
+                        />
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="editor-meta text-text-dim">
+                            最短时长
+                          </span>
+                          <span className="editor-meta font-mono text-accent">
+                            {autoMinDuration.toFixed(1)}s
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.5}
+                          max={10}
+                          step={0.1}
+                          value={autoMinDuration}
+                          onChange={(e) =>
+                            setAutoMinDuration(Number(e.target.value))
+                          }
+                          className="editor-range"
+                          style={
+                            {
+                              "--editor-range-progress": `${((autoMinDuration - 0.5) / 9.5) * 100}%`,
+                            } as React.CSSProperties
+                          }
+                        />
+                      </div>
+                      {autoShotRun?.status === "running" && (
+                        <div className="mb-2 rounded-lg border border-accent/25 bg-accent/8 px-2.5 py-2 editor-meta text-text-dim">
+                          <div className="flex justify-between">
+                            <span>正在扫描真实画面</span>
+                            <span className="font-mono text-accent">
+                              {Math.round(
+                                (autoShotRun.cursorFrame /
+                                  Math.max(1, autoShotRun.durationFrames)) *
+                                  100,
+                              )}
+                              %
+                            </span>
+                          </div>
+                          <div className="mt-2 h-1 overflow-hidden rounded bg-bg-input">
+                            <div
+                              className="h-full bg-accent"
+                              style={{
+                                width: `${(autoShotRun.cursorFrame / Math.max(1, autoShotRun.durationFrames)) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {autoShotRun?.status === "completed" && (
+                        <div className="mb-2 rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
+                          检测到{" "}
+                          <span className="font-mono text-green-300">
+                            {autoShotRun.cuts.length}
+                          </span>{" "}
+                          个候选切点；应用后会替换当前分镜。
+                        </div>
+                      )}
+                      {autoShotRun?.status === "failed" && (
+                        <p className="mb-2 editor-meta text-red-300">
+                          {autoShotRun.errorMessage ?? "自动分镜失败。"}
+                        </p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={autoShotRun?.status === "running"}
+                        onClick={() => void startAutoShotDetection()}
+                        className="h-7 w-full editor-body font-normal border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 disabled:cursor-wait disabled:opacity-50"
+                      >
+                        {autoShotRun?.status === "paused"
+                          ? "继续自动分镜"
+                          : "开始自动分镜"}
+                      </Button>
+                      {autoShotRun?.status === "running" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => autoShotAbortRef.current?.abort()}
+                          className="mt-1 h-7 w-full editor-body font-normal text-text-muted hover:text-white"
+                        >
+                          暂停扫描
+                        </Button>
+                      )}
+                      {autoShotRun?.status === "completed" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={applyAutoShotCuts}
+                          className="mt-1 h-7 w-full editor-body font-normal"
+                        >
+                          应用候选分镜
+                        </Button>
+                      )}
+                      {autoShotRun && autoShotRun.status !== "running" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void startAutoShotDetection(true)}
+                          className="mt-1 h-7 w-full editor-body font-normal text-text-muted hover:text-white"
+                        >
+                          重新扫描
+                        </Button>
+                      )}
+                    </div>
+                    <ShotGroupPanel
+                        isSelecting={isSelectingGroupShots}
+                        selectedShotCount={
+                          getContiguousShotIds(
+                            shots.map((shot) => shot.id),
+                            selectedShotIds,
+                          ).length
+                        }
+                        kind={groupKindDraft}
+                        onKindChange={setGroupKindDraft}
+                        onStartSelection={() => {
+                          setSelectedShotIds([])
+                          setIsSelectingGroupShots(true)
+                        }}
+                        onCancelSelection={() => {
+                          setSelectedShotIds([])
+                          setIsSelectingGroupShots(false)
+                        }}
+                        onCreate={createCurrentShotGroup}
+                    />
+                    <div className="h-px bg-border" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={resetShotsToWholeVideo}
+                      className="h-7 w-full editor-body font-normal text-red-400 hover:text-red-400"
+                    >
+                      清除所有分镜
+                    </Button>
+                  </div>
+                )}
+
+                {/* ── 视频信息 ── */}
+                {activeTool === "videoinfo" && (
+                  <div className="flex flex-col gap-1">
+                    <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
+                      当前项目视频信息
+                    </p>
+                    {videoInfo.map((row) => (
+                      <div
+                        key={row.label}
+                        className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0"
+                      >
+                        <span className="editor-meta text-text-muted">
+                          {row.label}
+                        </span>
+                        <span className="editor-meta font-mono text-text-dim">
+                          {row.val}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* ── 设置 (theme + cache) ── */}
+                {activeTool === "settings" && (
+                  <div className="flex flex-col gap-3">
+                    <p className="editor-heading text-text-muted font-mono tracking-wider">
+                      缓存管理
+                    </p>
+                    <div className="p-3 rounded-xl border border-border bg-bg-deep">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-white editor-body font-medium">
+                          本地缓存
+                        </p>
+                        <span className="editor-meta font-mono text-accent">
+                          {liteCache} MB
+                        </span>
+                      </div>
+                      <div className="w-full h-1 rounded-full bg-border mb-2">
+                        <div
+                          className="h-full rounded-full bg-accent/60 transition-all"
+                          style={{ width: `${(liteCache / 500) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-text-muted editor-meta font-mono">
+                        {liteCache} / 500 MB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setLiteCache(0)}
+                      className="h-7 w-full editor-body font-normal text-red-400 hover:text-red-400"
+                    >
+                      清除缓存
+                    </Button>
+                  </div>
+                )}
+
+                {/* ── 视频蒙版 ── */}
+                {activeTool === "mask" && (
+                  <>
+                    <CompositionOverlayPanel
+                      settings={compositionOverlay}
+                      drawingTool={compositionDrawingTool}
+                      selectedShapeId={selectedCompositionShapeId}
+                      onChange={updateCompositionOverlay}
+                      onDeleteSelectedShape={deleteSelectedCompositionShape}
+                      onUndoShapes={undoCompositionShapes}
+                      onRedoShapes={redoCompositionShapes}
+                      canUndoShapes={compositionShapeHistoryIndex > 0}
+                      canRedoShapes={
+                        compositionShapeHistoryIndex <
+                        compositionShapeHistoryRef.current.length - 1
+                      }
+                      onDrawingToolChange={setCompositionDrawingTool}
+                      onSelectedShapeChange={setSelectedCompositionShapeId}
+                    />
+                    <ContentOverlayPanel
+                      settings={contentOverlay}
+                      fields={template?.fields ?? []}
+                      suggestedFieldIds={suggestedContentOverlayFieldIds}
+                      onChange={updateContentOverlay}
+                    />
+                  </>
+                )}
+
+                {/* ── 快捷键 ── */}
+                {activeTool === "shortcuts" && (
+                  <div className="flex flex-col gap-0">
+                    {EDITOR_SHORTCUT_DEFINITIONS.map((s) => (
+                      <div
+                        key={s.key}
+                        className="flex flex-col gap-0.5 py-2 border-b border-border/40 last:border-0"
+                      >
+                        <kbd className="editor-meta font-mono text-accent">
+                          {s.key}
+                        </kbd>
+                        <span className="editor-meta text-text-muted">
+                          {s.description}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Center: canvas + timeline ── */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex items-center justify-center bg-bg-deep relative overflow-hidden min-h-0">
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 50% 40%, rgba(59,130,246,0.04) 0%, transparent 70%)",
+              }}
+            />
+
+            <div className="relative flex h-full min-h-0 w-full max-w-[720px] flex-col items-center gap-3 px-4 py-3">
+              <VideoPreviewCanvas
+                showCompositionGrid={maskOn}
+                compositionOverlay={compositionOverlay}
+                contentOverlay={contentOverlay}
+                contentOverlayModel={contentOverlayModel}
+                isCompositionOverlayEditing={
+                  activeTool === "mask" && compositionOverlay.enabled
+                }
+                compositionDrawingTool={compositionDrawingTool}
+                selectedCompositionShapeId={selectedCompositionShapeId}
+                onCompositionShapesChange={updateCompositionShapes}
+                onCompositionShapeEditEnd={commitCompositionShapeHistory}
+                onSelectedCompositionShapeChange={setSelectedCompositionShapeId}
+                onCompositionDrawingToolChange={setCompositionDrawingTool}
+                backgroundColor={canvasBackgroundColor}
+                zoom={previewZoom}
+                aspectPreset={previewAspectPreset}
+                fullscreenRequest={fullscreenRequest}
+                compositionCancelRequest={compositionCancelRequest}
+                onFullscreenChange={setIsPreviewFullscreen}
+                onActivate={() => setActiveShortcutSurface("preview")}
+                sourceWidth={media.metadata?.width ?? 0}
+                sourceHeight={media.metadata?.height ?? 0}
+                videoUrl={videoUrl}
+                videoRef={videoRef}
+                status={playbackStatus}
+                errorMessage={playbackErrorMessage}
+                onRetry={retryVideoPlayback}
+                onLoadedMetadata={onLoadedMetadata}
+                onTimeUpdate={handleVideoTimeUpdate}
+                onPlay={onPlay}
+                onPause={onPause}
+                onEnded={onEnded}
+                onSeeking={onSeeking}
+                onSeeked={onSeeked}
+                onWaiting={onWaiting}
+                onCanPlay={onCanPlay}
+                onError={onError}
+              />
+              {/*<div className="w-full rounded-xl overflow-hidden border border-white/10 shadow-2xl relative"
+                style={{
+                  aspectRatio:"16/9",
+                  background:"linear-gradient(160deg,#080f28 0%,#0b0520 50%,#080f28 100%)",
+                  boxShadow:"0 0 0 1px rgba(255,255,255,0.06), 0 40px 80px rgba(0,0,0,0.6)",
+                }}>
+                <div className="absolute inset-0">
+                  <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 32% 55%, rgba(59,130,246,0.18) 0%, transparent 55%)" }} />
+                  <div className="absolute inset-0" style={{ background:"radial-gradient(ellipse at 72% 30%, rgba(100,50,180,0.12) 0%, transparent 45%)" }} />
+                  <svg className="absolute inset-0 w-full h-full opacity-25" viewBox="0 0 720 405" preserveAspectRatio="none">
+                    {[-2,-1,0,1,2].map(n => (
+                      <line key={n} x1="360" y1="202" x2={360+n*180} y2={n>=0?405:0}
+                        stroke="#3b82f6" strokeWidth="0.4" opacity="0.6"/>
+                    ))}
+                    <line x1="360" y1="202" x2="0"   y2="202" stroke="#3b82f6" strokeWidth="0.4" opacity="0.3"/>
+                    <line x1="360" y1="202" x2="720" y2="202" stroke="#3b82f6" strokeWidth="0.4" opacity="0.3"/>
+                    <rect x="305" y="175" width="110" height="62" fill="none" stroke="#7c3aed" strokeWidth="0.5" opacity="0.4"/>
+                  </svg>
+                  {maskOn && (
+                    <div className="absolute inset-0 pointer-events-none opacity-25"
+                      style={{
+                        backgroundImage:"linear-gradient(rgba(59,130,246,0.8) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.8) 1px,transparent 1px)",
+                        backgroundSize:"33.33% 33.33%",
+                      }}/>
+                  )}
+                  <div className="absolute inset-0 opacity-10 pointer-events-none"
+                    style={{
+                      backgroundImage:"linear-gradient(rgba(255,255,255,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.5) 1px,transparent 1px)",
+                      backgroundSize:"33.33% 33.33%",
+                    }}/>
+                  <div className="absolute inset-[5%] border border-white/5 rounded"/>
+                </div>
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"/>
+                  <span className="font-mono editor-micro text-white/40">REC</span>
+                </div>
+                <div className="absolute inset-0 pointer-events-none opacity-5"
+                  style={{
+                    backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.5) 2px,rgba(0,0,0,0.5) 4px)",
+                    backgroundSize:"100% 4px",
+                  }}/>
+              </div>*/}
+
+              <VideoPlaybackControls
+                currentTime={currentTime}
+                durationSeconds={durationSeconds}
+                isPlaying={playing}
+                isUnavailable={
+                  playbackStatus === "loading" || playbackStatus === "error"
+                }
+                isMuted={isMuted}
+                zoom={previewZoom}
+                aspectPreset={previewAspectPreset}
+                showSafeMargins={compositionOverlay.showSafeMargins}
+                isFullscreen={isPreviewFullscreen}
+                onPreviousShot={() => {
+                  const index = Math.max(0, activeShot - 1)
+                  setActiveShot(index)
+                  setCurrentTime(shots[index]?.start ?? 0)
+                }}
+                onNextShot={() => {
+                  const index = Math.min(shots.length - 1, activeShot + 1)
+                  setActiveShot(index)
+                  setCurrentTime(shots[index]?.start ?? 0)
+                }}
+                onCurrentTimeChange={setCurrentTime}
+                onPlayingChange={playViewRange}
+                onMutedChange={setMuted}
+                onZoomChange={setPreviewZoom}
+                onAspectPresetChange={setPreviewAspectPreset}
+                onSafeMarginsChange={(visible) =>
+                  updateCompositionOverlay({
+                    ...compositionOverlay,
+                    showSafeMargins: visible,
+                  })
+                }
+                onFullscreenToggle={() =>
+                  setFullscreenRequest((request) => request + 1)
+                }
+              />
+            </div>
+          </div>
+
+          <EditorTimeline
+            shots={shots}
+            groups={shotGroups}
+            activeShotIndex={activeShot}
+            selectedGroupId={selectedGroupId}
+            selectedMarkerId={selectedMarkerId}
+            visibleMarkerCategories={visibleMarkerCategories}
+            currentTime={currentTime}
+            isPlaying={playing}
+            durationSeconds={durationSeconds}
+            frameRate={media.metadata?.frameRate ?? FPS}
+            mediaFingerprint={media.source}
+            sourceUrl={videoUrl}
+            projectId={projectId}
+            onActiveShotChange={setActiveShot}
+            onCurrentTimeChange={setCurrentTime}
+            onPreviewTimeChange={previewCurrentTime}
+            onActivate={() => setActiveShortcutSurface("timeline")}
+            zoomRequest={timelineZoomRequest}
+            viewRange={viewRange}
+            audioTracks={mediaProject.audioTracks}
+            mediaAssets={mediaProject.mediaAssets}
+            onAudioTracksChange={handleAudioTracksChange}
+            onSelectGroup={(groupId, firstShotIndex) => {
+              setSelectedGroupId(groupId)
+              setActiveShot(firstShotIndex)
+              setPanel("group")
+            }}
+            onSelectMarker={selectAnnotationMarker}
+            onToggleMarkerCategory={toggleMarkerCategory}
+            markers={annotationMarkers}
+            waveformPeaks={waveformPeaks}
+            waveformUnavailable={waveformUnavailable}
+            matchingShotIds={matchingShotIds}
+            isFilteringShots={isFilteringShots}
+            completionByShotId={completionByShotId}
+          />
+        </div>
+
+        <ShotList
+          shots={shots}
+          groups={shotGroups}
+          collapsedGroupIds={collapsedGroupIds}
+          activeShotIndex={activeShot}
+          filters={shotSearchFilters}
+          onFiltersChange={setShotSearchFilters}
+          completionByShotId={completionByShotId}
+          selectedShotIds={selectedShotIds}
+          isSelectingShots={isSelectingGroupShots}
+          shotNotes={shotNotes}
+          shotFields={shotDims}
+          screenshotIdsByShotId={shotScreenshotIds}
+          primaryScreenshotIdsByShotId={primaryShotScreenshotIds}
+          markers={annotationMarkers}
+          onLocateShot={(index) => {
+            setActiveShot(index)
+            setCurrentTime(shots[index]?.start ?? 0)
+          }}
+          onSelectionChange={updateShotSelection}
+          onToggleGroup={(groupId) =>
+            setCollapsedGroupIds((current) =>
+              current.includes(groupId)
+                ? current.filter((id) => id !== groupId)
+                : [...current, groupId],
+            )
+          }
+          onSelectGroup={(groupId, firstShotIndex) => {
+            setSelectedGroupId(groupId)
+            setActiveShot(firstShotIndex)
+            setPanel("group")
+          }}
+          onPlayGroup={playShotGroup}
+          onDeleteGroup={(groupId) => {
+            editorHistory.commit()
+            setShotGroups((current) =>
+              current.filter((group) => group.id !== groupId),
+            )
+            setSelectedGroupId((current) =>
+              current === groupId ? null : current,
+            )
+          }}
+          onPlayShot={playShot}
+          onDeleteShot={handleMergeShotAtIndex}
+          manualSplitDisabledReason={manualSplitDisabledReason}
+          onSplitAtPlayhead={handleSplitShotAtPlayhead}
+        />
+
+        {/* ── Right: analysis panel ── */}
+        <aside className="w-64 border-l border-border flex flex-col bg-bg-panel shrink-0 overflow-hidden">
+          <Tabs
+            value={panel}
+            onValueChange={(value) => setPanel(value as Panel)}
+            className="gap-0"
+          >
+            <TabsList
+              variant="line"
+              className="flex h-auto w-full rounded-none border-b border-border p-0"
+            >
+              {([
+                ["frame", "画面"],
+                ["dims", "维度"],
+                ["notes", "批注"],
+                ["group", "分组"],
+              ] as [Panel, string][]).map(([tab, label]) => (
+                <TabsTrigger
+                  key={tab}
+                  value={tab}
+                  className="h-9 flex-1 rounded-none px-0 editor-heading text-text-muted data-active:text-accent after:bg-accent"
+                >
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {/* Shot header */}
+          <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between">
+            <div>
+              <span className="editor-heading font-mono text-accent">
+                SHOT #{String(activeShot + 1).padStart(2, "00")}
+              </span>
+              <span className="editor-meta text-text-muted ml-2">
+                {shots[activeShot]?.type}
+              </span>
+            </div>
+            <div className="flex gap-1.5 items-center">
+              <span className="font-mono editor-meta text-text-muted">
+                {(shots[activeShot]?.duration ?? 0).toFixed(2)}s
+              </span>
+            </div>
+          </div>
+
+          {/* ── 画面 tab ── */}
+          {panel === "frame" && (
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-4">
+              <FrameCapture
+                label="首帧"
+                frameNum={currentFrames.first}
+                imageUrl={
+                  shotScreenshotUrls[
+                    shotBoundaryScreenshotIds[activeShotId]?.first ?? ""
+                  ]
+                }
+                minFrame={
+                  activeShot > 0
+                    ? editorShotRanges[activeShot - 1].startFrame + 1
+                    : 0
+                }
+                maxFrame={currentFrames.last}
+                frameRate={editorFrameRate}
+                onFrameChange={
+                  activeShot > 0
+                    ? (f) => handleBoundaryCommit(activeShot - 1, f, activeShot)
+                    : undefined
+                }
+              />
+              <div className="h-px bg-border" />
+              <FrameCapture
+                label="尾帧"
+                frameNum={currentFrames.last}
+                imageUrl={
+                  shotScreenshotUrls[
+                    shotBoundaryScreenshotIds[activeShotId]?.last ?? ""
+                  ]
+                }
+                minFrame={currentFrames.first}
+                maxFrame={
+                  activeShot < shots.length - 1
+                    ? editorShotRanges[activeShot + 1].endFrame - 2
+                    : currentFrames.last
+                }
+                frameRate={editorFrameRate}
+                onFrameChange={
+                  activeShot < shots.length - 1
+                    ? (f) => handleBoundaryCommit(activeShot, f + 1, activeShot)
+                    : undefined
+                }
+              />
+              <div className="h-px bg-border" />
+              {/* Current screenshot */}
+              <ShotScreenshotGallery
+                exportScreenshot={(() => {
+                  const screenshotId =
+                    primaryShotScreenshotIds[activeShotId] ??
+                    shotBoundaryScreenshotIds[activeShotId]?.first ??
+                    null
+                  return screenshotId
+                    ? {
+                        id: screenshotId,
+                        url: shotScreenshotUrls[screenshotId] ?? null,
+                        frame:
+                          screenshotFrames[screenshotId] ?? currentFrames.first,
+                      }
+                    : null
+                })()}
+                usesFirstFrame={
+                  primaryShotScreenshotIds[activeShotId] ===
+                  shotBoundaryScreenshotIds[activeShotId]?.first
+                }
+                isCapturing={isCapturingScreenshot}
+                onCapture={() => void handleUpdateScreenshot()}
+              />
+            </div>
+          )}
+
+          {/* ── 维度 tab ── */}
+          {panel === "dims" && (
+            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+              {template && (
+                <div
+                  className={`rounded-xl border px-3 py-2 editor-meta ${
+                    currentCompleteness.missingRequiredFields.length
+                      ? "border-amber-400/30 bg-amber-400/8 text-amber-200"
+                      : "border-emerald-400/25 bg-emerald-400/8 text-emerald-200"
+                  }`}
+                >
+                  {currentCompleteness.missingRequiredFields.length
+                    ? `待填写必填项：${currentCompleteness.missingRequiredFields.map((field) => field.label).join("、")}`
+                    : "必填项已填写"}
+                  <span className="ml-2 font-mono text-text-muted">
+                    {currentCompleteness.filledFieldCount}/
+                    {currentCompleteness.totalFieldCount}
+                  </span>
+                </div>
+              )}
+              {(
+                template?.fields
+                  .filter((field) => !field.isFixed)
+                  .sort((left, right) => left.order - right.order) ?? []
+              ).map((field) =>
+                field.kind === "single-select" ? (
+                  <AnalysisDimensionCard
+                    key={field.id}
+                    label={field.label}
+                    value={
+                      typeof currentDims[field.id] === "string"
+                        ? String(currentDims[field.id])
+                        : null
+                    }
+                    options={field.options}
+                    references={
+                      field.referenceTerms.length
+                        ? field.referenceTerms.map((term) => ({
+                            val: term.label,
+                            hint: term.hint,
+                          }))
+                        : (DIM_REFS[field.id] ?? [])
+                    }
+                    isOpen={openRef === field.id}
+                    onToggle={() =>
+                      setOpenRef(openRef === field.id ? null : field.id)
+                    }
+                    onSelect={(value) => {
+                      setAnalysisField(activeShotId, field.id, value)
+                      setOpenRef(null)
+                    }}
+                  />
+                ) : (
+                  <AnalysisFieldInput
+                    key={field.id}
+                    field={field}
+                    value={currentDims[field.id]}
+                    onChange={(value) =>
+                      setAnalysisField(activeShotId, field.id, value)
+                    }
+                  />
+                ),
+              )}
+            </div>
+          )}
+
+          {/* ── 批注 tab ── */}
+          {panel === "notes" && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+              <div>
+                <p className="editor-heading font-mono text-text-muted mb-2 tracking-wider">
+                  画面内容
+                </p>
+                <Textarea
+                  value={currentNotes.content}
+                  onFocus={beginHistoryInput}
+                  onBlur={endHistoryInput}
+                  onChange={(e) =>
+                    setShotNotes((d) => ({
+                      ...d,
+                      [activeShotId]: {
+                        ...d[activeShotId],
+                        content: e.target.value,
+                      },
+                    }))
+                  }
+                  rows={4}
+                  placeholder="描述这个镜头的画面内容..."
+                  className="min-h-0 resize-none rounded-xl border-border bg-bg-input p-3 editor-body text-text-dim placeholder:editor-meta focus-visible:border-accent/50 focus-visible:ring-0"
+                />
+              </div>
+              <div className="h-px bg-border" />
+              <div>
+                <p className="editor-heading font-mono text-text-muted mb-2 tracking-wider">
+                  镜头分析
+                </p>
+                <Textarea
+                  value={currentNotes.analysis}
+                  onFocus={beginHistoryInput}
+                  onBlur={endHistoryInput}
+                  onChange={(e) =>
+                    setShotNotes((d) => ({
+                      ...d,
+                      [activeShotId]: {
+                        ...d[activeShotId],
+                        analysis: e.target.value,
+                      },
+                    }))
+                  }
+                  rows={6}
+                  placeholder="记录镜头语言、导演意图、叙事功能..."
+                  className="min-h-0 resize-none rounded-xl border-border bg-bg-input p-3 editor-body text-text-dim placeholder:editor-meta focus-visible:border-accent/50 focus-visible:ring-0"
+                />
+              </div>
+            </div>
+          )}
+
+          {panel === "group" && (
+            <ShotGroupInspector
+              group={selectedGroup}
+              indexes={selectedGroupIndexes}
+              durationSeconds={selectedGroupDuration}
+              onUpdate={updateCurrentShotGroup}
+              onAdjustRange={adjustCurrentShotGroup}
+            />
+          )}
+        </aside>
+      </div>
+      {isTemplateEditorOpen && template && (
+        <TemplateEditorModal
+          template={template}
+          onClose={() => setIsTemplateEditorOpen(false)}
+          onChangeTemplate={saveTemplate}
+          onUpdateField={updateTemplateField}
+          onAddField={addTemplateField}
+          onMoveField={moveTemplateField}
+          onDeleteField={deleteTemplateField}
+        />
+      )}
+      {isExportDialogOpen && (
+        <ReportExportDialog
+          input={{
+            projectTitle,
+            shots: shots.map((shot) => ({
+              ...shot,
+              description: shotNotes[shot.id]?.content ?? "",
+              notes: shotNotes[shot.id]?.analysis ?? "",
+              analysisFields: shotDims[shot.id] ?? {},
+              screenshotId:
+                primaryShotScreenshotIds[shot.id] ??
+                shotBoundaryScreenshotIds[shot.id]?.first ??
+                null,
+            })),
+            groups: shotGroups,
+            fields: template?.fields ?? [],
+            screenshotUrls: shotScreenshotUrls,
+          }}
+          isExporting={isExporting}
+          onClose={() => setIsExportDialogOpen(false)}
+          onExport={(format) => void exportReport(format)}
+          onOpenVideoExport={() => {
+            setIsExportDialogOpen(false)
+            setVideoExportError(null)
+            setIsVideoExportDialogOpen(true)
+          }}
+        />
+      )}
+      {isVideoExportDialogOpen && (
+        <VideoExportDialog
+          sourceWidth={media.metadata?.width ?? 1920}
+          sourceHeight={media.metadata?.height ?? 1080}
+          frameRate={media.metadata?.frameRate ?? FPS}
+          durationSeconds={media.metadata?.durationSeconds ?? durationSeconds}
+          isExporting={isVideoExporting}
+          progress={videoExportProgress}
+          error={videoExportError}
+          onClose={closeVideoExportDialog}
+          onStart={(settings) => void exportAnalysisVideo(settings)}
+          onCancel={cancelAnalysisVideoExport}
+        />
+      )}
+    </div>
+  )
+}
