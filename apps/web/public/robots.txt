@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /projects
+Disallow: /feedback
+Disallow: /support
+Disallow: /reset-password
+
+Sitemap: https://lens.aisenhub.com/sitemap.xml

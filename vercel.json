@@ -5,6 +5,70 @@
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/projects",
+      "destination": "/projects/index.html"
+    },
+    {
+      "source": "/feedback",
+      "destination": "/feedback/index.html"
+    },
+    {
+      "source": "/support",
+      "destination": "/support/index.html"
+    },
+    {
+      "source": "/reset-password",
+      "destination": "/reset-password/index.html"
+    },
+    {
+      "source": "/features/auto-shot",
+      "destination": "/features/auto-shot/index.html"
+    },
+    {
+      "source": "/features/frame-analysis",
+      "destination": "/features/frame-analysis/index.html"
+    },
+    {
+      "source": "/features/reports",
+      "destination": "/features/reports/index.html"
+    },
+    {
+      "source": "/tutorials",
+      "destination": "/tutorials/index.html"
+    },
+    {
+      "source": "/tutorials/what-is-video-pian",
+      "destination": "/tutorials/what-is-video-pian/index.html"
+    },
+    {
+      "source": "/tutorials/shot-language-analysis",
+      "destination": "/tutorials/shot-language-analysis/index.html"
+    },
+    {
+      "source": "/tutorials/auto-shot-workflow",
+      "destination": "/tutorials/auto-shot-workflow/index.html"
+    },
+    {
+      "source": "/glossary",
+      "destination": "/glossary/index.html"
+    },
+    {
+      "source": "/changelog",
+      "destination": "/changelog/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

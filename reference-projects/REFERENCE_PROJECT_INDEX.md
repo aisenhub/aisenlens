@@ -252,6 +252,8 @@
 
 | 2026-08-15 | Cross-platform workspace | OpenReel `package.json`, `pnpm-workspace.yaml`, and `apps/desktop/package.json`; OpenCut root `package.json` and `apps/{web,desktop}` | Both projects use workspace boundaries for independently released applications. OpenReel builds its Electron renderer by invoking the Web package build. | AisenLens will use pnpm workspaces with `apps/web` as the only UI/business source, an Electron desktop shell, and a Capacitor mobile shell. Shared packages will be introduced only after a second real consumer exists. |
 
+| 2026-08-15 | SEO metadata and crawl discovery | OpenReel `apps/web` search found no reusable route or prerendering pattern; OpenCut `apps/web/src/app/{metadata,robots,sitemap}.ts` | OpenCut centralizes brand metadata, robots directives, and sitemap entries. Its Next.js rendering stack is not suitable for direct adoption in the existing Vite application. | AisenLens keeps Vite and adapts the centralized metadata plus static `robots.txt`/`sitemap.xml` pattern. Public marketing content will receive stable URLs; editor and account surfaces will remain non-indexable. |
+
 ## 约定
 
 | 2026-08-12 | 分析模板快照 | OpenReel 模板/占位符相关组件；OpenCut 固定属性面板与表单基础设施 | OpenReel 的模板服务于视频创作资源替换，OpenCut 属性面板以固定编辑器字段为主，均无可复用的拉片分析字段快照模型 | AisenLens 采用独立项目模板快照、稳定字段 ID、选项约束与参考词辅助的模型，不复用二者具体实现 |

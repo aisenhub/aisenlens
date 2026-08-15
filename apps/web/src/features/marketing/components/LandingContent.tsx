@@ -388,18 +388,18 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
           {/* badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border-mid text-text-dim text-xs font-mono mb-8 animate-fade-up">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            艾申拉片 · AisenLens
+            面向影视创作者的本地优先工具
           </div>
 
           {/* headline — solid white, no gradient */}
           <h1 className="font-display font-black leading-none mb-6 animate-fade-up delay-100 text-white"
             style={{ fontSize: "clamp(3.5rem,9vw,8rem)" }}>
-            拉片，精确到<br />
-            <span className="text-accent">每一帧</span>
+            视频拉片与<br />
+            <span className="text-accent">镜头分析工具</span>
           </h1>
 
           <p className="text-text-dim text-lg mb-10 max-w-xl mx-auto leading-relaxed animate-fade-up delay-200">
-            致力于构建创作者心中的理想拉片工具
+            导入视频后自动整理镜头结构，逐帧观看、记录批注、建立分析模板，并导出清晰的拉片报告。
           </p>
 
           <div className="flex items-center justify-center gap-4 flex-wrap animate-fade-up delay-300">
@@ -436,11 +436,11 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
       <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <p className="font-mono text-accent text-xs tracking-widest mb-3 opacity-60">AI FEATURES</p>
+            <p className="font-mono text-accent text-xs tracking-widest mb-3 opacity-60">CORE FEATURES</p>
             <h2 className="font-display font-black text-white mb-4" style={{ fontSize: "clamp(2.4rem,5vw,4rem)" }}>
-              工具赋能，拉片提效 10×
+              一款用于影视拉片的专业视频分析工具
             </h2>
-            <p className="text-text-dim max-w-md mx-auto">从智能识别到报告生成，让你专注于分析本身</p>
+            <p className="text-text-dim max-w-2xl mx-auto">面向影视学生、编导、导演、剪辑师和内容创作者，从景别、运镜、构图、色彩、声音与叙事节奏拆解视频。</p>
           </div>
 
           {/* tab bar */}
@@ -472,6 +472,28 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
             <div style={{ height: 340 }}>
               <AIVisual type={aiTab} />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-bg-card px-6 py-24">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center">
+            <p className="font-mono text-xs tracking-widest text-accent opacity-60">FAQ</p>
+            <h2 className="mt-3 font-display text-4xl font-black text-white">关于视频拉片的常见问题</h2>
+          </div>
+          <div className="mt-12 grid gap-4">
+            {[
+              ["什么是视频拉片？", "视频拉片是将影片、短片、广告或 MV 按镜头、场景、声音、节奏和叙事进行拆解分析的方法，用于理解创作思路与镜头语言。"],
+              ["AisenLens 可以自动分镜吗？", "可以。AisenLens 可根据视频镜头切换生成可编辑的分镜结果；你仍可按实际分析需要手动修正镜头边界。"],
+              ["拉片数据会上传服务器吗？", "项目数据与视频素材默认保存在本地浏览器。请定期导出备份，并在共用设备上注意浏览器数据管理。"],
+              ["可以导出拉片报告吗？", "可以。完成镜头批注后，可将分析内容整理并导出为适合复盘、分享和归档的报告。"],
+            ].map(([question, answer]) => (
+              <div key={question} className="rounded-2xl border border-border bg-bg-deep p-6">
+                <h3 className="font-display text-xl font-bold text-white">{question}</h3>
+                <p className="mt-3 leading-7 text-text-dim">{answer}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -576,7 +598,7 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
                 <span className="text-text-muted text-xs font-mono">AisenLens</span>
               </div>
               <p className="text-text-muted text-sm leading-relaxed max-w-xs">
-                AisenLens艾申拉片，一款专注深度研读影片的拉片工具。所有视频解析全部在本地完成，保护素材隐私。支持智能拆解、逐帧控制、个性化模板，搭配AI辅助分析能力。
+                AisenLens艾申拉片，一款专注深度研读影片的拉片工具。项目数据默认保存在本地，支持自动分镜、逐帧控制与个性化分析模板。
               </p>
             </div>
 
