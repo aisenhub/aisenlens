@@ -1,0 +1,39 @@
+{
+  "name": "@aisenlens/desktop",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:main": "tsc --project tsconfig.json",
+    "build:renderer": "pnpm --filter @aisenlens/web build",
+    "build": "pnpm run build:renderer && pnpm run build:main",
+    "dev": "pnpm run build && electron .",
+    "start": "electron .",
+    "pack": "pnpm run build && electron-builder --dir",
+    "dist": "pnpm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.aisenhub.aisenlens",
+    "productName": "AisenLens",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.9.3"
+  }
+}

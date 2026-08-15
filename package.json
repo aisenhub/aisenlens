@@ -1,40 +1,18 @@
 {
-  "name": "figma-make-app",
+  "name": "aisenlens",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
   "packageManager": "pnpm@11.21.0",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
-    "format": "oxfmt",
-    "test:video-export": "node --test test/video-export.browser.test.js"
-  },
-  "dependencies": {
-    "@base-ui/react": "^1.7.0",
-    "@fontsource-variable/geist": "^5.3.0",
-    "@supabase/supabase-js": "^2.112.2",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.31.0",
-    "mediabunny": "1.29.1",
-    "next-themes": "^0.4.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sonner": "^2.0.8",
-    "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.0.0",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^6.0.0",
-    "oxfmt": "^0.2.0",
-    "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^8.0.0"
+    "dev": "pnpm --filter @aisenlens/web dev",
+    "build": "pnpm --filter @aisenlens/web build",
+    "preview": "pnpm --filter @aisenlens/web preview",
+    "format": "pnpm --filter @aisenlens/web format",
+    "test:video-export": "pnpm --filter @aisenlens/web test:video-export",
+    "dev:desktop": "pnpm --filter @aisenlens/desktop dev",
+    "build:desktop": "pnpm --filter @aisenlens/desktop build",
+    "sync:mobile": "pnpm --filter @aisenlens/mobile sync",
+    "open:android": "pnpm --filter @aisenlens/mobile open:android",
+    "open:ios": "pnpm --filter @aisenlens/mobile open:ios"
   }
 }

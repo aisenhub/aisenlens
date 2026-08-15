@@ -1,15 +1,29 @@
+# Dependencies and package-manager data
 node_modules/
-reference-projects/
 .pnpm-store/
-docs/
- .vercel/
+
+# Build outputs and generated reports
 dist/
 build/
-test/
-.cache/
-.env*
+coverage/
+test-results/
+playwright-report/
+apps/*/dist/
+apps/*/release/
+apps/*/node_modules/
+apps/desktop/.electron/
+apps/desktop/.webpack/
+
+# Local environment and deployment state
+.env
+.env.*
 !.env.example
+.vercel/
+
+# Local tool caches and logs
+.cache/
 .vite/
+.turbo/
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*
@@ -17,3 +31,13 @@ logs/
 *.log
 .claude-replay.*
 .tmp-*
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Keep only the verified reference index, not imported reference sources.
+reference-projects/*
+!reference-projects/REFERENCE_PROJECT_INDEX.md
