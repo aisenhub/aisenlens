@@ -161,6 +161,8 @@ export default function App() {
               setActiveProjectId(project.id);
               setProjectTitle(project.title);
             }}
+            isLoggedIn={isLoggedIn}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
             theme={theme}
             onThemeChange={setTheme}
           />

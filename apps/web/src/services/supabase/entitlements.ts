@@ -5,7 +5,11 @@ interface EntitlementRow {
   role: UserRole;
 }
 
-export async function getCurrentUserRole(userId: string): Promise<UserRole> {
+export interface UserEntitlement {
+  role: UserRole;
+}
+
+export async function getCurrentUserEntitlement(userId: string): Promise<UserEntitlement> {
   const { data, error } = await supabase
     .from("user_entitlements")
     .select("role")
@@ -14,5 +18,12 @@ export async function getCurrentUserRole(userId: string): Promise<UserRole> {
 
   if (error) throw error;
 
-  return (data as EntitlementRow | null)?.role ?? "free";
+  const entitlement = data as EntitlementRow | null;
+  return {
+    role: entitlement?.role ?? "free",
+  };
+}
+
+export async function getCurrentUserRole(userId: string): Promise<UserRole> {
+  return (await getCurrentUserEntitlement(userId)).role;
 }

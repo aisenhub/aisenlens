@@ -1,6 +1,6 @@
 create table if not exists public.user_entitlements (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'free' check (role in ('free', 'supporter', 'patron')),
+  role text not null default 'free' check (role in ('free', 'supporter')),
   source text not null default 'signup' check (source in ('signup', 'manual', 'payment')),
   updated_at timestamptz not null default now()
 );

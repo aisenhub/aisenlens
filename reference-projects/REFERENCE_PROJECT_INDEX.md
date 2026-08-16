@@ -1,5 +1,29 @@
 # 参考项目索引
 
+## 2026-08-16 统一支持者身份
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 付款、兑换与专属反馈的身份模型 | OpenReel 的 auth/entitlement 相关检索；OpenCut `apps/web/src/auth/{client,server}.ts` | OpenReel 未提供可复用的用户权益模型；OpenCut 的 Better Auth 服务器会话和 Redis 限流与当前 Supabase/RPC 架构不兼容。 | 保留 `free`、`supporter` 两类角色；付款和兑换码均授予 `supporter`。移除早期徽章字段、早期档位与早期兑换活动，专属反馈统一通过 `supporter` 身份核验。 |
+
+## 2026-08-16 支持者专属反馈资格核验
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 支持者专属反馈入口与身份授权 | OpenReel `apps/web/src` 的 auth/login 相关检索；OpenCut `apps/web/src/auth/{client,server}.ts` | OpenReel 未提供可复用的用户身份门控；OpenCut 的 Better Auth 与 Next.js 服务端架构不适用于 Vite + Supabase。AisenLens 已有 `user_entitlements.role` 和受控反馈 RPC。 | 由新增 Supabase RPC 实时检查 `supporter` 身份，前端仅根据结果打开专属反馈或显示跳转提示；提交 RPC 再次验证身份，早期支持者以 `submitter_identity` 保留其实际身份。 |
+
+## 2026-08-16 访客功能登录门控
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 反馈、打赏与兑换码的访客认证入口 | OpenReel `apps/web/src` 的 auth/login 相关检索；OpenCut `apps/web/src/auth/{client,server}.ts` | OpenReel 未提供可复用的面向访客认证门控；OpenCut 使用 Better Auth、Next.js 服务端路由和 Redis 限流，不适用于当前 Vite + Supabase 客户端架构。 | 复用现有 `AuthModal` 与 Supabase 会话状态，从 `App` 向页面传入统一的登录要求回调。各业务表单只在提交前门控；后端 RLS 与 RPC 仍是最终授权边界，不新增认证依赖。 |
+
+## 2026-08-16 打赏订单核验与支付时限
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 固定金额二维码支付确认 | OpenReel `apps/web/src` 的 payment/countdown 相关检索；OpenCut `apps/web/src` 的 payment/countdown 相关检索 | 两个参考项目均无可复用的固定金额收款、订单尾号核验或支付时限模块；仅存在与编辑器任务相关的计时器实现。 | 不引入支付依赖。前端使用原生 `setInterval` 显示两分钟倒计时，Supabase RPC 以 `expires_at` 作为最终时限；订单后四位仅由受控 RPC 在确认支付时写入。 |
+
 ## 2026-08-14 部署配置
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
@@ -254,6 +278,8 @@
 
 | 2026-08-15 | SEO metadata and crawl discovery | OpenReel `apps/web` search found no reusable route or prerendering pattern; OpenCut `apps/web/src/app/{metadata,robots,sitemap}.ts` | OpenCut centralizes brand metadata, robots directives, and sitemap entries. Its Next.js rendering stack is not suitable for direct adoption in the existing Vite application. | AisenLens keeps Vite and adapts the centralized metadata plus static `robots.txt`/`sitemap.xml` pattern. Public marketing content will receive stable URLs; editor and account surfaces will remain non-indexable. |
 
+| 2026-08-15 | 兑换码与支持者权益 | OpenReel 与 OpenCut 的许可、订阅、支付、优惠码和兑换码相关文件检索 | 两个参考项目均未发现可复用的兑换码或用户权益实现；OpenReel 的 macOS entitlements 仅用于桌面应用签名，与用户身份权益无关。 | AisenLens 使用 Supabase/PostgreSQL 事务 RPC：哈希保存兑换码、行锁保证单次领取、活动配额限制和独立的早期支持者徽章；不复制参考项目代码，也不引入第三方支付或兑换依赖。 |
+
 ## 约定
 
 | 2026-08-12 | 分析模板快照 | OpenReel 模板/占位符相关组件；OpenCut 固定属性面板与表单基础设施 | OpenReel 的模板服务于视频创作资源替换，OpenCut 属性面板以固定编辑器字段为主，均无可复用的拉片分析字段快照模型 | AisenLens 采用独立项目模板快照、稳定字段 ID、选项约束与参考词辅助的模型，不复用二者具体实现 |
@@ -296,3 +322,8 @@
 | 2026-08-13 构图蒙版截图 | 旧 AisenLens `apps/web/src/dom/{screenshot-capture,overlay-canvas}.js`；OpenCut `apps/web/src/services/renderer/canvas-renderer.ts`；OpenReel `apps/web/src/components/editor/preview/canvas-renderers.ts` | 成熟实现均先渲染源画面，再以同一绘制模型在离屏 Canvas 叠加覆盖内容，避免截取临时 UI 状态。 | AisenLens 将构图样式和图形绘制到原始分辨率的截图 Canvas；项目级开关控制手动截图和首尾帧自动截图，截图记录保存构图签名以在样式变更后准确刷新。 |
 | 2026-08-13 构图图形编辑 | 旧 AisenLens `apps/web/src/features/overlay/overlay-controller.js`、`dom/overlay-controller.js`；OpenCut `apps/web/src/preview/{components/transform-handles.tsx,hooks/use-transform-handles.ts}`；OpenReel `apps/web/src/components/editor/preview/MotionPathHandles.tsx` | 旧项目以几何命中区分端点、中心和控制点；OpenCut 使用包围框四角控制器；OpenReel 将路径控制点作为独立可拖动元素。 | AisenLens 保持单层 SVG 与归一化坐标：图形内部可拖动，闭合图形用四角缩放，直线/箭头用两端调整，曲线增加独立控制点；`Shift` 约束闭合图形比例与线条角度。 |
 | 2026-08-13 构图图形变换交互 | OpenCut `apps/web/src/preview/{components/transform-handles.tsx,hooks/use-transform-handles.ts,controllers/transform-handle-controller.ts}`；OpenReel `apps/web/src/components/editor/preview/MotionPathHandles.tsx`；旧 AisenLens `apps/web/src/{features/overlay/overlay-controller.js,dom/overlay-controller.js}` | OpenCut 将四角、四边与旋转手柄拆为统一变换框，并使用指针捕获和“预览—提交—取消”三阶段操作；OpenReel 对路径控制点独立处理；旧项目验证归一化坐标可在不同画面尺寸中稳定复用。 | 闭合图形采用 PowerPoint 风格统一变换框：四角等比缩放、四边单轴缩放、内部移动、顶部旋转；直线/箭头保留端点模型，曲线保留端点和贝塞尔控制点，不强行套用旋转框。所有操作以快照开始、实时预览、松手单次提交，`Esc` 取消。 |
+# 2026-08-16 支持页专属反馈入口
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 早期支持者产品共创反馈 | OpenReel `apps/web/src` 的反馈相关检索；OpenCut `apps/web/src/feedback/components/feedback-popover.tsx`、`app/api/feedback/route.ts`、`db/schema.ts` | OpenReel 未提供面向用户的反馈入口；OpenCut 将轻量反馈收集放在编辑器入口的 Popover 中，并在本地保存草稿与历史。AisenLens 已有带分类、标题、内容校验及身份关联的 Supabase RPC。 | 复用 AisenLens 现有反馈服务和 Base UI Dialog，以适配多字段反馈表单；不复制 OpenCut 的 API、数据库或本地历史方案，不新增依赖、接口或表。 |

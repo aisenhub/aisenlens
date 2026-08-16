@@ -2,7 +2,19 @@
 
 > 状态：核心技术实施完成；分享封面图与搜索平台提交待发布后执行  
 > 制定日期：2026-08-15  
+> 最近核查：2026-08-15（本地构建产物、静态页面与 noindex 页面均已验证）
 > 范围：AisenLens 公共营销页面、教程内容、搜索引擎收录与分享展示
+
+## 当前实施状态
+
+| 项目 | 状态 | 说明 |
+| --- | --- | --- |
+| 正式域名 | 已完成 | canonical、sitemap 和 robots 统一使用 `https://lens.aisenhub.com`。 |
+| URL、metadata 与 JSON-LD | 已完成 | 公共页面具有稳定 URL、独立 title、description、canonical 和结构化数据。 |
+| 静态预渲染 | 已完成 | 构建后为 public URL 输出带正文和单个 H1 的 HTML；Vercel 优先返回静态页面。 |
+| 爬虫与隐私边界 | 已完成 | 已提供 robots、sitemap、manifest；编辑器、项目库、反馈和重置密码页面为 noindex。 |
+| 分享封面 | 待完成 | 已有 Open Graph 和 Twitter 文字信息，尚未添加 1200 × 630 图片。 |
+| 搜索平台接入 | 待完成 | 需在 Google、Bing 和百度平台完成验证、提交 sitemap 和后续监测。 |
 
 ## 1. 目标
 
@@ -23,16 +35,16 @@
 - 不为了 SEO 改变 AisenLens 的本地优先和隐私优先原则。
 - 不在未提供真实 AI 能力前，将“AI”作为无法验证的产品承诺。
 
-## 2. 当前状态与主要限制
+## 2. 实施后现状与主要限制
 
 | 项目 | 当前情况 | 影响 |
 | --- | --- | --- |
-| 公共页面 | 首页、教程、支持、反馈等由客户端数字状态切换 | 没有稳定 URL，搜索引擎无法将每个主题独立收录 |
-| 基础 metadata | `apps/web/index.html` 已有中文标题和描述 | 所有页面共享同一 metadata，无法表达具体内容意图 |
-| 路由 | 未接入 URL 路由器 | 用户无法直接分享或搜索进入某一篇教程或功能介绍 |
-| 爬虫文件 | 尚未提供 `robots.txt` 和 `sitemap.xml` | 搜索平台缺少明确的抓取与页面发现入口 |
-| 分享卡 | 尚未配置 Open Graph、Twitter Card 与分享封面 | 社交分享的展示不可控 |
-| 结构化数据 | 尚未提供 JSON-LD | 搜索引擎较难稳定识别产品类型、FAQ 与组织信息 |
+| 公共页面 | 已迁移为稳定 URL，并提供功能页、教程页、术语页与更新日志 | 后续需要扩充原创教程深度和真实截图 |
+| 基础 metadata | 页面级 metadata 集中在营销模块 | 需在部署后用搜索平台实际抓取结果复核 |
+| 路由 | 已接入 React Router | 旧数字页入口已映射到稳定 URL |
+| 爬虫文件 | 已提供 `robots.txt`、`sitemap.xml` 和 Web Manifest | 需提交给搜索平台 |
+| 分享卡 | 已配置 Open Graph、Twitter 文字字段 | 缺少分享封面图 |
+| 结构化数据 | 首页提供 SoftwareApplication 与 FAQPage，教程页提供 Article | 需使用 Schema Markup Validator 验证线上页面 |
 
 ## 3. 产品定位与关键词边界
 
@@ -221,12 +233,12 @@ AisenLens 面向影视学生、编导、导演、剪辑师和内容创作者，�
 
 ```html
 <meta name="robots" content="index,follow,max-image-preview:large" />
-<link rel="canonical" href="https://aisenlens.vercel.app/" />
+<link rel="canonical" href="https://lens.aisenhub.com/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="AisenLens" />
 <meta property="og:title" content="AisenLens｜视频拉片、自动分镜与镜头分析工具" />
 <meta property="og:description" content="从自动分镜、逐帧批注到拉片报告导出，让影视拉片更高效。" />
-<meta property="og:image" content="https://aisenlens.vercel.app/og-cover.png" />
+<meta property="og:image" content="https://lens.aisenhub.com/og-cover.png" />
 <meta name="twitter:card" content="summary_large_image" />
 ```
 
@@ -244,7 +256,7 @@ AisenLens 面向影视学生、编导、导演、剪辑师和内容创作者，�
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Web Browser",
   "description": "视频拉片、自动分镜与镜头分析工具",
-  "url": "https://aisenlens.vercel.app/",
+  "url": "https://lens.aisenhub.com/",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -264,7 +276,7 @@ AisenLens 面向影视学生、编导、导演、剪辑师和内容创作者，�
 ```text
 User-agent: *
 Allow: /
-Sitemap: https://aisenlens.vercel.app/sitemap.xml
+Sitemap: https://lens.aisenhub.com/sitemap.xml
 ```
 
 **sitemap.xml**
@@ -316,8 +328,8 @@ Node.js Version: 22.x
 
 部署后验证：
 
-1. `https://aisenlens.vercel.app/robots.txt` 返回 200。
-2. `https://aisenlens.vercel.app/sitemap.xml` 返回 200。
+1. `https://lens.aisenhub.com/robots.txt` 返回 200。
+2. `https://lens.aisenhub.com/sitemap.xml` 返回 200。
 3. 每个 public URL 返回 200，且 canonical 指向自身。
 4. 页面源代码中能看到预渲染正文与 JSON-LD，而不是只有空的 `#root`。
 
@@ -333,31 +345,31 @@ Node.js Version: 22.x
 
 ## 9. 实施阶段与验收
 
-### 阶段 0：定位确认
+### 阶段 0：定位确认（已完成）
 
-- 确认是否使用“AI”作为公开承诺。
-- 确认正式域名是否固定为 `aisenlens.vercel.app`，或替换为自定义域名。
-- 确认首批三至五篇教程主题。
+- 不将“AI”作为尚未验证的公开承诺。
+- 正式域名已固定为 `lens.aisenhub.com`。
+- 已确定首批教程、功能页和术语页主题。
 
 验收：产品定位、域名和首批内容主题均有明确负责人和发布日期。
 
-### 阶段 1：首页基础 SEO
+### 阶段 1：首页基础 SEO（核心完成）
 
 - 更新首页 title、description、H1、首屏说明、功能区、人群区和 FAQ。
 - 加入 canonical、robots、Open Graph、Twitter Card 和软件结构化数据。
-- 制作并接入分享封面。
+- 制作并接入分享封面（待完成）。
 
 验收：使用浏览器查看源代码可见完整 metadata；社交平台调试工具可正确读取标题、描述和封面。
 
-### 阶段 2：抓取入口
+### 阶段 2：抓取入口（技术完成，平台接入待完成）
 
 - 新建 `robots.txt`、`sitemap.xml` 和 Web Manifest。
 - 明确 public/noindex 页面清单。
-- 配置 Search Console、Bing 与百度验证。
+- 配置 Search Console、Bing 与百度验证（待你完成平台授权）。
 
 验收：三个平台均接受 sitemap；未授权页面不在 sitemap 中。
 
-### 阶段 3：稳定 URL 与预渲染
+### 阶段 3：稳定 URL 与预渲染（已完成）
 
 - 引入成熟路由方案并迁移公共营销页面。
 - 为公共页执行静态预渲染。
@@ -365,7 +377,7 @@ Node.js Version: 22.x
 
 验收：无 JavaScript 环境中公共页面仍显示主体内容；旧入口不会破坏编辑器流程。
 
-### 阶段 4：内容与内部链接
+### 阶段 4：内容与内部链接（基础内容已完成，持续维护）
 
 - 发布首批教程、功能页和术语页。
 - 从首页、教程列表、功能页和更新日志建立上下文相关的内部链接。
@@ -373,7 +385,7 @@ Node.js Version: 22.x
 
 验收：每篇内容至少有两个内部入口和一个明确 CTA；不存在重复或薄内容页面。
 
-### 阶段 5：监测与迭代
+### 阶段 5：监测与迭代（待开始）
 
 - 每周查看覆盖率、抓取错误、索引状态、搜索词、展示量与点击率。
 - 每月更新表现靠前页面的标题、首段、FAQ 和内部链接。
@@ -383,15 +395,25 @@ Node.js Version: 22.x
 
 ## 10. 发布前检查清单
 
-- [ ] 每页仅一个 H1，且与 title 的主题一致。
+- [x] 每页仅一个 H1，且与 title 的主题一致（本地静态产物已验证）。
 - [ ] title 不超过约 30 个中文字符，description 清楚说明价值且不重复堆词。
-- [ ] canonical、Open Graph URL 和 sitemap URL 使用 HTTPS 正式域名。
-- [ ] 没有公开 source map、服务角色密钥、AI Key 或用户数据。
-- [ ] 所有 public 页面返回 200；不存在循环重定向。
-- [ ] 编辑器、项目库、账户、反馈、支付等页面为 `noindex`。
-- [ ] JSON-LD 可通过 Schema Markup Validator 验证。
-- [ ] robots.txt 没有误封锁 CSS、JavaScript、图片或 public 页面。
-- [ ] Vercel 使用根目录与 `apps/web/dist` 输出目录。
+- [x] canonical、Open Graph URL 和 sitemap URL 使用 HTTPS 正式域名。
+- [x] 本地构建不生成 source map；项目不包含服务角色密钥、AI Key 或用户数据。
+- [ ] 所有 public 页面在线上返回 200；不存在循环重定向。
+- [x] 编辑器、项目库、反馈、支持和重置密码页面为 `noindex`。
+- [ ] JSON-LD 已通过 Schema Markup Validator 验证。
+- [x] robots.txt 没有误封锁 CSS、JavaScript、图片或 public 页面。
+- [x] Vercel 使用根目录与 `apps/web/dist` 输出目录。
+
+## 10.1 发布后待办（由站点所有者执行）
+
+1. 在浏览器逐个打开首页、三个功能页、教程页、术语页和更新日志；确认返回 200、页面内容正常，并在“查看网页源代码”中确认可见 H1、canonical 和 JSON-LD。
+2. 在 Google Search Console 添加 `https://lens.aisenhub.com/` 的 URL 前缀属性（或验证 `aisenhub.com` 域名属性），提交 `https://lens.aisenhub.com/sitemap.xml`，并对首页及三篇教程使用“请求编入索引”。
+3. 在 Bing Webmaster Tools 导入 Search Console 或单独验证该域名，提交同一 sitemap。
+4. 在百度搜索资源平台验证站点并提交 sitemap；如平台提供 meta 验证 token，再单独加入 token，不要提交任何私钥。
+5. 制作并接入 `1200 × 630` 的 `og-cover.png`，再用社交平台调试工具检查标题、描述和封面。
+6. 为每篇教程补充作者、更新时间、真实截图、FAQ 和更多原创正文；以真实查询数据决定下一批主题。
+7. 每周查看收录覆盖率、抓取错误、展示量、点击率和搜索词；提交 sitemap 后至少观察 2 至 4 周再调整页面文案。
 
 ## 11. 风险与决策原则
 
@@ -405,8 +427,7 @@ Node.js Version: 22.x
 
 ## 12. 建议执行顺序
 
-1. 确认产品定位是否包含“AI”。
-2. 实施阶段 1 与阶段 2，使首页具备可抓取、可分享、可提交的基础。
-3. 确认路由与预渲染技术方案后实施阶段 3。
-4. 以首批五篇教程驱动阶段 4，而不是先批量制造空页面。
-5. 提交 sitemap 后至少观察 2 至 4 周，再根据 Search Console 的真实查询调整内容。
+1. 按“发布后待办”验证线上静态页面并提交 sitemap。
+2. 补齐分享封面图，验证社交分享卡片。
+3. 持续完善首批教程的原创正文、作者信息和截图。
+4. 观察 2 至 4 周后，根据 Search Console 的真实查询扩展内容。

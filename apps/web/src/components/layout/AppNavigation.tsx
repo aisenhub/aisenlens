@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NAVIGATION_ITEMS } from "../../constants/navigation";
 import type { AppTheme } from "../../types/theme";
-import { Moon, Settings, Sun, UserRound } from "lucide-react";
+import { Heart, Moon, Settings, Sun, UserRound } from "lucide-react";
 
 interface AppNavigationProps {
   activePage: number;
@@ -72,6 +72,13 @@ export default function AppNavigation({
               {theme === "dark" ? <Sun /> : <Moon />}
             </TooltipTrigger>
             <TooltipContent>{nextThemeLabel}</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="支持 AisenLens" className={`hover:bg-red-500/10 ${activePage === 5 ? "text-red-500" : "text-red-400"}`} />} onClick={() => onNavigate(5)}>
+              <Heart className="fill-red-500 text-red-500" />
+            </TooltipTrigger>
+            <TooltipContent>支持 AisenLens</TooltipContent>
           </Tooltip>
 
           {activePage === 2 && (

@@ -13,12 +13,13 @@ interface ProjectMediaGateProps {
   children: (project: ProjectRecord, videoUrl: string, primaryVideoAsset: MediaAsset, onRenameProject: (title: string) => void) => ReactNode;
 }
 
-type LoadState = "loading" | "ready" | "not-found" | "unlinked" | "missing" | "needs-permission";
+type LoadState = "loading" | "ready" | "not-found" | "unlinked" | "missing" | "needs-permission" | "error";
 
 export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoaded, children }: ProjectMediaGateProps) {
   const [project, setProject] = useState<ProjectRecord | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSelectingVideo, setIsSelectingVideo] = useState(false);
   const loadRequestRef = useRef(0);
 
@@ -38,6 +39,8 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
     }
 
     setLoadState("loading");
+    setLoadError(null);
+    try {
     const nextProject = await projectRepository.getProject(projectId);
     if (!isCurrentRequest()) return;
     if (!nextProject) {
@@ -100,6 +103,13 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
         setProject(updatedProject);
         onProjectLoaded(updatedProject);
       }).catch(() => undefined);
+    }
+    } catch (error) {
+      if (!isCurrentRequest()) return;
+      setProject(null);
+      setPreviewUrl(null);
+      setLoadError(error instanceof Error ? error.message : "本地项目数据读取失败，请返回项目库后重试。");
+      setLoadState("error");
     }
   }, [onProjectLoaded, projectId, setPreviewUrl]);
 
@@ -167,8 +177,10 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
 
   const isMissing = loadState === "missing";
   const needsPermission = loadState === "needs-permission";
-  const title = loadState === "not-found" ? "项目不存在或已删除" : isMissing ? "视频待重新关联" : "添加本地视频";
-  const description = loadState === "not-found"
+  const title = loadState === "error" ? "项目打开失败" : loadState === "not-found" ? "项目不存在或已删除" : isMissing ? "视频待重新关联" : "添加本地视频";
+  const description = loadState === "error"
+    ? loadError ?? "本地项目数据读取失败，请返回项目库后重试。"
+    : loadState === "not-found"
     ? "请返回项目库，选择一个可用项目。"
     : needsPermission
       ? "浏览器需要你再次确认读取此本地视频；项目与分镜数据仍在本机保存。"

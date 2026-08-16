@@ -6,12 +6,7 @@
 
 出现 `Success. No rows returned` 表示执行成功。迁移会创建 `public.feedback_requests` 和安全的 `create_feedback_request` 数据库函数。
 
-如果你已经在早期版本执行过反馈迁移，还需要依次执行以下迁移：
-
-1. [20260812110000_remove_feedback_history_access.sql](../supabase/migrations/20260812110000_remove_feedback_history_access.sql)，移除用户读取自己反馈历史的权限。
-2. [20260812120000_remove_feedback_email_contact_opt_in.sql](../supabase/migrations/20260812120000_remove_feedback_email_contact_opt_in.sql)，移除联系授权字段与旧版提交函数。
-
-> 首次启用反馈功能时，只执行第一份 `20260812100000_create_feedback_requests.sql` 即可；不要执行后两份历史清理迁移。
+反馈身份由 [20260816110000_add_feedback_identity.sql](../supabase/migrations/20260816110000_add_feedback_identity.sql) 初始化：仅保留 `free` 与 `supporter`，并提供支持者专属反馈访问校验。
 
 ## 2. 用户端行为
 
@@ -23,6 +18,8 @@
 
 注册邮箱与用户 ID 从登录会话获取，用户不需要重复填写，也不会在页面公开展示。反馈沟通默认使用用户的注册邮箱；用户提交后仅看到本次提交成功提示，处理记录只供开发者后台查看。
 
+支持页的“提交专属反馈”会先调用服务端资格核验：`user_entitlements.role = supporter` 的支持者才能打开专属通道。普通用户会看到提示弹窗，可直接跳转到普通反馈页面；前端不会以本地角色状态代替后端判断。
+
 ## 3. 后台查看与处理
 
 在 **SQL Editor** 执行以下查询，可查看所有待处理反馈及用户信息：
@@ -33,6 +30,8 @@ select
   feedback.kind,
   feedback.title,
   feedback.content,
+  feedback.submitter_identity,
+  feedback.submission_source,
   feedback.status,
   feedback.created_at,
   profiles.display_name,

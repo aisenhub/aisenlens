@@ -19,6 +19,8 @@ interface AppPagesProps {
   projectTitle: string;
   onProjectTitleChange: (title: string) => void;
   onProjectLoaded: (project: ProjectRecord) => void;
+  isLoggedIn: boolean;
+  onRequireAuth: () => void;
   theme: AppTheme;
   onThemeChange: (theme: AppTheme) => void;
 }
@@ -30,6 +32,8 @@ export default function AppPages({
   projectTitle,
   onProjectTitleChange,
   onProjectLoaded,
+  isLoggedIn,
+  onRequireAuth,
   theme,
   onThemeChange,
 }: AppPagesProps) {
@@ -51,8 +55,8 @@ export default function AppPages({
     />;
   }
   if (page === 4) content = <TutorialsPage onNavigate={onNavigate} />;
-  if (page === 5) content = <SupportPage onNavigate={onNavigate} />;
-  if (page === 6) content = <FeedbackPage />;
+  if (page === 5) content = <SupportPage isLoggedIn={isLoggedIn} onRequireAuth={onRequireAuth} onNavigate={onNavigate} />;
+  if (page === 6) content = <FeedbackPage isLoggedIn={isLoggedIn} onRequireAuth={onRequireAuth} />;
   if (page === 8) content = <ChangelogPage />;
   if (page === 9) content = <UserAgreementPage />;
   if (page === 10) content = <PrivacyPolicyPage />;

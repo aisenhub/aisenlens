@@ -26,7 +26,14 @@ export default function AuthModal({ onClose, onComplete }: AuthModalProps) {
     setIsSubmitting(true); setErrorMessage("");
     try {
       if (mode === "recovery") { await requestPasswordReset(email.trim()); toast.success("如该邮箱已注册，重置邮件已发送。"); return; }
-      if (mode === "login") await signInWithEmail(email.trim(), password); else await signUpWithEmail({ email: email.trim(), password, displayName });
+      const result = mode === "login"
+        ? await signInWithEmail(email.trim(), password)
+        : await signUpWithEmail({ email: email.trim(), password, displayName });
+      if (!result.session) {
+        toast.success("账号创建成功，请前往邮箱完成验证后再登录。");
+        onClose();
+        return;
+      }
       onComplete(); onClose(); toast.success(mode === "login" ? "登录成功。" : "账号创建成功。");
     } catch (error) {
       const message = error instanceof Error ? error.message : "认证请求失败，请稍后重试。";

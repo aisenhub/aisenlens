@@ -8,10 +8,11 @@
 
 - [x] 创建 Supabase 项目并取得项目 URL 与匿名公钥。
 - [x] 在本地配置 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`。
-- [x] 启用邮箱/密码注册和登录，并暂时关闭邮箱确认。
+- [x] 启用邮箱/密码注册和登录，并兼容 Supabase 的邮箱确认开关。
 - [x] 配置开发环境密码重置回调地址：`http://localhost:8443/reset-password`。
 - [x] 建立 `profiles` 用户资料表、RLS 策略和注册后自动建档触发器。
 - [x] 完成登录、注册、会话恢复、退出登录、昵称修改和密码重置界面。
+- [x] 对反馈、打赏、兑换码和专属反馈增加前端登录门控；访客触发提交入口时打开登录/注册弹窗，不发送业务 RPC。
 - [x] 建立独立的用户角色权益表，用户中心可展示当前角色。
 - [x] 执行生产构建验证。
 - [ ] 如存在触发器部署前注册的旧账号，执行资料补齐 SQL。
@@ -81,10 +82,10 @@ pnpm.cmd dev
 在 Supabase 控制台进入 **Authentication** 的 Providers / Sign In 配置：
 
 1. 确认 Email provider 已启用。
-2. 当前阶段关闭 **Confirm email**，使用户注册后可直接登录。
+2. 根据上线策略设置 **Confirm email**：关闭时用户注册后可直接登录；开启时必须完成邮件验证后才会取得登录会话。
 3. 密码由 Supabase Auth 管理；不要自行创建密码表或在 `profiles` 中增加密码字段。
 
-关闭邮箱确认意味着注册流程更顺滑，但未知邮箱可以注册。当前个人工具阶段可以接受；发生垃圾注册时，再开启验证码或邮箱确认。
+关闭邮箱确认意味着注册流程更顺滑，但未知邮箱可以注册。开启邮箱确认时，前端会提示用户先完成验证后再登录，不会将无会话的注册误判为已登录。
 
 ### AI 已完成的工作
 
@@ -191,6 +192,16 @@ http://localhost:8443/reset-password
 | 应用会话恢复和回跳页面装配 | [src/app/App.tsx](../src/app/App.tsx) |
 | 数据库迁移 | [supabase/migrations](../supabase/migrations) |
 
+## 7.1 需要登录的功能入口
+
+本地拉片、浏览和公开内容可免注册使用。以下操作必须已登录：
+
+- 提交普通反馈或支持者专属反馈。
+- 创建打赏请求、确认付款、取消付款。
+- 兑换支持码。
+
+前端只在用户点击上述提交入口时检查会话：未登录时打开现有登录/注册弹窗，输入内容仍保留在当前页面；不会向 `support_requests`、`feedback_requests` 或兑换 RPC 写入数据。登录后的业务请求仍由 Supabase RLS 与受控 RPC 二次校验，前端门控不替代后端权限控制。
+
 ## 8. 用户角色与后台授权
 
 角色不保存在 `profiles` 中。`profiles` 允许用户修改自己的昵称；若把角色放入该表，用户可能借由同一更新权限篡改自己的角色。
@@ -201,7 +212,6 @@ http://localhost:8443/reset-password
 | --- | --- | --- |
 | 免费用户 | `free` | 注册后自动分配，可使用本地拉片基础功能。 |
 | 支持者 | `supporter` | 用于小额打赏后的感谢与后续权益。 |
-| 共创支持者 | `patron` | 用于较高额度支持和优先体验资格。 |
 
 ### 开发者后台权限
 
@@ -221,7 +231,7 @@ set role = 'supporter', source = 'manual', updated_at = now()
 where user_id = '目标用户 UUID';
 ```
 
-可用的角色值只有：`free`、`supporter`、`patron`。更新后让用户刷新页面或重新登录，即可在用户中心看到新角色。
+可用的角色值只有：`free`、`supporter`。更新后让用户刷新页面或重新登录，即可在用户中心看到新角色；付款和兑换码兑换均统一授予 `supporter`。
 
 不要将上述更新 SQL 放进浏览器，也不要为前端增加直接更新 `user_entitlements` 的权限。未来接入支付后，应由“支付平台 Webhook → Edge Function 验签 → 更新角色”自动完成授予。
 
@@ -238,7 +248,7 @@ where user_id = '目标用户 UUID';
 
 ```text
 请为 AisenLens 增加基于角色的权益模型。
-角色包含 free、supporter、patron；角色必须保存在独立表，普通用户只能读取自己的角色，不能更新；
+角色包含 free、supporter；角色必须保存在独立表，普通用户只能读取自己的角色，不能更新；
 新用户自动获得 free。用户中心展示角色，但不要实现可被普通用户调用的升级接口。
 请提供 Supabase SQL 迁移，保持支付接入留给未来的安全 Webhook，并运行 pnpm.cmd build。
 ```

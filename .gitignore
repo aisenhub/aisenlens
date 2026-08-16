@@ -18,6 +18,8 @@ apps/desktop/.webpack/
 .env
 .env.*
 !.env.example
+# Vite's web application reads its local settings from this file.
+apps/web/.env.local
 .vercel/
 
 # Local tool caches and logs

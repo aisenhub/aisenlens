@@ -1,9 +1,11 @@
 import SupportContent from "../features/support/components/SupportContent";
 
 interface SupportPageProps {
-  onNavigate?: (page: number) => void;
+  isLoggedIn: boolean;
+  onRequireAuth: () => void;
+  onNavigate: (page: number) => void;
 }
 
-export default function SupportPage({ onNavigate }: SupportPageProps) {
-  return <SupportContent onNavigate={onNavigate} />;
+export default function SupportPage({ isLoggedIn, onRequireAuth, onNavigate }: SupportPageProps) {
+  return <SupportContent isLoggedIn={isLoggedIn} onRequireAuth={onRequireAuth} onNavigate={onNavigate} />;
 }
