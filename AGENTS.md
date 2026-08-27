@@ -4,20 +4,27 @@
 
   The project was originally generated from Figma Make, but development is now fully independent from Figma Make.
 
+  ## Workspace path convention
+
+  This repository is a pnpm workspace. The canonical frontend source root is
+  `apps/web/src/`; the repository does not contain a standalone root `src/`
+  application. Unless a section explicitly names another package, every
+  unqualified `src/...` example below refers to `apps/web/src/...`.
+
   ---
 
    ## UI 组件复用规则
 
     实现任何 UI 前，先按以下顺序检查：
 
-    1. 检查 `src/components/ui/` 是否已有可复用的 shadcn/ui 组件。
+    1. 检查 `apps/web/src/components/ui/` 是否已有可复用的 shadcn/ui 组件。
     2. 检查同一 feature 或相邻页面是否已有可复用的业务组件。
     3. 若现有组件只差少量样式或行为，优先扩展或传入 `className`，不要复制实现。
     4. 仅当现有组件无法满足需求时，才执行：
        `pnpm dlx shadcn@latest add <组件名> --yes`
-    5. 新增 shadcn 组件必须放在 `src/components/ui/`，并匹配 `src/index.css` 的 AisenLens 主题 token。
+    5. 新增 shadcn 组件必须放在 `apps/web/src/components/ui/`，并匹配 `apps/web/src/index.css` 的 AisenLens 主题 token。
     6. 通用交互优先使用 Button、Dialog、DropdownMenu、Tooltip、Tabs 和 Sonner 通知；业务逻辑不得放入通用 UI 组件。
-    8. 每次引入或修改组件后，运行 `pnpm.cmd build` 验证。
+    8. 每次引入或修改组件后，运行 `corepack pnpm build` 验证。
   
   
   
@@ -1324,7 +1331,7 @@ src/
 
   This workflow is mandatory for every future module. Do not skip the public-solution review or reverse the OpenReel → OpenCut reference priority.
 
-  The `reference-projects/` directory contains three external reference projects:
+  The `reference-projects/` directory contains four reference projects:
 
   - `previous-aisenlens/`: previous AisenLens demo.
   - `opensource-opencut/`: open-source reference project.
@@ -1334,6 +1341,7 @@ src/
   Rules:
 
   - Do not read, copy, or migrate reference-project code proactively.
+  - If a required local reference project is absent, first consult the source URL and access instructions in `reference-projects/REFERENCE_PROJECT_INDEX.md`. Inspect only the module-relevant files through that source or a temporary checkout outside this repository; do not commit a fetched reference project.
   - When implementing or designing a specific module, inspect only the files relevant to that module and purpose.
   - Use reference projects for mature patterns, data-model research, and interaction research; adapt findings to AisenLens rather than duplicating implementations.
   - After obtaining meaningful information from a reference project, update `reference-projects/REFERENCE_PROJECT_INDEX.md` with the module, files consulted, confirmed findings, and AisenLens decision.

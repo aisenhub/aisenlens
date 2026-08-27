@@ -8,7 +8,10 @@ build/
 coverage/
 test-results/
 playwright-report/
-apps/web/test/
+# Keep browser test code in Git; ignore only large local video fixtures.
+apps/web/test/*.mov
+apps/web/test/*.mp4
+apps/web/test/*.webm
 apps/*/dist/
 apps/*/release/
 apps/*/node_modules/

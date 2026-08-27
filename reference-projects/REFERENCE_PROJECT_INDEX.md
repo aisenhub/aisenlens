@@ -1,5 +1,21 @@
 # 参考项目索引
 
+## 参考项目来源与本地获取
+
+参考项目不提交到 AisenLens 仓库；只有本索引随 Git 同步。设计或实现某个
+模块时，优先使用现有本地副本。若对应目录不存在，可在仓库外的临时目录按下表
+获取并仅检查与当前模块相关的文件；不得把下载结果提交到 AisenLens。
+
+| 本地目录 | GitHub 来源 | 说明 |
+| --- | --- | --- |
+| `opensource-openreel/` | `https://github.com/Augani/openreel-video` | 公共参考仓库，优先查阅。 |
+| `opensource-opencut/` | `https://github.com/OpenCut-app/OpenCut` | 公共参考仓库，次优先查阅。 |
+| `opensource-PySceneDetect/` | `https://github.com/Breakthrough/PySceneDetect` | 场景检测算法与测试参考。 |
+| `previous-aisenlens/` | 待项目所有者确认 | 历史本地快照；未验证原始远程地址时不得替换为推测链接。 |
+
+获取后仍须遵守根 `AGENTS.md` 的模块研究顺序，并将实际查阅的文件与确认结论
+更新到本索引。
+
 ## 2026-08-25 AisenShot Scene Engine
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
@@ -34,7 +50,7 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| Vercel 单页应用部署 | `previous-aisenlens/vercel.json`、`previous-aisenlens/apps/web/vercel.json`、`previous-aisenlens/package.json`、`previous-aisenlens/apps/web/package.json` | 旧项目在 Vercel 上通过 `/(.*) → /index.html` 重写支持单页应用访问；根脚本负责构建前端工作区。 | 当前单体 Vite 项目改为从仓库根目录执行 `pnpm build`、发布 `dist/`，保留相同 SPA 重写，不迁移旧工作区脚本或混淆构建逻辑。 |
+| Vercel 单页应用部署 | `previous-aisenlens/vercel.json`、`previous-aisenlens/apps/web/vercel.json`、`previous-aisenlens/package.json`、`previous-aisenlens/apps/web/package.json` | 旧项目在 Vercel 上通过 `/(.*) → /index.html` 重写支持单页应用访问；根脚本负责构建前端工作区。 | 此行为 2026-08-14 的历史记录。当前 AisenLens 是 pnpm workspace：从仓库根目录构建 `@aisenlens/web`，发布 `apps/web/dist`，并保留必要的 SPA rewrite。 |
 
 ## 2026-08-14 视频加载与解码能力
 

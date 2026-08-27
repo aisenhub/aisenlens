@@ -15,12 +15,16 @@ supabase/    Supabase migrations and functions
 ## Development
 
 ```bash
-pnpm install
-pnpm dev
-pnpm build
-pnpm dev:desktop
-pnpm sync:mobile
+corepack pnpm install
+corepack pnpm dev
+corepack pnpm build
+corepack pnpm dev:desktop
+corepack pnpm sync:mobile
 ```
+
+Use the pnpm version pinned in `package.json` through Corepack. For Web features
+that connect to Supabase, copy `apps/web/.env.example` to `apps/web/.env.local`
+and provide the public Supabase URL and anonymous key; do not commit that file.
 
 Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android Studio is required for Android builds; Xcode on macOS is required for iOS builds.
 

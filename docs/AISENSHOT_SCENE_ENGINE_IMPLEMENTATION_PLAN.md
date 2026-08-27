@@ -50,7 +50,6 @@
 | 当前环境未发现 CMake、原生 C++ 编译器、CTest 或 Emscripten | Phase 1/6 开始前必须完成工具链预检；安装工具需单独获得执行环境许可 | Phase 1、Phase 6 |
 | 仓库没有通用 C++/TypeScript 单测框架 | 原生侧先使用 CTest + 无外部依赖的轻量测试可执行文件；TS 侧复用 Node `node:test`，不为此引入大型测试框架 | Phase 1、Phase 6 |
 | 根 `build` 当前只构建 `@aisenlens/web` | Engine 必须有独立 configure/build/test 脚本；接入前再把必要检查纳入总体验收 | Phase 1、Phase 12 |
-| 根 `package.json` 声明 pnpm 11.21.0，`.mise.toml` 固定 pnpm 10.34.3 | 会影响锁文件与 CI 可复现性；开始依赖变更前必须确定仓库唯一 pnpm 版本并记录，不在算法实现中绕过 | Phase 1 前置检查 |
 | 当前 `AutoShotRunRecord` 使用整数帧、`confidence` 和旧 `cuts` 结构 | 不能直接承载新引擎微秒时间、`score/threshold/evidence`、版本、配置 hash 和 checkpoint | Phase 10、Phase 11 |
 | `EditorWorkspace.tsx` 约 3640 行并直接管理检测、暂停、应用逻辑 | React 接入必须通过 hook/service 做局部替换；不得把 Worker/WASM 状态继续写进该组件 | Phase 11 |
 | IndexedDB 已有 `auto-shot-runs` store，且 `projectId` 唯一 | 无需为相同职责新建第二个 store；切换时必须使旧派生记录失效并删除，不能把旧记录当作新 checkpoint，也不保留长期兼容读取 | Phase 11 |
@@ -124,7 +123,7 @@
 cmake -S packages/scene-engine -B packages/scene-engine/build/native -DBUILD_TESTING=ON
 cmake --build packages/scene-engine/build/native --config Release
 ctest --test-dir packages/scene-engine/build/native -C Release --output-on-failure
-pnpm.cmd build
+corepack pnpm build
 git diff --check
 ```
 
@@ -439,10 +438,10 @@ git diff --check
 **测试/验证方式**
 
 ```powershell
-pnpm.cmd scene-engine:build:wasm
-pnpm.cmd scene-engine:test:wasm
-pnpm.cmd --filter @aisenlens/scene-engine build
-pnpm.cmd build
+corepack pnpm scene-engine:build:wasm
+corepack pnpm scene-engine:test:wasm
+corepack pnpm --filter @aisenlens/scene-engine build
+corepack pnpm build
 git diff --check
 ```
 
@@ -811,11 +810,11 @@ git diff --check
 **测试/验证方式**
 
 ```powershell
-pnpm.cmd scene-engine:test:native
-pnpm.cmd scene-engine:test:wasm
-pnpm.cmd --filter @aisenlens/scene-engine test
-pnpm.cmd build
-pnpm.cmd run build:desktop
+corepack pnpm scene-engine:test:native
+corepack pnpm scene-engine:test:wasm
+corepack pnpm --filter @aisenlens/scene-engine test
+corepack pnpm build
+corepack pnpm run build:desktop
 git diff --check
 ```
 
@@ -928,9 +927,9 @@ CMake/CTest 骨架
 **操作**：
 
 1. 读取根 `AGENTS.md`、`package.json`、`pnpm-workspace.yaml`、`.mise.toml`、`.gitignore`。
-2. 执行只读版本检查：`node --version`、`pnpm.cmd --version`、`cmake --version`、`ctest --version` 和实际 C++ 编译器版本。
+2. 执行只读版本检查：`node --version`、`corepack pnpm --version`、`cmake --version`、`ctest --version` 和实际 C++ 编译器版本。
 3. 确认 `packages/*` 已被 workspace 包含。
-4. 报告缺失工具和 pnpm 10.34.3/11.21.0 冲突；未经许可不得安装系统工具。
+4. 核验 `package.json` 与 `.mise.toml` 均声明当前统一的 pnpm 版本；未经许可不得安装系统工具。
 5. 确认工作树已有用户改动并记录，禁止回退 `AGENTS.md`、参考索引和架构文档。
 
 **交付物**：预检记录写入 `packages/scene-engine/README.md` 的 Prerequisites；若因工具缺失不能验证，明确标记 Phase 1 尚未完成。
@@ -945,7 +944,7 @@ CMake/CTest 骨架
 3. 在根 `package.json` 添加对应代理脚本，不改变现有 `dev/build/preview` 含义。
 4. 检查根 `.gitignore` 已忽略 `build/`；已有规则足够时不修改。
 
-**完成检查**：`pnpm.cmd --filter @aisenlens/scene-engine exec node -p "process.cwd()"` 能定位包目录。
+**完成检查**：`corepack pnpm --filter @aisenlens/scene-engine exec node -p "process.cwd()"` 能定位包目录。
 **禁止**：增加 npm 运行时依赖、创建第二个 scene engine 包、改 Web package。
 
 #### [ ] Task 1.3：建立 CMake/CTest 最小工程
