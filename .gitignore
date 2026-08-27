@@ -8,6 +8,7 @@ build/
 coverage/
 test-results/
 playwright-report/
+apps/web/test/
 apps/*/dist/
 apps/*/release/
 apps/*/node_modules/
