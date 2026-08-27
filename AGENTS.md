@@ -21,7 +21,7 @@
     2. 检查同一 feature 或相邻页面是否已有可复用的业务组件。
     3. 若现有组件只差少量样式或行为，优先扩展或传入 `className`，不要复制实现。
     4. 仅当现有组件无法满足需求时，才执行：
-       `pnpm dlx shadcn@latest add <组件名> --yes`
+       `corepack pnpm dlx shadcn@latest add <组件名> --yes`
     5. 新增 shadcn 组件必须放在 `apps/web/src/components/ui/`，并匹配 `apps/web/src/index.css` 的 AisenLens 主题 token。
     6. 通用交互优先使用 Button、Dialog、DropdownMenu、Tooltip、Tabs 和 Sonner 通知；业务逻辑不得放入通用 UI 组件。
     8. 每次引入或修改组件后，运行 `corepack pnpm build` 验证。
@@ -318,6 +318,12 @@
   - Styling: Tailwind CSS v4
   - Package Manager: pnpm
   - State Management: Zustand
+
+  Current delivery scope:
+
+  - Web (`apps/web`) is the only platform currently under active development and required validation.
+  - Do not make Desktop, Android, iOS, Electron, or Capacitor builds a blocking acceptance gate unless the user explicitly restores that platform to scope.
+  - Keep shared code and asset URLs portable, and record unverified platform compatibility honestly.
   
   Use the existing development workflow:
   
@@ -348,10 +354,17 @@
 ```
 project-root/
 
-├── src/
-│
-├── public/
-│
+├── apps/
+│   ├── web/
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── .env.example
+│   │   ├── vite.config.ts
+│   │   ├── tsconfig.json
+│   │   └── index.html
+│   ├── desktop/
+│   └── mobile/
+├── packages/
 ├── supabase/
 │
 ├── docs/
@@ -362,14 +375,10 @@ project-root/
 │
 ├── scripts/
 │
-├── .env
-├── .env.example
 ├── .gitignore
 ├── package.json
 ├── pnpm-lock.yaml
-├── vite.config.ts
-├── tsconfig.json
-├── index.html
+├── pnpm-workspace.yaml
 ├── README.md
 ```
 
@@ -379,7 +388,7 @@ The root directory contains application code, backend configuration, documentati
 
 ⸻
 
-src/
+apps/web/src/
 
 Frontend application source code.
 
@@ -393,13 +402,13 @@ Contains:
 
 Rules:
 
-* All frontend code must be inside src/.
-* Do not place React code outside src/.
-* Do not store configuration files here.
+* All frontend code must be inside `apps/web/src/`.
+* Do not place React code outside `apps/web/src/`.
+* Do not store configuration files inside `apps/web/src/`.
 
 ⸻
 
-public/
+apps/web/public/
 
 Static files served directly by the web server.
 
@@ -575,7 +584,7 @@ Rules:
 
 ⸻
 
-.env
+apps/web/.env.local
 
 Environment configuration file.
 
@@ -598,7 +607,7 @@ Rules:
 
 ⸻
 
-.env.example
+apps/web/.env.example
 
 Environment variable template.
 
@@ -651,7 +660,7 @@ Rules:
 
 ⸻
 
-vite.config.ts
+apps/web/vite.config.ts
 
 Vite build configuration.
 
@@ -668,7 +677,7 @@ Rules:
 
 ⸻
 
-tsconfig.json
+apps/web/tsconfig.json
 
 TypeScript configuration.
 
@@ -685,7 +694,7 @@ Rules:
 
 ⸻
 
-index.html
+apps/web/index.html
 
 Application HTML entry file.
 
@@ -725,10 +734,11 @@ When adding new files:
 
 1. First check if an existing directory is suitable.
 2. Avoid creating new root folders without a clear purpose.
-3. Keep frontend code inside src/.
+3. Keep frontend code inside `apps/web/src/`.
 4. Keep Supabase backend code inside supabase/.
 5. Keep documentation inside docs/.
 6. Keep development tools inside scripts/.
+7. Create a package under `packages/` only for a stable shared capability or an independently built/tested foundation with a clear runtime or cross-language ABI boundary. A second product consumer is preferred but is not mandatory for such an engine.
 
 The goal is a clean, scalable production application structure.
 

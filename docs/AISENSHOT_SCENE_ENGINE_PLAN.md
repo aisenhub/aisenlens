@@ -1,7 +1,10 @@
 # AisenShot Scene Engine 架构规划
 
-> 状态：技术方案草案，尚未实施  
-> 日期：2026-08-25  
+> 状态：已完成第二轮架构审核，尚未实施
+>
+> 初版日期：2026-08-25
+>
+> 最后修订：2026-08-27
 > 范围：分镜检测核心、浏览器运行时与前端集成边界  
 > 不包含：现有业务代码修改、UI 改版、关键帧提取及其他视频分析能力
 
@@ -17,12 +20,14 @@ AisenShot Scene Engine 应作为独立于 React 和项目领域模型的本地�
 
 `Histogram Detector`、`Hash Detector` 明确推迟。引擎只输出与 UI 无关的镜头边界、转场类型、来源和可解释指标；AisenLens 的任务持久化、候选确认、`ShotRecord` 创建及时间轴更新继续由 Web 应用负责。
 
-目标数据链路：
+目标数据链路（预处理后端由 Phase 0 基准决定，不预设单一路径）：
 
 ```text
 本地视频 Blob/File
   -> Mediabunny 解封装 + WebCodecs 顺序解码（Worker）
-  -> VideoSample/VideoFrame.copyTo(WASM 预分配帧缓冲)
+  -> VideoSample/VideoFrame 顺序取帧
+  -> 原生 YUV/RGB copyTo 或 Worker 内低分辨率预处理
+  -> WASM 预分配帧缓冲
   -> C++/WASM AisenShot Scene Engine
   -> 原始检测事件 -> 事件融合 -> 镜头边界结果
   -> TypeScript 结果适配器
@@ -40,6 +45,7 @@ AisenShot Scene Engine 应作为独立于 React 和项目领域模型的本地�
 - 将解码、算法、任务编排、项目持久化和 React UI 分层。
 - 同时支持硬切与淡入淡出事件，并保留每个结果的可解释指标。
 - 从接口和内存模型上为 WebCodecs、WASM SIMD、长视频流式处理和暂停恢复做好准备。
+- 在冻结生产像素路径前，用真实浏览器基准比较原生平面复制、RGB 标准化和 Worker 低分辨率预处理，避免把未经验证的全分辨率复制成本固化为架构。
 - 迁移完成后以新引擎替换当前 Canvas 自动分镜服务，不长期维护两套检测算法。
 
 ### 2.2 非目标
@@ -117,7 +123,7 @@ apps/web/src/features/
 | 方案/能力 | 已确认价值 | AisenShot 决定 |
 | --- | --- | --- |
 | PySceneDetect 0.7.1 | Content、Adaptive、Threshold 检测器；延迟事件、结束 flush、指标记录；BSD-3-Clause | 只独立实现所需数学和状态机，不移植 Python 框架或 OpenCV 依赖 |
-| WebCodecs `VideoFrame` | 提供解码帧、微秒时间戳、平面像素复制和 Worker 可用能力 | 作为浏览器帧来源；每帧最多进行一次到 WASM 的必要像素复制 |
+| WebCodecs `VideoFrame` | 提供解码帧、微秒时间戳、平面像素复制和 Worker 可用能力；显式 `copyTo()` 格式转换只保证 RGB 类输出，不能任意要求 I420 | 作为浏览器帧来源；先探测实际格式，再选择原生平面或 RGB 标准化路径 |
 | Mediabunny 1.29.1 | 已在项目中使用；封装解封装、WebCodecs 解码和顺序 `VideoSample` 迭代 | 作为首个浏览器解码适配器，不重复编写容器解析器 |
 | WebAssembly SIMD | 适合并行处理像素绝对差、亮度统计和下采样 | 同一 ABI 构建 baseline/SIMD 两个产物，运行时能力探测后选择 |
 | Emscripten + CMake | C++ 到浏览器 WASM 的成熟工具链 | 只用于构建和薄 C ABI 导出，不用 Embind 暴露复杂对象图 |
@@ -241,7 +247,7 @@ apps/web/src/features/auto-shot/
 | `ContentDetector` | 固定阈值硬切判断 | 自适应窗口、淡变配对 |
 | `AdaptiveDetector` | Content 指标窗口、比值和延迟事件 | 重复计算帧颜色特征 |
 | `ThresholdDetector` | 黑场/白场阈值穿越、淡变配对、bias | 普通硬切检测 |
-| `MinSceneFilter` | 最短镜头、闪切 merge/suppress | 跨检测器类型融合 |
+| `MinSceneFilter` | 对融合后的最终边界执行最短镜头、merge/suppress | 检测器内部峰值去抖、跨检测器融合 |
 | `EventResolver` | 排序、去重、同一转场多来源合并 | 写入 AisenLens 分镜 |
 | WASM C ABI | 句柄、配置、帧缓冲、事件读取、checkpoint | 业务友好 API |
 | `wasmRuntime` | 选择 baseline/SIMD、内存视图、资源释放 | 媒体解码 |
@@ -258,7 +264,10 @@ apps/web/src/features/auto-shot/
 C++ 只接收只读、无所有权的平面视图：
 
 ```cpp
-enum class PixelFormat : uint8_t { I420, NV12, RGBA };
+enum class PixelFormat : uint8_t { I420, NV12, RGBX, RGBA };
+enum class ColorMatrix : uint8_t { Identity, Bt601, Bt709, Bt2020Ncl };
+enum class ColorPrimaries : uint8_t { Unknown, Bt709, Bt470Bg, Smpte170M, Bt2020 };
+enum class TransferCharacteristics : uint8_t { Unknown, Bt709, Srgb, Pq, Hlg };
 
 struct PlaneView {
   const uint8_t* data;
@@ -272,6 +281,15 @@ struct FrameView {
   PlaneView planes[3];
   uint32_t coded_width;
   uint32_t coded_height;
+  uint32_t visible_x;
+  uint32_t visible_y;
+  uint32_t visible_width;
+  uint32_t visible_height;
+  uint8_t bit_depth;
+  ColorMatrix matrix;
+  ColorPrimaries primaries;
+  TransferCharacteristics transfer;
+  bool full_range;
   uint64_t presentation_index;
   int64_t timestamp_us;
   int64_t duration_us;
@@ -283,8 +301,9 @@ struct FrameView {
 - 帧必须按呈现顺序输入，`timestamp_us` 单调不减。
 - `presentation_index` 是本次解码的顺序编号，不等同于 AisenLens 项目帧号。
 - 最短镜头时长使用微秒比较，避免 VFR 视频依赖平均帧率。
-- `I420` 为首选输入，`NV12` 次之，`RGBA` 只作为像素格式适配，不作为旧 Canvas 降级路径。
-- 旋转元数据不影响全画面统计；裁剪/可见区域必须在 Worker 传入有效尺寸前统一处理。
+- C++ 第一版只接收规范化的 8-bit `I420`、`NV12`、`RGBX` 或 `RGBA`；10/12-bit、未知格式和 HDR 必须由 Worker 按已验证策略规范化，或返回明确 capability error。
+- 颜色矩阵、primaries、transfer、full/limited range、bit depth 和 visible rect 必须随帧传入；YUV 转换不得假定所有视频都是 BT.709 limited range。
+- 旋转和镜像不改变全画面标量统计，但会影响空间采样网格；Worker 必须冻结统一的可见区域与方向语义，同一任务中不得切换。
 
 ### 7.2 检测器接口
 
@@ -363,12 +382,15 @@ fade event
 
 推荐检测预设只选择一个主要硬切策略：`content` 或 `adaptive`，再按需并行启用 `threshold`。不要默认同时运行 Content 和 Adaptive 后简单拼接结果。
 
-事件处理分两级：
+事件处理分三级：
 
-1. 检测器级过滤：最短镜头约束、快速连续高分的 merge/suppress。
+1. 检测器级去抖：只处理同一 detector 的连续高分峰、闪切候选和 look-ahead，不执行最终 minimum-scene 约束。
 2. 跨检测器解析：按时间排序，把容差窗口内或 fade 区间内的同一事件合并。
+3. 最终边界约束：在融合后的边界上执行 minimum scene duration，并按明确的 merge/suppress 策略保留被抑制证据。
 
-融合后事件保留 `sources[]` 和各自 evidence。有效 fade 区间与硬切点重叠时，最终类型优先标为 fade，但不得丢弃硬切来源。所有去重规则必须是确定性的，同样输入与配置必须得到字节级稳定结果。
+融合后事件保留 `sources[]` 和各自 evidence。有效 fade 区间与硬切点重叠时，最终类型优先标为 fade，但不得丢弃硬切来源。所有去重规则必须是确定性的。跨 native/WASM/SIMD 要求边界时间、类型、顺序和决策完全一致；诊断浮点指标只允许在批准容差内不同。
+
+为避免阈值附近因浮点累计顺序产生不同边界，参与 detector 决策的共享指标应优先采用整数累计、定点量化或明确舍入；Adaptive ratio 优先通过交叉乘法比较。浮点值只用于对外诊断，不应成为跨后端不稳定的隐藏决策源。
 
 ### 7.8 指标不是概率
 
@@ -394,9 +416,9 @@ export interface SceneTimePoint {
 ```
 
 - `timestampUs` 是引擎和解码层的权威位置。
-- `presentationIndex` 用于诊断、测试和 CFR 快速路径。
+- `presentationIndex` 用于诊断、测试并区分重复 PTS；恢复位置不得只依赖 timestamp。
 - 引擎不读取项目平均帧率，也不输出 `ShotRecord`。
-- `sceneResultAdapter` 负责将 `timestampUs` 一次性投影为 AisenLens 整数项目帧，并按 `[startFrame, endFrame)` 构造候选。
+- `sceneResultAdapter` 负责将 `timestampUs` 一次性投影为 AisenLens 整数项目帧，并按 `[startFrame, endFrame)` 构造候选。Phase 0 必须冻结舍入方式、首尾 clamp、重复 PTS、零 duration 和项目末帧规则，禁止实现阶段临时选择 `floor/round/ceil`。
 - 引擎只返回内部边界；视频起点和终点由结果适配器加入，避免把“边界”和“完整镜头列表”混为一体。
 
 ### 8.2 公共结果
@@ -440,7 +462,7 @@ export interface SceneEngineResult {
 }
 ```
 
-`id` 应由检测器、时间点和 config hash 确定性生成，便于暂停恢复和重复运行去重，不使用随机 UUID。
+`id` 应由 schema、事件类型、检测器、时间点/区间和 config hash 确定性生成，便于暂停恢复和重复运行去重，不使用随机 UUID。`configHash` 必须基于版本化、字段顺序固定的规范化配置生成，不能直接 hash 普通对象的偶然序列化结果。
 
 ## 9. TypeScript 公共 API
 
@@ -472,7 +494,9 @@ export interface SceneDetectionConfig {
   minimumSceneDurationUs: number;
   analysis: {
     maxWidth: number;
-    preferredPixelFormat: "I420";
+    temporalSampling:
+      | { kind: "every-frame" }
+      | { kind: "stride"; step: number; refineRadiusFrames: number };
   };
   diagnostics: "off" | "summary" | "metrics";
 }
@@ -481,13 +505,33 @@ export interface StartSceneDetectionRequest {
   source: Blob;
   mediaFingerprint: string;
   config: SceneDetectionConfig;
-  checkpoint?: ArrayBuffer;
+  checkpoint?: SceneEngineCheckpoint;
 }
+
+export interface SceneEngineCheckpoint {
+  schemaVersion: 1;
+  engineVersion: string;
+  configHash: string;
+  mediaFingerprint: string;
+  resumeAfter: {
+    timestampUs: number;
+    timestampOrdinal: number;
+    nextPresentationIndex: number;
+  };
+  committedBoundaries: SceneBoundary[];
+  coreState: ArrayBuffer;
+}
+
+export type SceneTaskOutcome =
+  | { status: "completed"; result: SceneEngineResult }
+  | { status: "paused"; checkpoint: SceneEngineCheckpoint }
+  | { status: "cancelled" }
+  | { status: "failed"; error: SceneEngineError };
 
 export interface SceneEngineTask {
   readonly jobId: string;
-  readonly result: Promise<SceneEngineResult>;
-  pause(): Promise<ArrayBuffer>;
+  readonly completion: Promise<SceneTaskOutcome>;
+  pause(): Promise<SceneEngineCheckpoint>;
   cancel(): Promise<void>;
 }
 
@@ -506,7 +550,7 @@ export interface SceneEngineClient {
 - `Blob` 可为 `File`，但 API 不要求 DOM 文件输入控件。
 - 进度最多按固定时间间隔节流回传，不逐帧 `postMessage`。
 - 错误使用稳定 code（如 `UNSUPPORTED_CODEC`、`WASM_INIT_FAILED`、`DECODE_FAILED`、`INVALID_CHECKPOINT`、`CANCELLED`），UI 再映射为文案。
-- `cancel` 不产生 checkpoint；`pause` 只在安全帧边界完成并返回 checkpoint。
+- `cancel` 不产生 checkpoint；`pause` 只在安全帧边界完成并返回 checkpoint，同时使当前任务以 `paused` outcome 结束。恢复始终通过新的 `start({ checkpoint })` 创建新任务，不复用已暂停的 Worker job。
 
 ## 10. Worker 协议与运行状态
 
@@ -523,7 +567,7 @@ export interface SceneEngineClient {
 Worker -> 主线程
   READY { backend, version }
   STARTED { jobId }
-  PROGRESS { jobId, processedUs, durationUs, decodedFrames, boundaries }
+  PROGRESS { jobId, processedUs, durationUs, decodedFrames, newBoundaries, totalBoundaries }
   CHECKPOINT { jobId, checkpoint }
   COMPLETED { jobId, result }
   CANCELLED { jobId }
@@ -544,29 +588,31 @@ Worker 一次只执行一个重型检测任务；项目级并发由 `autoShotTas
 
 ### 10.3 暂停恢复
 
-checkpoint 是 C++ 核心导出的不透明二进制快照，至少包含：
+checkpoint 分为两层。C++ 核心只导出不透明算法状态 `coreState`，至少包含：
 
 - ABI、schema 和 engine version；
 - config hash、最后已提交时间点、下一帧位置；
 - 前一分析帧所需的紧凑状态；
 - Adaptive 分数窗口、Fade 状态机、最短镜头过滤状态；
-- 已输出边界的确定性摘要。
+- 已输出边界的确定性摘要，用于校验而不是替代完整结果。
 
-恢复前必须校验媒体指纹、配置 hash 和引擎主版本。浏览器解码器从 checkpoint 时间点重新建立顺序解码；若需要从更早关键帧启动，预热帧不得二次提交给引擎。checkpoint 由 Web 应用存入 IndexedDB，C++ 核心不直接持久化。
+Worker/TypeScript 层再封装 `SceneEngineCheckpoint`，保存完整已提交边界、`timestampUs + timestampOrdinal`、下一 `presentationIndex`、媒体指纹、配置 hash 和 coreState。恢复前必须校验媒体指纹、配置 hash、checkpoint schema 和精确 engine state version；没有显式迁移器时不得只比较主版本后猜测恢复。浏览器解码器从 checkpoint 时间点重新建立顺序解码；若从更早关键帧启动，必须按 timestamp 与同时间戳序号跳过预热帧，且不得二次提交给引擎。checkpoint 由 Web 应用存入 IndexedDB，C++ 核心不直接持久化。
+
+媒体指纹不能只依赖文件名、大小、修改时间和 MIME。产品恢复校验至少还应包含内容摘要（完整 SHA-256 或经过评审的首尾分块摘要）以及视频轨 codec、尺寸和时长；计算策略需在 Phase 0 记录成本与碰撞风险。
 
 ## 11. WebCodecs 与 WASM 内存策略
 
 ### 11.1 可实现的复制上限
 
-当前 Web 平台不能把硬件解码器内部 `VideoFrame` 表面直接映射为普通 WASM 线性内存，因此每个被分析帧至少需要一次显式像素复制。AisenShot 的目标是“一次必要复制，零额外跨层复制”：
+当前 Web 平台不能把硬件解码器内部 `VideoFrame` 表面直接映射为普通 WASM 线性内存，因此被送入 WASM 的像素至少需要一次显式复制。生产预处理后端必须由 Phase 0 在目标浏览器中实测后选择：
 
 ```text
-VideoSample.copyTo(Uint8Array backed by WebAssembly.Memory)
-  -> C++ 直接读取同一内存
-  -> 内部下采样/指标/检测
+A. VideoSample 原生 I420/NV12 -> copyTo(WASM memory) -> C++ 下采样
+B. VideoSample -> copyTo RGBX/RGBA(WASM memory) -> C++ 下采样
+C. VideoSample -> Worker OffscreenCanvas 低分辨率预处理 -> 小缓冲写入 WASM
 ```
 
-禁止的中间路径：
+路径 C 不是旧 `<video>` 随机 seek 降级，而是 Worker 内顺序解码后的显式预处理后端。它只有在兼容性或端到端基准优于全分辨率复制时才能启用，并必须使用相同 detector/result 契约。禁止的路径是让像素经过主线程或形成无界中间对象：
 
 ```text
 VideoFrame -> Canvas -> ImageData -> JS Array -> WASM Array
@@ -576,7 +622,8 @@ VideoFrame -> Canvas -> ImageData -> JS Array -> WASM Array
 
 - 解码器、帧复制和 WASM 全部运行在同一个专用 Worker，像素帧不经过 React 主线程。
 - 使用 `VideoSampleSink.samples()` 顺序解码，不对每个时间点调用随机 `getSample()`。
-- 优先请求 I420；复制 Y/U/V 平面到 WASM 预分配的连续槽位，C++ 接收实际 stride/layout。
+- 不得假定可以通过 `copyTo()` 请求 I420。若 sample 原生暴露 I420/NV12，则复制其实际平面；否则只请求规范允许的 RGBX/RGBA 标准化格式，或选择经 Phase 0 批准的 Worker 预处理后端。
+- `sample.format === null`、10/12-bit/HDR 和浏览器格式差异必须进入 capability matrix；未经验证不得静默改变颜色语义。
 - 得知视频尺寸后一次性 `reserve_frame_buffers()`，处理期间禁止 WASM memory growth，避免 `Uint8Array` 视图失效。
 - 第一版使用单复用缓冲；性能分析证明复制和计算不能重叠后，再引入双缓冲，不预先增加环形队列复杂度。
 - 每帧处理完成立即 `VideoSample.close()`；检测器只保留下采样后的前帧状态和小窗口指标，不持有原始 4K 帧。
@@ -704,7 +751,7 @@ AutoShotPanel / EditorWorkspace
 实施前先记录基准机型，避免只写无上下文的绝对数字。第一阶段验收至少满足：
 
 - 准确率回归以同一标注集和同一容差比较，不以肉眼观感替代指标。
-- 默认逐帧分析，不以 0.2 秒抽样换取表面速度；如未来允许 stride，必须作为显式低精度模式。
+- 正确性基线默认逐帧分析；生产默认是否逐帧、采用低成本逐帧预筛选还是显式 stride，必须由 Phase 0/标注集的召回率与端到端性能共同决定。任何 stride 都必须是可见的质量预设，候选区间精修不能掩盖漏检风险。
 - 峰值内存为 `O(原始帧缓冲 + 分析帧 + detector window)`，不得随视频时长增长。
 - 处理期间 React 主线程不做像素读取和检测计算，进度更新节流后不造成可见卡顿。
 - SIMD 与 baseline 必须输出相同边界；浮点指标差异限定在测试容差内。
@@ -715,10 +762,12 @@ AutoShotPanel / EditorWorkspace
 ### Phase 0：规格与基准
 
 - 固化本文 API、时间语义、事件语义和像素格式。
-- 建立合成帧 fixture、标注格式和当前 JS 算法基线。
+- 建立合成帧 fixture、最小人工标注真实视频集、评分脚本和当前 JS 算法准确率/性能基线。
+- 在目标 Web 浏览器比较原生 YUV、RGBX/RGBA、Worker OffscreenCanvas 低分辨率预处理，以及逐帧/预筛选策略的 decode、copy、preprocess、detect、总耗时和内存。
+- 冻结 VFR 到项目帧的舍入规则、颜色空间规范、媒体指纹、checkpoint envelope、任务 outcome 和 config hash 规范。
 - 确认 Emscripten 版本、构建产物和许可证 NOTICE。
 
-退出条件：配置和结果 schema 经评审，不再用 `confidence` 表示原始差异分。
+退出条件：配置/结果/checkpoint schema 经评审；至少一种 Web 像素路径通过真实 smoke；基线报告可复现；不再用 `confidence` 表示原始差异分。Phase 0 未通过不得开始 C++ Phase 1。
 
 ### Phase 1：C++ Content Core
 
@@ -771,7 +820,7 @@ AutoShotPanel / EditorWorkspace
 | 风险 | 应对 |
 | --- | --- |
 | WebCodecs 解码支持受浏览器和系统影响 | 由 decoder 返回明确 capability/error；不在核心内加入 Canvas seek 降级 |
-| `VideoFrame.copyTo(I420)` 格式协商差异 | 启动时探测并支持 NV12/RGBA 输入适配，三者进入同一 C++ FrameView |
+| `VideoFrame.copyTo()` 不能任意请求 I420，且 sample format 可能为 null | 启动时记录实际格式；原生 I420/NV12 走平面快路，其他格式按规范转 RGBX/RGBA，必要时使用经基准批准的 Worker 预处理后端或返回 capability error |
 | WASM memory growth 使 JS 视图失效 | 视频尺寸已知后预分配，任务期间禁用增长并设置可测内存上限 |
 | HSV 实现与 OpenCV 数值不同 | 固化公式、合成 golden 和容差；重新标定阈值，不假装数值完全等价 |
 | Adaptive 延迟导致时间点错位 | 每个事件携带目标 TimePoint；接口暴露 lookahead 并专项测试 |
@@ -794,7 +843,10 @@ AutoShotPanel / EditorWorkspace
 9. 先 native correctness，再 WASM，再 React 集成；不以 UI 驱动算法结构。
 10. 新引擎验收后删除旧 Canvas 检测路径，不维护兼容双轨。
 11. 仅为未来能力保留版本和 capability 扩展点，本阶段不设计关键帧提取。
+12. 生产像素路径由 Web 端到端基准决定，不把全分辨率 YUV->WASM 复制预先写死为唯一正确实现。
+13. checkpoint 由 Worker envelope 与 C++ core state 组成；恢复要求精确版本、强媒体身份和完整结果前缀。
+14. 先融合跨检测器事件，再对最终边界执行 minimum scene duration。
 
 ## 19. 规划完成后的下一项工作
 
-若本方案通过评审，下一阶段只应执行 Phase 0：确认 API/schema、选择 Emscripten 构建版本、建立合成 fixture 与基准说明。Phase 0 完成并记录结果前，不应开始 React 接入或替换现有自动分镜业务链路。
+下一阶段只应执行 Phase 0：确认 API/schema、选择 Emscripten 构建版本、建立合成与真实 fixture、记录当前 JS 基线并验证浏览器像素路径。Phase 0 完成并记录结果前，不应开始 C++ Phase 1、React 接入或替换现有自动分镜业务链路。

@@ -1,8 +1,10 @@
 # AisenShot Scene Engine 开发实施计划
 
-> 状态：待按阶段执行
+> 状态：已完成第二轮审核，待从 Phase 0 开始执行
 >
-> 日期：2026-08-25
+> 初版日期：2026-08-25
+>
+> 最后修订：2026-08-27
 >
 > 依据：已审核通过的 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`
 >
@@ -10,14 +12,15 @@
 >
 > 不包含：关键帧提取、Histogram Detector、Hash Detector、UI 改版及其他视频分析能力
 
-本文把既定架构拆成可独立开发、测试和验收的执行阶段。文中的阶段细分只用于降低单次改动范围，不改变以下已确定路线：单一 `@aisenlens/scene-engine` workspace 包、C++ 核心、稳定 C ABI、Emscripten/WASM、专用 Worker、Mediabunny + WebCodecs 顺序解码、微秒时间权威、baseline/SIMD 双产物，以及由 Web 适配层完成项目帧映射。
+本文把既定架构拆成可独立开发、测试和验收的执行阶段。文中的阶段细分只用于降低单次改动范围，不改变以下已确定路线：先完成 Web 可行性与基准验证，再建立单一 `@aisenlens/scene-engine` workspace 包、C++ 核心、稳定 C ABI、Emscripten/WASM、专用 Worker、Mediabunny + WebCodecs 顺序解码、微秒时间权威、baseline/SIMD 双产物，以及由 Web 适配层完成项目帧映射。像素预处理后端必须由 Phase 0 的真实浏览器基准决定，不预先锁死为 I420 全分辨率复制。
 
 ## 一、总体实施路线
 
 ### 1.1 开发顺序
 
 ```text
-工具链与原生 C++ 最小骨架
+现有算法基线、浏览器能力与像素路径验证
+  -> 工具链与原生 C++ 最小骨架
   -> 共享图像预处理与 Content Detector
   -> Adaptive Detector
   -> Threshold/Fade + 过滤/融合 + checkpoint
@@ -31,10 +34,11 @@
   -> 整体验收、旧实现删除、参数标定
 ```
 
-实施原则是“先算法和原生测试，再跨 ABI，再浏览器运行时，最后业务与 React”。每个 Phase 必须单独通过本阶段验证，失败时不得以进入下一阶段来掩盖问题。
+实施原则是“先测量并冻结契约，再做算法和原生测试，再跨 ABI，再浏览器运行时，最后业务与 React”。每个 Phase 必须单独通过本阶段验证，失败时不得以进入下一阶段来掩盖问题。
 
 ### 1.2 最小可运行版本定义
 
+- **可行性基线（Phase 0）**：当前 JS 算法已有可复现准确率/性能记录，至少一种目标 Web 浏览器像素路径完成真实视频 smoke，公共契约已冻结。
 - **工程最小可运行版本（Phase 1）**：原生 C++ 引擎可以创建、顺序接收合成帧、flush、reset 和销毁；尚不检测切点，稳定输出零事件。
 - **算法最小可用版本（Phase 2）**：Content Detector 在原生测试中可稳定检测合成硬切，尚不接 WASM 或 UI。
 - **浏览器最小可用版本（Phase 8）**：真实短视频可在 Worker 中经 WebCodecs 解码并由 baseline WASM 输出镜头边界，主线程不接收像素帧。
@@ -53,11 +57,55 @@
 | 当前 `AutoShotRunRecord` 使用整数帧、`confidence` 和旧 `cuts` 结构 | 不能直接承载新引擎微秒时间、`score/threshold/evidence`、版本、配置 hash 和 checkpoint | Phase 10、Phase 11 |
 | `EditorWorkspace.tsx` 约 3640 行并直接管理检测、暂停、应用逻辑 | React 接入必须通过 hook/service 做局部替换；不得把 Worker/WASM 状态继续写进该组件 | Phase 11 |
 | IndexedDB 已有 `auto-shot-runs` store，且 `projectId` 唯一 | 无需为相同职责新建第二个 store；切换时必须使旧派生记录失效并删除，不能把旧记录当作新 checkpoint，也不保留长期兼容读取 | Phase 11 |
-| Desktop/Mobile 复用 Web renderer | Worker 与 WASM URL 不能假定站点根路径；必须验证 Vite Web、Electron 打包相对资源和 Capacitor 资源上下文 | Phase 8、Phase 12 |
+| 当前开发范围仅为 Web，Desktop/Mobile 暂不开发 | Worker 与 WASM URL 仍不得假定站点根路径，但 Electron/Capacitor 不作为本轮阻塞门；恢复对应平台开发时再执行跨壳验证 | 后续平台专项 |
 
 若执行中发现新的结构冲突，当前 Phase 只记录“事实、影响、阻断的验收项”，暂停受影响任务并请求评审；不得借机修改既定核心技术路线。
 
 ## 二、分阶段实施计划
+
+### Phase 0：规格、现有基线与 Web 像素路径验证
+
+**目标**
+
+在创建 C++ 工程前建立可复现的准确率、性能和兼容性基线，验证浏览器实际能够提供的像素格式与复制路径，并冻结会影响所有后续阶段的公共契约。
+
+**具体任务**
+
+1. 建立无版权合成素材与最小人工标注真实视频集，固定 hard-cut/fade 标注格式、checksum 和一对一匹配评分规则。
+2. 对当前 Canvas/seek 算法记录 Precision、Recall、F1、边界偏移、总耗时、主线程长任务和峰值内存；明确它只用于迁移基线，不作为新架构兼容目标。
+3. 在目标 Web 浏览器用短视频 spike 比较：原生 I420/NV12 平面复制、RGBX/RGBA 标准化复制、Worker OffscreenCanvas 低分辨率预处理，以及逐帧/低成本预筛选策略。
+4. 记录 `VideoSample.format === null`、10/12-bit/HDR、rotation/visible rect、full/limited range、VFR、重复 PTS 和无 duration 的能力结果。
+5. 冻结 FrameView 色彩字段、规范化像素策略、VFR 到项目帧舍入、强媒体指纹、config hash、checkpoint envelope、完整边界前缀与 task outcome。
+6. 固定实际可用的 CMake、编译器和 Emscripten 精确版本计划；Phase 0 只记录缺项，不以安装工具代替浏览器可行性验证。
+
+**涉及文件/目录**
+
+创建：
+
+- `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`
+- `apps/web/test/auto-shot-baseline.browser.test.js`
+- `apps/web/test/fixtures/auto-shot/manifest.example.json`
+- `scripts/evaluate-auto-shot.mjs`
+
+修改：
+
+- `apps/web/package.json`：只增加 Phase 0 基准/评分脚本。
+- `package.json`：只增加对应根代理脚本。
+- `reference-projects/REFERENCE_PROJECT_INDEX.md`：记录实际补充查阅和最终采用决定。
+
+不提交：
+
+- 本地视频 fixture、受限数据集和包含版权素材的截图；由 manifest/checksum 定位。
+
+**完成标准**
+
+- 当前 JS 基线和至少一种候选像素路径可在记录的 Web 浏览器中重复运行。
+- 基线报告分离 decode/seek、copy、preprocess、detect、total、内存和主线程影响。
+- 明确哪些格式可走原生平面、哪些必须 RGB 标准化、哪些返回 capability error；不得写“优先请求 I420”作为未经验证的事实。
+- 所有公共时间、颜色、恢复、结果和任务终态契约均有示例与边界测试说明。
+- 已定义后续算法优化必须超过的准确率/性能基线，但不写脱离机器和素材的绝对上线承诺。
+
+**Phase 0 验收门**：基线、能力矩阵、像素路径决定和公共契约评审全部完成。任一缺失时不得开始 Phase 1。
 
 ### Phase 1：原生 C++ 工程骨架与最小生命周期
 
@@ -67,7 +115,7 @@
 
 **具体任务**
 
-1. 预检并记录 CMake、CTest、C++ 编译器、Node 和 pnpm 版本，先解决 pnpm 版本声明冲突。
+1. 预检并记录 CMake、CTest、C++ 编译器、Node 和 pnpm 版本，核验 Phase 0 已记录的工具链决定；当前 pnpm 声明已经统一，不再把它列为冲突。
 2. 创建 `@aisenlens/scene-engine` workspace 包，不引入 React、Zustand、浏览器 API 或 OpenCV。
 3. 建立 CMake 静态核心库、测试可执行文件和 CTest 注册。
 4. 按既定架构落地 `FrameView`、`SceneEvent`、`EngineConfig`、`ISceneDetector` 与 `SceneEngine` 基础类型。
@@ -104,7 +152,7 @@
 
 **前置条件**
 
-- 已审核架构文档是类型和生命周期语义的唯一依据。
+- 已审核架构文档与通过验收的 Phase 0 契约是类型和生命周期语义的共同依据；两者冲突时暂停并评审，不得自行选择。
 - 可用支持 C++17 的编译器、CMake 和 CTest。
 - 若环境缺工具，先报告准确缺项；只有获得许可后才安装。
 
@@ -112,7 +160,7 @@
 
 - package 被 pnpm workspace 正确识别。
 - Debug/Release 均可构建核心库与测试可执行文件。
-- 合法的 I420/NV12/RGBA 合成帧可顺序处理并返回零事件。
+- 合法的 8-bit I420/NV12/RGBX/RGBA 合成帧可顺序处理并返回零事件，色彩元数据、visible rect 与 bit depth 校验生效。
 - 非法 plane/stride、倒退时间戳、倒退 presentation index、重复 flush 等行为有明确且经过测试的结果。
 - reset 后同一输入序列可再次处理，结果完全一致。
 - 包不依赖 React、WebCodecs、Mediabunny、OpenCV、Python 或项目业务类型。
@@ -144,7 +192,7 @@ git diff --check
 **具体任务**
 
 1. 先补充相同帧、纯亮度变化、色相变化、纯色硬切、权重组合和阈值边界测试。
-2. 固化 I420/NV12/RGBA 到统一分析表面的数值规则、舍入方式、有效尺寸和 stride 处理。
+2. 固化 I420/NV12/RGBX/RGBA 到统一分析表面的数值规则、舍入方式、visible rect、stride、bit depth、matrix、primaries、transfer 与 full/limited range 处理。
 3. 实现保持宽高比的下采样、YUV/RGBA 读取、HSV/亮度指标和相邻帧差异；单帧只遍历一次生成共享指标。
 4. 实现 Content Detector 的分量权重、`score`、阈值判定和事件 evidence。
 5. 将 detector pipeline 接入 SceneEngine，但默认只启用一种 hard-cut detector。
@@ -185,7 +233,7 @@ git diff --check
 **完成标准**
 
 - 相同帧 score 为确定值，阈值两侧行为明确。
-- 三种输入格式在定义容差内产生一致指标和边界。
+- Phase 0 批准的输入格式在定义容差内产生一致指标和边界；不支持的 HDR/高 bit-depth 路径返回明确错误。
 - Content 事件使用微秒时间与 `score`，不使用 `confidence` 命名原始差异。
 - 内存占用只与当前原始帧、分析帧和前帧指标相关，不随视频长度增长。
 - 原生测试覆盖首帧、末帧、stride padding、奇数尺寸和权重为零。
@@ -211,7 +259,7 @@ git diff --check
 **具体任务**
 
 1. 先建立局部高峰、持续快速运动、邻域均值为零、最小 Content score、窗口延迟和尾部 flush 测试。
-2. 实现前后窗口、adaptive ratio、最小 Content score 保护和目标事件真实时间戳。
+2. 实现前后窗口、adaptive ratio、最小 Content score 保护和目标事件真实时间戳；阈值决策优先使用量化值和交叉乘法，避免后端浮点累计差异改变边界。
 3. 通过 `lookahead_frames()` 暴露延迟，不允许调用方把当前输入帧误当作事件帧。
 4. 在配置校验中保证 Content 与 Adaptive 作为默认 hard-cut 模式二选一；共享指标层保持唯一。
 
@@ -266,10 +314,11 @@ git diff --check
 
 1. 先建立 floor/ceiling 穿越、完整淡出淡入、仅淡出、仅淡入、fade bias 三位置和结尾未闭合 fade 测试。
 2. 实现 Threshold/Fade 状态机；其可与选定的 Content 或 Adaptive hard-cut detector 并行。
-3. 实现 `MinSceneFilter` 的 minimum duration、merge/suppress 和闪白/闪黑抑制。
+3. 实现 detector 级峰值去抖和闪白/闪黑候选抑制，但不在融合前执行最终 minimum scene duration。
 4. 实现 `EventResolver` 的稳定排序、去重、同转场多来源聚合和 hard-cut/fade 重叠决策；保留原始 evidence。
-5. 实现 checkpoint 核心序列化/恢复：版本、schema、config hash、最后提交时间、前帧指标、Adaptive 窗口、Fade 状态、过滤状态及已提交边界摘要。
-6. 验证连续运行与任意安全帧边界暂停/恢复完全一致。
+5. 在融合后的最终边界上实现 `MinSceneFilter` 的 minimum duration、merge/suppress，并固定被抑制 evidence 的保留规则。
+6. 实现 checkpoint 核心序列化/恢复：精确 state version、schema、规范化 config hash、最后提交时间及同 PTS 序号、前帧指标、Adaptive 窗口、Fade 状态、过滤状态及已提交边界摘要。
+7. 验证连续运行与任意安全帧边界暂停/恢复完全一致；完整已提交边界由后续 Worker checkpoint envelope 保存，不混入 C++ core state。
 
 **涉及文件/目录**
 
@@ -310,7 +359,7 @@ git diff --check
 - Content、Adaptive 可独立选择；Threshold/Fade 可按配置并行开启。
 - 同一输入与配置的事件顺序确定，事件源和 evidence 不丢失。
 - 最短镜头使用微秒比较，不依赖平均帧率。
-- checkpoint 对 config hash、schema 和主版本不匹配返回明确错误。
+- checkpoint 对 config hash、schema 和精确 engine state version 不匹配返回明确错误。
 - 在多个安全帧位置暂停/恢复的最终结果与一次连续运行完全相同。
 
 **测试/验证方式**
@@ -461,10 +510,10 @@ git diff --check
 
 1. 定义并穷尽检查 `INIT/START/PAUSE/CANCEL/DISPOSE` 及反向消息协议。
 2. 实现一次只运行一个重型任务的 Worker 状态机。
-3. 实现 `SceneEngineClient`，封装 jobId、回调、AbortSignal、错误和 dispose。
+3. 实现 `SceneEngineClient`，封装 jobId、回调、AbortSignal、`completed/paused/cancelled/failed` outcome 和 dispose。
 4. 实现帧缓冲池，首版只使用单个复用 buffer。
 5. 用仅存在于测试目录的合成帧源注入 Worker runtime；不得把测试帧协议暴露为公共生产 API。
-6. 验证 pause 仅在安全帧边界返回 checkpoint，cancel 不生成 checkpoint。
+6. 验证 pause 仅在安全帧边界返回完整 Worker checkpoint envelope 并终结当前 job，cancel 不生成 checkpoint；恢复必须创建新 job。
 
 **涉及文件/目录**
 
@@ -520,11 +569,11 @@ git diff --check
 
 1. 用 Mediabunny `VideoSampleSink.samples()` 实现顺序解封装/解码，不做逐时间点随机 seek。
 2. 读取实际 coded/visible 尺寸、timestamp、duration、rotation 和格式能力。
-3. 优先协商 I420，其次 NV12/RGBA；使用 `VideoSample.copyTo()` 直接写入 `WebAssembly.Memory` 对应 view。
+3. 按 Phase 0 能力矩阵选择像素路径：sample 原生为 I420/NV12 时可直接复制平面；否则只使用规范允许的 RGBX/RGBA 标准化，或经基准批准的 Worker OffscreenCanvas 低分辨率预处理。不得假定 `copyTo()` 可以请求 I420。
 4. 已知视频尺寸后一次 reserve；每帧处理后立即 `VideoSample.close()`。
 5. 实现稳定错误码：不支持编码、初始化失败、解码失败、无视频轨、损坏文件和取消。
-6. 增加无版权短视频 fixtures 及浏览器集成测试，覆盖 H.264/MP4、VP9/WebM、VFR、旋转、无音轨和错误文件。
-7. 验证 Vite 构建后的 Worker/WASM 相对 URL；同时做 Electron 与 Capacitor 资源定位 smoke test。
+6. 增加无版权短视频 fixtures 及浏览器集成测试，覆盖 H.264/MP4、VP9/WebM、VFR、重复 PTS、旋转、无音轨、format null/高 bit-depth capability 和错误文件。
+7. 验证 Vite dev 与 production Web 构建后的 Worker/WASM 相对 URL。Electron 与 Capacitor 资源定位留到恢复对应平台开发时执行，不阻塞本轮 Web 实施。
 
 **涉及文件/目录**
 
@@ -559,8 +608,8 @@ git diff --check
 
 - 真实短视频可在 Worker 中完成 baseline 检测。
 - 主线程不进行像素读取、不接收帧数据；不存在 Canvas/ImageData 中转。
-- 每个分析帧最多一次必要的 WebCodecs 到 WASM 显式像素复制。
-- 不支持的媒体返回 capability/error，不回退到旧 Canvas seek 检测。
+- 原生 copy 后端每个分析帧最多一次 WebCodecs 到 WASM 显式像素复制；Worker 低分辨率预处理后端按 Phase 0 的端到端性能和内存门槛验收，不宣称物理零复制。
+- 不支持的媒体返回 capability/error，不回退到旧 `<video>` 随机 seek 检测；经批准的顺序解码 Worker OffscreenCanvas 后端不属于旧路径。
 - 长序列测试的内存不随解码帧数线性增长。
 
 **测试/验证方式**
@@ -568,7 +617,7 @@ git diff --check
 - 使用仓库现有浏览器测试方式启动构建产物，逐个运行 fixture。
 - 在 Worker 中记录 decode/copy/process 峰值计数，测试后确认 `opened samples == closed samples`。
 - 对同一素材连续运行两次，比较 config hash、engine version、边界顺序和时间戳。
-- 构建 Web、Desktop；Mobile 至少执行资源同步与启动 smoke 验证。
+- 构建并验证 Web；记录 Desktop/Mobile 尚未验证，不把它们作为当前 Phase 阻塞项。
 
 **可能的风险**
 
@@ -678,6 +727,7 @@ git diff --check
 **前置条件**
 
 - Phase 9 public client 已稳定；若 SIMD 延期，至少 Phase 8 baseline 必须通过且延期经过明确评审。
+- Phase 0 已冻结 timestampUs 到项目整数帧的舍入、clamp、重复 PTS 和末帧规则。
 
 **完成标准**
 
@@ -740,7 +790,7 @@ git diff --check
 - 页面卸载、切换项目和重启任务不会遗留 Worker 或旧任务消息。
 - 旧 run 记录被确定性清除，不能被识别为可恢复的新任务。
 - 现有自动分镜 UI 行为不改版；新结果仍需用户显式应用。
-- Desktop/Mobile 使用同一 Web 接入，不出现平台专属业务分支。
+- Web 使用单一接入路径，不出现隐藏 fallback 或新旧双写；Desktop/Mobile 兼容性作为后续平台专项验证。
 
 **测试/验证方式**
 
@@ -762,10 +812,10 @@ git diff --check
 
 **具体任务**
 
-1. 运行 native、ABI、baseline、SIMD、Worker、真实视频、Web、Desktop/Mobile 全矩阵测试。
+1. 运行 native、ABI、baseline、SIMD、Worker、真实视频和 Web 全矩阵测试；Desktop/Mobile 只记录为当前范围外未验证项。
 2. 验证产品路径已无旧服务调用后删除旧 Canvas/seek detector。
 3. 删除旧 `confidence`、`cursorFrame`、`durationFrames`、旧 `cuts` 等已无引用字段与测试 fixture。
-4. 在固定标注小集上记录 Content/Adaptive/Threshold 初始 Precision、Recall、F1、边界误差和 fade 命中。
+4. 在 Phase 0 固定标注小集上记录 Content/Adaptive/Threshold 相对当前 JS 基线的 Precision、Recall、F1、边界误差和 fade 命中变化。
 5. 分离记录 decode/copy/preprocess/detect 耗时与峰值内存，建立可重复基线。
 6. 更新根 README/架构文档状态和许可证 NOTICE；只记录实际采用或引用的算法来源。
 7. 把 Engine 必要检查纳入 CI/总体验收脚本，但保持 Web 日常脚本职责清楚。
@@ -818,7 +868,7 @@ corepack pnpm run build:desktop
 git diff --check
 ```
 
-另需运行项目现有浏览器回归、Mobile sync/smoke、标注小集评分及长视频内存测试。删除旧文件后再次使用 `rg` 搜索 `runAutoShotDetection`、Canvas 像素读取和旧 record 字段，结果应为零生产引用。
+另需运行项目现有浏览器回归、标注小集评分及长视频内存测试。删除旧文件后再次使用 `rg` 搜索 `runAutoShotDetection`、旧 `<video>` seek/Canvas 检测和旧 record 字段，结果应为零生产引用；不得误删缩略图、截图或经 Phase 0 批准的 Worker 预处理能力。
 
 **可能的风险**
 
@@ -832,6 +882,7 @@ git diff --check
 
 | 顺序 | Phase | 主要产物 | 进入下一阶段的门槛 |
 | --- | --- | --- | --- |
+| 0 | Phase 0 | 当前 JS 基线、Web 能力矩阵、像素路径与冻结契约 | 基线和可行性评审通过 |
 | 1 | Phase 1 | 原生 C++ 最小生命周期、CMake/CTest | native lifecycle 全通过 |
 | 2 | Phase 2 | 共享指标、Content Detector | Content golden + sanitizer 通过 |
 | 3 | Phase 3 | Adaptive Detector | look-ahead/flush/运动抑制通过 |
@@ -849,7 +900,7 @@ git diff --check
 
 | 架构方案阶段 | 本实施计划阶段 |
 | --- | --- |
-| 规格与基准 | Phase 1 的契约落地，Phase 2-4 的 golden，Phase 12 的正式评估 |
+| 规格与基准 | Phase 0 的现有基线、能力矩阵与契约冻结，Phase 2-4 的 golden，Phase 12 的正式回归评估 |
 | C++ Content Core | Phase 1-2 |
 | Adaptive + Threshold/Fade | Phase 3-4 |
 | WASM ABI 与 Worker | Phase 5-9 |
@@ -860,7 +911,8 @@ git diff --check
 C++、CMake、Emscripten/WASM、TypeScript、React 的明确先后关系为：
 
 ```text
-CMake/CTest 骨架
+Web 基线与像素路径验证
+  -> CMake/CTest 骨架
   -> C++ 核心及原生测试
   -> C ABI 原生测试
   -> Emscripten baseline 编译
@@ -917,7 +969,71 @@ CMake/CTest 骨架
 完成后运行本阶段全部验证，并按通用执行约定输出交接报告。
 ```
 
-### 4.2 Phase 1 任务单：原生 C++ 工程骨架与最小生命周期
+### 4.2 Phase 0 任务单：规格、现有基线与 Web 像素路径验证
+
+**阶段状态**：`[ ] 未开始`
+
+#### [ ] Task 0.1：冻结评估输入与评分契约
+
+**输入**：当前 `autoShotService.ts`、项目帧语义、批准架构文档和本地测试素材约定。
+
+**操作**：
+
+1. 建立 fixture manifest 和 hard-cut/fade 标注 schema，所有素材记录来源、许可、checksum、容器、codec、尺寸、帧率/VFR 和预期事件。
+2. 评分使用一对一匹配；hard cut 分别记录 0/1/2 项目帧容差，fade 记录建议点是否进入标注区间及区间重叠。
+3. 固定项目帧投影的 `round/floor/ceil` 选择、首尾 clamp、重复 PTS 和 durationFrames 规则，并写成可执行测试。
+4. 视频本体继续遵守 `.gitignore`，不得提交来源不明或受限素材。
+
+**完成检查**：同一预测结果重复评分完全一致，所有标注可追溯且时间语义无歧义。
+
+#### [ ] Task 0.2：记录当前 JS 算法基线
+
+**操作**：
+
+1. 使用固定素材运行当前 Canvas/seek 自动分镜，不修改其算法参数或行为。
+2. 记录 Precision、Recall、F1、边界平均/p95 偏移、总耗时、seek/像素处理耗时、峰值内存和主线程长任务。
+3. 记录机器、OS、浏览器精确版本、素材 checksum、敏感度和最短镜头配置。
+4. 明确当前基线只用于迁移比较，不要求新引擎兼容旧 score、旧 confidence 或旧 cuts schema。
+
+**完成检查**：基线可在同一环境重复运行，差异有解释且报告不依赖肉眼判断。
+
+#### [ ] Task 0.3：验证 WebCodecs/Mediabunny 像素能力
+
+**操作**：
+
+1. 在专用测试 Worker 中顺序解码短视频，记录 `VideoSample.format`、coded/display dimensions、rotation、timestamp/duration 和 color space。
+2. 分别验证原生 I420/NV12 平面复制、规范允许的 RGBX/RGBA copy、`format === null`、高 bit-depth/HDR 和 visible rect 行为。
+3. 不得用 `copyTo({ format: "I420" })` 作为实现假设；显式格式转换只测试 WebCodecs 规范允许的 RGB 类格式。
+4. 所有 sample 在 success/error/cancel 路径 close，记录 opened/closed 计数。
+
+**完成检查**：形成目标 Web 浏览器能力矩阵，每个不支持分支都有明确 capability/error 决定。
+
+#### [ ] Task 0.4：比较候选预处理与采样路径
+
+**操作**：
+
+1. 比较原生平面全帧 copy、RGBX/RGBA 全帧 copy、Worker OffscreenCanvas 低分辨率预处理三条路径。
+2. 另外比较逐帧完整指标、逐帧低成本预筛选后候选精算，以及显式 stride + 邻域精修；不得只测算法函数而忽略 decode/copy。
+3. 分离记录 decode、copy、preprocess、detect、total、WASM/JS memory 和主线程响应。
+4. 任一低精度路径必须同时报告相对逐帧基线的 Recall 变化。
+
+**完成检查**：选出至少一个通过准确率和性能门槛的生产候选；若没有，Phase 0 标记阻塞并调整方案，不进入 C++ 实现。
+
+#### [ ] Task 0.5：冻结跨阶段公共契约
+
+**操作**：
+
+1. 冻结 FrameView 的 pixel format、visible rect、bit depth、matrix、primaries、transfer、full range 和时间字段。
+2. 冻结规范化 config hash、强媒体指纹及成本、精确 engine state version、checkpoint envelope 和完整 committed boundaries。
+3. 冻结 task 的 `completed/paused/cancelled/failed` outcome；pause 终结当前 job，resume 创建新 job。
+4. 冻结跨后端确定性：边界/类型/顺序/决策精确一致，诊断浮点值按容差比较；决策指标采用明确量化。
+5. 更新 Phase 0 报告和参考索引，运行 Web 测试、Web build 与 `git diff --check`。
+
+**最终交付物**：可复现当前基线、Web 能力矩阵、像素路径决定、评分工具和冻结公共契约。
+
+**Phase 0 验收门**：Task 0.1-0.5 全部完成且 Web 验证通过，才能开始 Phase 1。
+
+### 4.3 Phase 1 任务单：原生 C++ 工程骨架与最小生命周期
 
 **阶段状态**：`[ ] 未开始`
 
@@ -926,10 +1042,10 @@ CMake/CTest 骨架
 **输入**：仓库根目录、批准架构文档、本实施计划。
 **操作**：
 
-1. 读取根 `AGENTS.md`、`package.json`、`pnpm-workspace.yaml`、`.mise.toml`、`.gitignore`。
+1. 读取根 `AGENTS.md`、`package.json`、`pnpm-workspace.yaml`、`.mise.toml`、`.gitignore` 和已通过验收的 Phase 0 报告。
 2. 执行只读版本检查：`node --version`、`corepack pnpm --version`、`cmake --version`、`ctest --version` 和实际 C++ 编译器版本。
 3. 确认 `packages/*` 已被 workspace 包含。
-4. 核验 `package.json` 与 `.mise.toml` 均声明当前统一的 pnpm 版本；未经许可不得安装系统工具。
+4. 核验 `package.json` 与 `.mise.toml` 均声明当前统一的 pnpm 版本；当前不是 pnpm 冲突修复任务。未经许可不得安装系统工具。
 5. 确认工作树已有用户改动并记录，禁止回退 `AGENTS.md`、参考索引和架构文档。
 
 **交付物**：预检记录写入 `packages/scene-engine/README.md` 的 Prerequisites；若因工具缺失不能验证，明确标记 Phase 1 尚未完成。
@@ -965,7 +1081,7 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. `frame_view.h` 定义 `PixelFormat`、`PlaneView`、`FrameView`，包含实际 stride、coded size、presentation index、`timestamp_us`、`duration_us`。
+1. `frame_view.h` 定义 `PixelFormat`、`PlaneView`、`FrameView`，包含实际 stride、coded/visible size、bit depth、颜色 matrix/primaries/transfer/full range、presentation index、`timestamp_us`、`duration_us`。
 2. `scene_event.h` 定义现阶段需要的稳定事件值类型；允许零事件，不预造 Histogram/Hash/关键帧事件。
 3. `config.h` 只定义引擎生命周期和已批准 detector 选择所需的基础配置；具体 detector 参数留给对应 Phase 落地。
 4. `detector.h` 定义 `ISceneDetector` 的 `id/lookahead_frames/reset/process/flush` 生命周期。
@@ -979,7 +1095,7 @@ CMake/CTest 骨架
 **操作**：
 
 1. 实现 `SceneEngine` 构造/销毁、`process`、`flush`、`reset`。
-2. `process` 校验受支持 PixelFormat、plane 数量、非空数据、width/height、stride、duration、presentation index 与 timestamp 单调性。
+2. `process` 校验受支持 PixelFormat、plane 数量、非空数据、coded/visible rect、stride、bit depth、颜色枚举、duration、presentation index 与 timestamp 单调性。
 3. `detector_pipeline.cpp` 提供空 pipeline；合法帧处理成功但不产生事件。
 4. flush 结束任务并返回零事件；flush 后 process 必须有明确错误，reset 后恢复初始状态。
 5. 禁止持有输入原始帧指针到 `process` 返回之后。
@@ -992,7 +1108,7 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建不会被 `NDEBUG` 禁用的轻量 `EXPECT_*`/失败计数测试工具和统一 `test_main.cpp`。
-2. 创建 synthetic frame factory，能生成带 padding stride 的 I420/NV12/RGBA 小帧，且内存所有权由 fixture 保持。
+2. 创建 synthetic frame factory，能生成带 padding stride 的 I420/NV12/RGBX/RGBA 小帧和不同颜色元数据/visible rect，且内存所有权由 fixture 保持。
 3. 至少覆盖：create/destroy、空序列 flush、单帧、多帧、reset、flush 后 process、倒退 timestamp、倒退 presentation index、非法 stride、空 plane、零尺寸、负 duration（若类型允许）及重复 flush。
 4. 对每个失败分支检查稳定错误类别，不只检查“抛出了错误”。
 5. 在 Release 和 sanitizer Debug 下运行同一组测试。
@@ -1019,7 +1135,7 @@ CMake/CTest 骨架
 
 **Phase 1 验收门**：上述交付物全部存在，native Release、sanitizer Debug、Web build 和 diff check 全部通过。任一项未验证时，状态只能是“Phase 1 未完成”，不得开始 Phase 2。
 
-### 4.3 Phase 2 任务单：共享帧指标与 Content Detector
+### 4.4 Phase 2 任务单：共享帧指标与 Content Detector
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1031,9 +1147,9 @@ CMake/CTest 骨架
 
 1. 运行 Phase 1 的 Release CTest 和可用 sanitizer 测试，确认零 detector 生命周期仍通过。
 2. 把 Content 输入、输出、权重、阈值比较规则、首帧行为和微秒事件时间写成测试用例清单。
-3. 明确数值规范：分析尺寸、保持宽高比方式、整数/浮点中间值、HSV 范围、舍入方式、YUV range 假设和阈值相等时的判定。
+3. 明确数值规范：分析尺寸、保持宽高比方式、整数/定点中间值、HSV 范围、舍入方式、YUV matrix/full range/bit depth 处理和阈值相等时的判定；不得使用单一 YUV range 假设覆盖所有视频。
 4. 先创建 `frame_metrics_test.cpp` 与 `content_detector_test.cpp`，让新增核心断言在实现前失败。
-5. 用 synthetic frame factory 准备相同帧、纯亮度变化、纯色硬切、色相变化、stride padding、奇数尺寸和三种 PixelFormat 用例。
+5. 用 synthetic frame factory 准备相同帧、纯亮度变化、纯色硬切、色相变化、stride padding、奇数尺寸、visible rect、颜色空间和 Phase 0 批准 PixelFormat 用例。
 
 **完成检查**：测试名称能逐项表达契约，失败原因来自尚未实现的 metrics/Content，而不是 fixture 或构建错误。
 
@@ -1044,12 +1160,12 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `downscale.*` 和 `yuv_to_hsv.*`，分别负责坐标映射/采样及确定性的颜色分量转换。
-2. 对 I420、NV12、RGBA 使用 `FrameView` 中实际 plane、stride 和有效尺寸，不假定紧密排列。
+2. 对 I420、NV12、RGBX、RGBA 使用 `FrameView` 中实际 plane、stride、visible rect 和颜色元数据，不假定紧密排列或 BT.709 limited range。
 3. 下采样保持宽高比，分析缓冲只在尺寸变化时重新分配；不得保存原始输入帧指针。
-4. 为全黑、全白、主色、奇数宽高、padding stride 和格式等价增加精确或容差断言。
+4. 为全黑、全白、主色、奇数宽高、padding stride、visible rect、BT.601/709/full range 和格式等价增加精确或容差断言。
 5. 在 Debug sanitizer 下运行 frame metrics 前置测试，修复所有越界与未定义行为。
 
-**完成检查**：三种格式表达同一合成图像时，亮度/HSV 分量在文档规定容差内一致；内存不随处理帧数增长。
+**完成检查**：Phase 0 批准的格式表达同一合成图像时，亮度/HSV 分量在文档规定容差内一致；内存不随处理帧数增长。
 
 **禁止**：引入 OpenCV/libyuv、Canvas 规则、平台特定 SIMD、第二套格式专属 detector。
 
@@ -1058,7 +1174,7 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `frame_metrics.*`，一次遍历分析表面产生 `mean_luma`、Content 所需分量差和加权前基础指标。
-2. 明确首帧没有前帧差异的结果，不产生硬切事件。
+2. 明确首帧没有前帧差异的结果，不产生硬切事件；参与边界决策的指标采用冻结的整数/定点量化和舍入规则。
 3. 只保留下一帧计算所需的紧凑分析状态，禁止缓存历史原始帧。
 4. 增加计数测试桩或可观察测试，证明每个输入帧只构建一次共享指标。
 5. 固定指标字段顺序和浮点容差，连续运行两次逐字段比较。
@@ -1093,9 +1209,9 @@ CMake/CTest 骨架
 
 **最终交付物**：共享预处理、Content Detector、Content 配置、合成 golden 和原生回归测试。
 
-**Phase 2 验收门**：Content golden、三种格式容差、确定性、sanitizer 和既有回归全部通过；未通过时不得开始 Adaptive。
+**Phase 2 验收门**：Content golden、批准格式/颜色空间容差、决策确定性、sanitizer 和既有回归全部通过；未通过时不得开始 Adaptive。
 
-### 4.4 Phase 3 任务单：Adaptive Detector
+### 4.5 Phase 3 任务单：Adaptive Detector
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1156,7 +1272,7 @@ CMake/CTest 骨架
 
 **Phase 3 验收门**：look-ahead、持续运动抑制、尾部 flush、单次 metrics 和全量回归全部通过。
 
-### 4.5 Phase 4 任务单：Threshold/Fade、融合、过滤与 checkpoint
+### 4.6 Phase 4 任务单：Threshold/Fade、融合、过滤与 checkpoint
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1189,20 +1305,7 @@ CMake/CTest 骨架
 
 **禁止**：在 Threshold 内读取像素、丢弃 fade interval、提前做业务镜头创建。
 
-#### [ ] Task 4.3：先测试并实现 MinSceneFilter
-
-**操作**：
-
-1. 创建 `min_scene_filter_test.cpp`，覆盖最短镜头边界、恰好等于阈值、连续闪白/闪黑、merge 与 suppress。
-2. 创建 `min_scene_filter.*`，以微秒比较相邻候选，不读取平均帧率。
-3. 明确被 merge/suppress 事件的 evidence 保留规则并写入测试。
-4. 覆盖开头、结尾、重复时间戳和 flush 后最后一段。
-
-**完成检查**：过滤前后事件都有确定预期，最短镜头判断不使用 frame count。
-
-**禁止**：跨 detector 做最终融合、静默删除所有被抑制事件证据。
-
-#### [ ] Task 4.4：先测试并实现 EventResolver
+#### [ ] Task 4.3：先测试并实现 EventResolver
 
 **操作**：
 
@@ -1213,7 +1316,20 @@ CMake/CTest 骨架
 
 **完成检查**：resolver golden 逐字段一致，不通过简单“保留第一个”丢失来源。
 
-**禁止**：转换为 AisenLens `ShotRecord`、在 resolver 中做 UI 置信度文案映射。
+**禁止**：在 resolver 中提前执行最终 minimum scene duration、转换为 AisenLens `ShotRecord` 或做 UI 文案映射。
+
+#### [ ] Task 4.4：先测试并实现最终 MinSceneFilter
+
+**操作**：
+
+1. 创建 `min_scene_filter_test.cpp`，输入必须是 resolver 已融合边界，覆盖最短镜头边界、恰好等于阈值、连续闪白/闪黑、merge 与 suppress。
+2. 创建 `min_scene_filter.*`，以微秒比较相邻最终候选，不读取平均帧率。
+3. 明确被 merge/suppress 事件的 sources/evidence 保留规则并写入测试。
+4. 覆盖开头、结尾、重复时间戳、fade/hard-cut 融合后位置变化和 flush 后最后一段。
+
+**完成检查**：融合后过滤结果有确定预期，最短镜头判断不使用 frame count，过滤不会因 detector 注册顺序改变。
+
+**禁止**：在跨 detector 融合前执行最终 minimum scene duration、静默删除所有被抑制事件证据。
 
 #### [ ] Task 4.5：实现版本化 checkpoint
 
@@ -1221,8 +1337,8 @@ CMake/CTest 骨架
 
 1. 先创建 `checkpoint_test.cpp`，对多个安全帧边界比较连续运行与暂停/恢复结果。
 2. 创建 `checkpoint.*`，使用显式字段序列化 schema，不序列化 STL 内存布局或裸指针。
-3. 纳入 ABI/schema/engine version、config hash 输入、最后提交 TimePoint、前帧 metrics、Adaptive 窗口、Fade 状态、filter/resolver 状态和已提交摘要。
-4. 对截断、损坏、错误 schema、错误 engine major 和错误 config hash 返回稳定错误。
+3. 纳入 ABI/schema/精确 engine state version、规范化 config hash、最后提交 TimePoint 及同 PTS ordinal、前帧 metrics、Adaptive 窗口、Fade 状态、resolver/filter 状态和已提交摘要。
+4. 对截断、损坏、错误 schema、错误精确 engine state version 和错误 config hash 返回稳定错误；没有显式迁移器时不得只比较 major 后恢复。
 5. 导入失败不得部分修改现有 engine；导入成功后不得重复提交 checkpoint 前的边界。
 
 **完成检查**：在每个测试暂停点，恢复后的最终事件与连续运行逐字段完全一致。
@@ -1243,7 +1359,7 @@ CMake/CTest 骨架
 
 **Phase 4 验收门**：所有 detector 可按批准组合运行，VFR/flush/融合/checkpoint 确定性和 sanitizer 全部通过。
 
-### 4.6 Phase 5 任务单：稳定 C ABI 与原生 ABI 一致性
+### 4.7 Phase 5 任务单：稳定 C ABI 与原生 ABI 一致性
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1305,7 +1421,7 @@ CMake/CTest 骨架
 
 **Phase 5 验收门**：纯 C header smoke、所有 ABI 错误路径、C++/C ABI 事件与 checkpoint parity 全部通过。
 
-### 4.7 Phase 6 任务单：Emscripten baseline WASM 与 TypeScript 低层封装
+### 4.8 Phase 6 任务单：Emscripten baseline WASM 与 TypeScript 低层封装
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1344,7 +1460,7 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `api/types.ts`、`config.ts`、`errors.ts` 和 `result/normalizeResult.ts`。
-2. 把 EngineConfig、SceneEvent/Boundary、progress/result、checkpoint envelope 和稳定错误码表达为 strict TypeScript 类型。
+2. 把 EngineConfig、SceneEvent/Boundary、progress、`SceneTaskOutcome`、Worker checkpoint envelope 和稳定错误码表达为 strict TypeScript 类型。
 3. 保持时间字段为整数微秒；原始 detector 值命名为 `score/threshold/evidence`。
 4. 配置校验与 C++ 规则逐项对应，并为默认值、非法 detector 组合和未知字段策略增加 Node 测试。
 5. `index.ts` 只导出业务无关公共 API，不导出 Emscripten Module、HEAP、指针、Mediabunny 或 Worker 内部协议。
@@ -1374,14 +1490,14 @@ CMake/CTest 骨架
 1. 创建 `abi-parity.test.ts` 和 TS synthetic frame helper，使用与 C++ golden 等价的数据。
 2. 覆盖 Content、Adaptive、Threshold/Fade、flush、多批事件读取和 checkpoint 恢复。
 3. 对时间戳、事件类型、顺序和边界要求完全一致；浮点 evidence 使用已批准容差。
-4. 重复运行并检查 config hash/engine version/结果确定性。
+4. 重复运行并检查规范化 config hash、精确 engine state version、边界决策确定性和诊断指标容差。
 5. 运行 native CTest、WASM Node tests、package build、Web build 和 diff check。
 
 **最终交付物**：固定 Emscripten baseline 构建、低层 TS 契约/runtime 和 native/WASM parity。
 
 **Phase 6 验收门**：干净构建、ABI 版本校验、native/WASM 全矩阵 parity、strict TS 和既有回归全部通过。
 
-### 4.8 Phase 7 任务单：Worker 协议、客户端与合成帧纵向链路
+### 4.9 Phase 7 任务单：Worker 协议、客户端与合成帧纵向链路
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1392,9 +1508,9 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `protocol.ts`，定义带 discriminant 和 jobId 的双向消息 union。
-2. 明确 INIT、START、PAUSE、CANCEL、DISPOSE 及 READY/STARTED/PROGRESS/CHECKPOINT/COMPLETED/CANCELLED/ERROR payload。
+2. 明确 INIT、START、PAUSE、CANCEL、DISPOSE 及 READY/STARTED/PROGRESS/CHECKPOINT/COMPLETED/CANCELLED/ERROR payload；PROGRESS 使用 `newBoundaries` 与 `totalBoundaries`，不得用含义不明的 cumulative `boundaries`。
 3. 创建 `worker-protocol.test.ts`，覆盖每个合法状态转换、非法顺序、旧 job 消息和终态后消息。
-4. 规定 progress 节流、增量边界、错误码和 checkpoint 的传输边界。
+4. 规定 progress 节流、增量边界、错误码和 checkpoint 的传输边界；checkpoint envelope 必须包含完整 committed boundaries、解码恢复位置和 core state。
 5. 使用穷尽 `never` 检查确保新增消息无法被静默忽略。
 
 **完成检查**：协议测试可在 Worker 实现前运行并准确失败；payload 不包含项目实体或像素帧。
@@ -1406,9 +1522,9 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `SceneEngineClient.ts`，负责 Worker 创建、初始化等待、jobId 分配和单任务约束。
-2. 封装 progress/result/error 回调、AbortSignal、pause、cancel、resume 所需 checkpoint 和 dispose。
+2. 封装 progress、AbortSignal、pause、cancel、dispose 和 `completed/paused/cancelled/failed` completion outcome；resume 通过新的 `start({ checkpoint })` 创建 job，不在原 task 上继续。
 3. 忽略或记录非当前 jobId 消息，不能让旧任务污染新任务。
-4. 所有 pending promise 在 ERROR/CANCELLED/dispose/Worker 崩溃时确定性结束。
+4. 所有 pending promise 在 PAUSED/COMPLETED/ERROR/CANCELLED/dispose/Worker 崩溃时确定性结束，不允许 `result` Promise 在 pause 后悬挂。
 5. 使用 fake Worker 覆盖正常、错误、并发 start、取消竞态、重复 dispose 和 listener 清理。
 
 **完成检查**：客户端测试无悬挂 promise/监听器，公共导出只暴露业务无关任务 API。
@@ -1421,7 +1537,7 @@ CMake/CTest 骨架
 
 1. 创建 `scene-engine.worker.ts`，按 `idle -> initializing -> decoding -> flushing -> terminal` 实现状态机。
 2. 当前仅接测试帧源，不接真实 Blob/Mediabunny。
-3. pause 只在完成当前帧并 drain 安全事件后导出 checkpoint；cancel 不导出 checkpoint。
+3. pause 只在完成当前帧并 drain 安全事件后导出 core state，再封装完整 committed boundaries、`timestampUs + timestampOrdinal`、下一 presentation index 和强媒体指纹，并以 paused outcome 结束当前 job；cancel 不导出 checkpoint。
 4. 在 completed/cancelled/error/dispose 都释放 runtime 句柄、帧源和消息状态。
 5. 对错误 runtime、process 异常、flush 异常和 Worker dispose 编写测试。
 
@@ -1457,21 +1573,21 @@ CMake/CTest 骨架
 
 **Phase 7 验收门**：协议穷尽、全部终态资源释放、暂停/恢复 parity、浏览器 module Worker smoke 全部通过。
 
-### 4.9 Phase 8 任务单：Mediabunny/WebCodecs 真实视频链路
+### 4.10 Phase 8 任务单：Mediabunny/WebCodecs 真实视频链路
 
 **阶段状态**：`[ ] 未开始`
 
 #### [ ] Task 8.1：建立媒体 fixture 与能力测试矩阵
 
-**输入**：Phase 7 Worker 链路、现有 Mediabunny 版本、批准的格式优先级。
+**输入**：Phase 7 Worker 链路、现有 Mediabunny 版本、Phase 0 批准的像素路径和 Web 能力矩阵。
 
 **操作**：
 
 1. 核实现有项目对 Mediabunny 的使用方式和当前浏览器测试启动方式，只读取模块相关文件。
-2. 创建 fixture manifest，记录容器、codec、尺寸、帧率/VFR、旋转、音轨、许可和预期边界。
-3. 准备最小无版权 H.264/MP4、VP9/WebM、VFR、旋转、无音轨、损坏文件和无视频轨 fixture；不能入库时记录本地生成命令与 checksum。
+2. 复用并扩充 Phase 0 fixture manifest，记录容器、codec、尺寸、帧率/VFR、重复 PTS、rotation、color space/bit depth、音轨、许可和预期边界。
+3. 准备最小无版权 H.264/MP4、VP9/WebM、VFR、重复 PTS、旋转、无音轨、format null/高 bit-depth capability、损坏文件和无视频轨 fixture；不能入库时记录本地生成命令与 checksum。
 4. 先创建 browser integration tests，覆盖 capability、错误码和每个 fixture 的完成条件。
-5. 明确当前目标浏览器/桌面/移动壳的 WebCodecs 能力矩阵。
+5. 明确当前目标 Web 浏览器的 WebCodecs 能力矩阵；桌面/移动壳留到对应平台专项。
 
 **完成检查**：每个测试素材可追溯、尺寸受控、预期边界明确；缺失平台能力以稳定 capability 结果表达。
 
@@ -1482,9 +1598,9 @@ CMake/CTest 骨架
 **操作**：
 
 1. 创建 `mediaDecoder.ts`，用 Mediabunny 打开 Blob/File、选择视频轨并使用 `VideoSampleSink.samples()` 顺序迭代。
-2. 读取 timestamp/duration/coded/visible dimensions/rotation 和实际 sample layout。
+2. 读取 timestamp/duration/coded/visible dimensions/rotation、format、bit depth、color space 和实际 sample layout；重复 PTS 使用 ordinal 区分。
 3. 实现明确的初始化、迭代、关闭和错误映射；每个成功取得的 sample 必须在所有路径 close。
-4. 支持 pause/resume 需要的解码重建信息，但不在本任务内写 IndexedDB。
+4. 支持 pause/resume 需要的 `timestampUs + timestampOrdinal + nextPresentationIndex` 解码重建信息，但不在本任务内写 IndexedDB。
 5. 覆盖空视频、无轨、不支持 codec、解码错误、取消和 iterator 异常。
 
 **完成检查**：fixture 可顺序枚举且 presentation timestamp 单调提交；opened sample 与 closed sample 计数一致。
@@ -1495,13 +1611,13 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 已知首帧布局后调用 runtime reserve，并创建 WebAssembly.Memory-backed plane views。
-2. 优先请求 I420，其次 NV12/RGBA；以 `copyTo()` 返回/要求的真实 layout 和 stride 为准。
-3. 直接把 sample 像素复制进 WASM views，不创建 Canvas、ImageData 或完整 JS 中间像素数组。
-4. 将 timestamp/duration/presentation index 与 plane layout 提交给 C ABI。
+1. 按 Phase 0 决定初始化后端；原生 copy 后端在已知首帧布局后调用 runtime reserve，并创建 WebAssembly.Memory-backed plane views。
+2. sample 原生为 I420/NV12 时复制实际平面；否则只请求规范允许的 RGBX/RGBA。不得调用或描述不存在保证的 `copyTo({ format: "I420" })`。
+3. 若 Phase 0 批准 Worker OffscreenCanvas 低分辨率后端，只允许在同一 Worker 顺序解码后使用固定分析尺寸和有界小缓冲；不得经过主线程、旧 `<video>` seek 或无界 JS 数组。
+4. 将 timestamp/duration/presentation index、visible rect、bit depth、color matrix/primaries/transfer/full range 与 plane layout 提交给 C ABI。
 5. 任务期间检测 memory growth/view 失效；正常配置下不得逐帧增长内存或重新 reserve。
 
-**完成检查**：每帧最多一次必要像素复制，主线程没有帧对象，三种协商格式的测试均进入相同 C++ FrameView。
+**完成检查**：主线程没有帧对象；原生 copy 后端每帧最多一次到 WASM 的显式复制；所有批准后端进入同一规范化 FrameView/指标契约并达到 Phase 0 门槛。
 
 **禁止**：宣称硬件 surface 到 WASM 物理零复制、使用 `getImageData()`、把 RGBA Canvas 当静默降级。
 
@@ -1512,7 +1628,7 @@ CMake/CTest 骨架
 1. 用真实 `mediaDecoder` 替换生产 Worker 中的测试帧源；测试帧源仍只留在 test support。
 2. START 接受批准的 Blob/config/checkpoint，冻结媒体指纹相关输入但不写项目存储。
 3. progress 使用 processedUs/durationUs/decodedFrames/新增边界并节流。
-4. pause 在安全帧边界返回 core checkpoint 和解码恢复位置；cancel 关闭 iterator/sample/runtime。
+4. pause 在安全帧边界返回完整 Worker checkpoint envelope；恢复时从关键帧预热并按 timestamp ordinal 跳过已提交 sample；cancel 关闭 iterator/sample/runtime 且不保存 checkpoint。
 5. 映射 `UNSUPPORTED_CODEC/WASM_INIT_FAILED/DECODE_FAILED/INVALID_CHECKPOINT/CANCELLED` 等稳定错误。
 
 **完成检查**：真实短视频可完成、暂停/恢复、取消和错误退出，所有路径资源计数归零。
@@ -1523,17 +1639,17 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 对 manifest 全部 fixtures 连续运行两次，比较时间戳、顺序、engine version 和 config hash。
+1. 对 manifest 全部 fixtures 连续运行两次，比较时间戳、顺序、精确 engine state version 和规范化 config hash。
 2. 运行长序列/重复短片测试，记录峰值 WASM memory、JS heap 和 sample 生命周期，确认不随帧数线性增长。
 3. 验证 Vite dev 与 production Web build 的 Worker/WASM URL。
-4. 构建 Electron 并从打包相对资源加载；Capacitor 至少 sync 并验证资源 URL smoke。
-5. 运行 native/WASM/Worker/browser/Web/Desktop 回归和 diff check，记录未覆盖平台。
+4. 验证 Web production build 从非站点根部署路径加载 Worker/WASM；记录 Electron/Capacitor 为当前未验证平台。
+5. 运行 native/WASM/Worker/browser/Web 回归和 diff check。
 
 **最终交付物**：真实媒体 decoder、WebCodecs 到 WASM 直接写入链路、浏览器 fixtures 和跨壳资源验证。
 
 **Phase 8 验收门**：真实视频检测、一次必要复制、无主线程像素、sample 全释放、内存有界和打包资源 smoke 全部通过。
 
-### 4.10 Phase 9 任务单：WASM SIMD 构建、探测与一致性
+### 4.11 Phase 9 任务单：WASM SIMD 构建、探测与一致性
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1597,7 +1713,7 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 运行 native、C ABI、baseline、SIMD、Worker、浏览器、Web/Desktop build 和 diff check。
+1. 运行 native、C ABI、baseline、SIMD、Worker、浏览器、Web build 和 diff check。
 2. 在 README 记录探测、强制测试方式、两个产物及正确性基准。
 3. 确认 package public API 不要求调用方理解两个文件的内部加载细节。
 4. 输出 Phase 9 交接报告，附 parity 表和性能环境。
@@ -1606,7 +1722,7 @@ CMake/CTest 骨架
 
 **Phase 9 验收门**：能力选择、所有 fixture parity、性能记录、baseline 回归和跨壳加载全部通过。
 
-### 4.11 Phase 10 任务单：AisenLens 业务适配层与持久化边界
+### 4.12 Phase 10 任务单：AisenLens 业务适配层与持久化边界
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1630,8 +1746,8 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 先创建 adapter 测试，覆盖 0/结尾边界、VFR timestamp、重复/乱序边界、fade 区间、最短末段和舍入临界点。
-2. 实现 `sceneResultAdapter.ts`，集中完成 timestampUs 到项目整数帧的唯一映射。
+1. 先创建 adapter 测试，覆盖 0/结尾边界、VFR timestamp、重复 PTS/乱序边界、fade 区间、最短末段、零 duration 和 Phase 0 冻结的舍入临界点。
+2. 实现 `sceneResultAdapter.ts`，严格按 Phase 0 规则集中完成 timestampUs 到项目整数帧的唯一映射，不重新选择舍入方式。
 3. 生成排序、去重、合法 `[startFrame, endFrame)` 的候选镜头；不得直接写项目。
 4. 保留 source、score、threshold、evidence、engine version 和 config hash，不能把 score 改名为概率 confidence。
 5. 使用项目现有时间/帧工具时先验证语义；不合适时只在 adapter 内实现必要纯转换并测试。
@@ -1644,11 +1760,11 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 定义可注入 `SceneEngineClient` factory、run repository 和 clock/id 依赖，便于无浏览器业务测试。
+1. 定义可注入 `SceneEngineClient` factory、run repository、强媒体指纹服务和 clock/id 依赖，便于无浏览器业务测试。
 2. 先用 fake client/repository 写 running、progress、pause、resume、cancel、failed、completed 和 restart 测试。
-3. 实现 `autoShotTaskService.ts`，冻结媒体指纹、config、engine version 和 config hash。
+3. 实现 `autoShotTaskService.ts`，冻结强媒体指纹、规范化 config、精确 engine state version 和 config hash。
 4. 把 Worker checkpoint/result 转成业务 task record，但不在本阶段连接现有 IndexedDB store。
-5. 保证旧 job progress 被拒绝、终态不可继续写入、cancel 不保存 checkpoint、pause 只保存完整 checkpoint。
+5. 保证旧 job progress 被拒绝、所有终态不可继续写入、cancel 不保存 checkpoint、pause 只保存包含完整边界前缀的 checkpoint envelope。
 
 **完成检查**：服务状态机测试全部通过，没有 React 生命周期或组件 state 依赖。
 
@@ -1681,13 +1797,13 @@ CMake/CTest 骨架
 
 **Phase 10 验收门**：无 React 的 adapter/service 全状态测试、时间映射测试、Web build 与边界审计全部通过。
 
-### 4.12 Phase 11 任务单：React 最小接入与持久化原子切换
+### 4.13 Phase 11 任务单：React 最小接入与持久化原子切换
 
 **阶段状态**：`[ ] 未开始`
 
 #### [ ] Task 11.1：建立持久化升级回归夹具
 
-**输入**：Phase 10 task record、现有 IndexedDB `auto-shot-runs` store 和 DATABASE_VERSION 12。
+**输入**：Phase 10 task record、现有 IndexedDB `auto-shot-runs` store，以及执行时从 `projectRepository.ts` 读取的实际 `DATABASE_VERSION`；不得把本文记录的历史版本号当成事实来源。
 
 **操作**：
 
@@ -1695,7 +1811,7 @@ CMake/CTest 骨架
 2. 创建旧数据库 fixture：至少包含项目、媒体、镜头、截图/注释及旧 AutoShotRunRecord。
 3. 先写升级测试：升级后旧 auto-shot run 不可恢复，非 auto-shot 数据逐项保持。
 4. 设计新 task record 的单一 store 读写 schema；若复用 store，则升级事务只清理/重建该派生数据，不创建长期第二 store。
-5. 明确媒体指纹、engine major、config hash 不匹配时的失效行为。
+5. 明确强媒体指纹、精确 engine state version、checkpoint schema 和 config hash 任一不匹配时的失效行为。
 
 **完成检查**：测试在 repository 尚未修改时准确暴露旧记录问题，且能检测误删其他 store 数据。
 
@@ -1721,7 +1837,7 @@ CMake/CTest 骨架
 
 1. 创建 `useAutoShotTask.ts`，组合 task service 与 repository，暴露现有 UI 需要的状态和命令。
 2. 管理挂载/卸载、项目切换、媒体切换、订阅清理、AbortSignal、Worker dispose 和 stale job 防护。
-3. pause 持久化 checkpoint，resume 先校验媒体指纹/config/engine；restart 删除旧 task 后启动新任务。
+3. pause 持久化完整 checkpoint envelope，resume 先校验强媒体指纹/config/精确 engine state version 并创建新 job；restart 删除旧 task 后启动新任务。
 4. completed 只产生可审阅候选，apply 是单独命令；hook 不直接修改 shot 数据。
 5. 用 hook 测试覆盖卸载、快速切项目、重复开始、暂停刷新、恢复、取消、失败和完成。
 
@@ -1743,14 +1859,14 @@ CMake/CTest 骨架
 
 **禁止**：顺手拆分整个 3640 行组件、修改设计、让 Worker 直接写 project/shot repository。
 
-#### [ ] Task 11.5：产品全流程与跨平台回归
+#### [ ] Task 11.5：Web 产品全流程回归
 
 **操作**：
 
 1. 浏览器运行开始、进度、暂停、刷新、继续、取消、重扫、失败、完成、审阅、应用和撤销。
 2. 切换项目/媒体时检查旧 job 消息、Worker 和 checkpoint 清理。
 3. 用旧 DB fixture 做真实升级，核对项目、镜头、截图和注释数量/关键字段。
-4. 运行 Web build、项目生命周期 browser tests、Engine 全量测试、Desktop build 和 Mobile sync/smoke。
+4. 运行 Web build、项目生命周期 browser tests 和 Engine 全量测试；记录 Desktop/Mobile 为当前范围外未验证项。
 5. 检查 performance trace，主线程不得出现像素读取或 detector 长任务。
 
 **完成检查**：产品路径全部使用新 Engine，旧 service 文件虽尚存在但无生产调用。
@@ -1766,9 +1882,9 @@ CMake/CTest 骨架
 
 **最终交付物**：新 task persistence、DB 升级、React hook、EditorWorkspace 最小接入和产品回归证据。
 
-**Phase 11 验收门**：DB 原子升级、全生命周期、显式应用/撤销、主线程边界及 Web/Desktop/Mobile smoke 全部通过；否则不得删除旧文件。
+**Phase 11 验收门**：DB 原子升级、全生命周期、显式应用/撤销、主线程边界及 Web 回归全部通过；否则不得删除旧文件。
 
-### 4.13 Phase 12 任务单：整体验收、旧路径删除与标定
+### 4.14 Phase 12 任务单：整体验收、旧路径删除与标定
 
 **阶段状态**：`[ ] 未开始`
 
@@ -1778,14 +1894,14 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 在删除前再次运行 native、C ABI、baseline/SIMD、Worker、browser、Web、Desktop/Mobile 和 DB 升级矩阵。
+1. 在删除前再次运行 native、C ABI、baseline/SIMD、Worker、browser、Web 和 DB 升级矩阵。
 2. 保存实际命令、机器/浏览器、关键结果和失败项；任何产品关键项失败则停止删除。
 3. 用 `rg` 和构建依赖图证明 `runAutoShotDetection`/旧 record/旧 Canvas detector 没有生产调用。
 4. 确认 `auto-shot-runs` 仅包含新 schema 或已被清理。
 
 **完成检查**：存在可审计的“新链路已接管、旧路径无生产引用”证据。
 
-**禁止**：凭人工点击一次就删除旧实现、跳过 Desktop/Mobile 资源验证。
+**禁止**：凭人工点击一次就删除旧实现、把当前范围外的 Desktop/Mobile 写成已验证。
 
 #### [ ] Task 12.2：删除旧自动分镜实现与字段
 
@@ -1805,11 +1921,11 @@ CMake/CTest 骨架
 
 **操作**：
 
-1. 创建 evaluation README、标注格式和只接受本地路径的评分脚本；不提交受限数据集本体。
-2. 固定一个自有人工标注小集，记录 checksum、engine version、配置和 hard-cut/fade 容差。
+1. 扩充 Phase 0 evaluation README、标注格式和只接受本地路径的评分脚本；不另建重复评分实现，不提交受限数据集本体。
+2. 复用 Phase 0 自有人工标注小集，记录 checksum、精确 engine version、配置和 hard-cut/fade 容差。
 3. 输出 hard-cut Precision/Recall/F1、matched boundary 平均/p95 偏移及 fade 建议点落区间结果。
 4. 分别运行 Content preset、Adaptive preset 和各自 + Threshold/Fade，不同时默认启用两个 hard-cut detector。
-5. 参数调整必须保存调整前后指标；没有证据不得更改默认阈值。
+5. 参数调整必须保存相对 Phase 0 当前 JS 基线及调整前后的指标；没有证据不得更改默认阈值。
 
 **完成检查**：相同本地数据和配置重复评分结果一致，报告能追溯到 Engine 版本。
 
@@ -1846,7 +1962,7 @@ CMake/CTest 骨架
 **操作**：
 
 1. 从干净 build 目录执行 native Release/sanitizer、C ABI、baseline、SIMD、Worker、浏览器 fixtures、DB 升级和产品全流程。
-2. 执行 Web/desktop build、Mobile sync/smoke 和 `git diff --check`。
+2. 执行 Web build 和 `git diff --check`；Desktop/Mobile 留待平台专项。
 3. 用 `rg` 确认没有旧生产 detector、双轨、Histogram/Hash/关键帧占位实现。
 4. 确认公开 package 不依赖 React/Zustand/project types，React 不导入 Worker/WASM/Mediabunny。
 5. 输出最终报告：版本、通过矩阵、准确率、边界误差、性能、内存、已知平台限制和未进入本阶段的未来能力。
@@ -1863,7 +1979,7 @@ CMake/CTest 骨架
 4. **恢复确定性是核心验收项。** Adaptive look-ahead、Fade 状态和过滤器状态都必须进入 checkpoint；连续运行与暂停/恢复结果不一致时不得接 UI。
 5. **旧数据不能伪装成新 checkpoint。** 切换时清理 `auto-shot-runs` 中的旧派生记录，不实现旧结构兼容读取、双写或静默回退；清理范围必须经过数据库升级测试，不能影响项目和镜头数据。
 6. **旧路径删除有严格时点。** Phase 11 先接入并验收，Phase 12 才删除旧 Canvas/seek 服务；验收后又不得长期保留两套生产检测器。
-7. **浏览器/桌面/移动的资源 URL 必须实测。** 开发服务器成功不代表 Electron/Capacitor 打包成功，Worker 和两个 WASM 产物必须使用 Vite 可解析的相对资源方式。
+7. **Web 的 Worker/WASM 资源 URL 必须实测。** 开发服务器成功不代表 production 或非站点根部署成功；本轮必须验证 Vite Web 资源定位。Electron/Capacitor 在恢复对应平台开发时单独验证，当前不得写成已通过。
 8. **阈值不能直接宣称与 PySceneDetect 等价。** 色彩转换、下采样和像素格式不同会改变 score；默认值只作为起点，正式值必须由固定数据集和 Precision/Recall/F1 记录支持。
 9. **SIMD 只能在 baseline 正确后加入。** SIMD 与 baseline 必须共享 ABI、测试和 detector 逻辑；边界结果不一致时以 baseline 为准并阻止 SIMD 上线。
 10. **严格控制范围。** 本计划不创建关键帧、Histogram、Hash 的空实现、公共配置或 UI 入口；未来扩展只依赖既有版本化 capability/result envelope，不在本轮提前设计功能。

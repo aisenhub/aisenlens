@@ -2,7 +2,7 @@
 
 > 状态：当前实现基线
 >
-> 最后核对：2026-08-25
+> 最后核对：2026-08-27
 
 本文档记录当前代码已经采用的长期架构边界。具体功能的历史计划、实施过程和已失效的数据模型不作为项目规范保留。
 
@@ -16,10 +16,12 @@ apps/
   desktop/   Electron 外壳，打包 web 的构建产物
   mobile/    Capacitor Android/iOS 外壳，同步 web 的构建产物
 supabase/    数据库迁移与服务端配置
-packages/    仅在存在独立、稳定的共享消费者时建立共享包
+packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边界的基础引擎
 ```
 
 `apps/web` 是产品功能的唯一来源；桌面与移动端不复制 React 业务代码。Web 发布由 Vercel 从仓库根目录构建，产物目录为 `apps/web/dist`。
+
+当前开发和验收范围仅为 Web。Desktop/Mobile 目录继续保留，但它们的构建、资源同步和运行 smoke 不作为当前 Web 功能的阻塞门；恢复对应平台开发时再执行平台专项验证。共享包通常应服务多个真实消费者，但像 Scene Engine 这样具有独立 C++/WASM 工具链、稳定 ABI 和独立测试边界的基础引擎，即使当前只有 Web 一个产品消费者，也可以建立单独 package。
 
 ## 2. 前端分层
 
@@ -52,7 +54,7 @@ packages/    仅在存在独立、稳定的共享消费者时建立共享包
 
 ## 5. AisenShot 的未来替换边界
 
-已批准的 AisenShot Scene Engine 将作为 `packages/scene-engine/` 中独立于 React 与项目领域模型的 C++/WASM 包。其输入是解码后的帧，输出是带证据的镜头边界；Web Worker 负责 WebCodecs/Mediabunny 解码、WASM 调度和结果回传，TypeScript 适配器才将结果转换为可审阅的候选分镜。
+已批准的 AisenShot Scene Engine 将作为 `packages/scene-engine/` 中独立于 React 与项目领域模型的 C++/WASM 包。其输入是经过已验证策略规范化的解码帧，输出是带证据的镜头边界；Web Worker 负责 WebCodecs/Mediabunny 解码、像素预处理、WASM 调度、checkpoint envelope 和结果回传，TypeScript 适配器才将结果转换为可审阅的候选分镜。生产像素路径必须先通过 Phase 0 的 Web 端到端基准，不预设浏览器能够请求 I420，也不把 Desktop/Mobile 当作当前实施门槛。
 
 实施时仅按已批准的架构与分阶段计划推进：
 

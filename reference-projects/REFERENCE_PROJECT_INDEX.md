@@ -20,7 +20,7 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| 本地分镜检测引擎 | OpenReel `packages/core/src/ai/cloud-job-types.ts`、`apps/web/src/components/editor/ai-panel/ai-kinds.config.ts`、`packages/core/src/media/{mediabunny-engine,types}.ts`；OpenCut `apps/web/src/wasm/{index,media-time}.ts`；PySceneDetect `scenedetect/{detector,scene_manager,stats_manager}.py`、`scenedetect/detectors/{content_detector,adaptive_detector,threshold_detector}.py`、`tests/test_detectors.py`、`benchmark/README.md`、`LICENSE`；本项目 Mediabunny 1.29.1 类型声明 | OpenReel 只提供云端场景检测能力边界，本地媒体层采用顺序解码与复用缓冲；OpenCut 将 WASM 核心与 TypeScript 整数媒体时间隔离；PySceneDetect 0.7.1（BSD-3-Clause）的核心可提炼为流式 detector、延迟事件/flush、共享帧指标、Content 固定阈值、Adaptive 前后窗口和 Threshold 淡变状态机。Mediabunny `VideoSampleSink.samples()` 与 `VideoSample.copyTo()` 可承接 WebCodecs 顺序解码和向预分配内存写帧。 | 新建独立 `@aisenlens/scene-engine` 规划：无 OpenCV/Python 运行时的 C++ core，经版本化 C ABI 编译为 baseline/SIMD WASM，在专用 Worker 内由 Mediabunny + WebCodecs 解码；第一阶段只做 Content、Adaptive、Threshold/Fade，结果以微秒时间戳和可解释 evidence 返回，由 Web 适配器转换为候选分镜。详见 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`。 |
+| 本地分镜检测引擎 | OpenReel `packages/core/src/ai/cloud-job-types.ts`、`apps/web/src/components/editor/ai-panel/ai-kinds.config.ts`、`packages/core/src/media/{mediabunny-engine,types}.ts`；OpenCut `apps/web/src/wasm/{index,media-time}.ts`；PySceneDetect `scenedetect/{detector,scene_manager,stats_manager}.py`、`scenedetect/detectors/{content_detector,adaptive_detector,threshold_detector}.py`、`tests/test_detectors.py`、`benchmark/README.md`、`LICENSE`；本项目 Mediabunny 1.29.1 `src/{media-sink,sample}.ts` 类型与实现；W3C WebCodecs `VideoFrameCopyToOptions`/pixel format 规范 | OpenReel 只提供云端场景检测能力边界，本地媒体层采用顺序解码与复用缓冲；OpenCut 将 WASM 核心与 TypeScript 整数媒体时间隔离；PySceneDetect 0.7.1（BSD-3-Clause）的核心可提炼为流式 detector、延迟事件/flush、共享帧指标、Content、Adaptive 和 Threshold 状态机。Mediabunny 可按呈现顺序迭代 `VideoSample`，但 `format` 可能为 null；WebCodecs 显式 `copyTo()` 格式转换只保证 RGB 类格式，不能任意请求 I420。YUV 指标还需要 matrix/range/bit-depth/visible-rect 语义。 | 保留独立 `@aisenlens/scene-engine` 方向，但先执行 Phase 0：建立当前 JS 准确率/性能基线并比较原生平面、RGB 标准化和 Worker 低分辨率预处理。C++ core 使用版本化 C ABI；checkpoint 拆分为 core state 与包含完整边界前缀/解码位置的 Worker envelope；最终边界在跨 detector 融合后执行最短镜头约束。当前只验收 Web，Desktop/Mobile 留待平台专项。详见 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`。 |
 
 ## 2026-08-16 统一支持者身份
 
@@ -171,7 +171,7 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| 本地硬切候选 | OpenReel `apps/web/src/bridges/silence-cut-bridge.ts`；OpenCut `apps/web/src/wasm/media-time.ts`；旧 AisenLens `features/auto-shot/{state,detector,segment-runner,worker-client}.js` | OpenReel 以独立处理桥接进度与界面；OpenCut 约束媒体时间到整数精度；旧项目验证媒体指纹、扫描游标、低分辨率签名、阈值和最小间隔。 | 以项目级持久化任务扫描低分辨率 Canvas 画面，使用帧号存储候选硬切；可暂停恢复，完成后由用户明确应用，绝不直接覆盖手动分镜。 |
+| 本地硬切候选（历史方案） | OpenReel `apps/web/src/bridges/silence-cut-bridge.ts`；OpenCut `apps/web/src/wasm/media-time.ts`；旧 AisenLens `features/auto-shot/{state,detector,segment-runner,worker-client}.js` | OpenReel 以独立处理桥接进度与界面；OpenCut 约束媒体时间到整数精度；旧项目验证媒体指纹、扫描游标、低分辨率签名、阈值和最小间隔。 | 这是 2026-08-12 的历史决策，已被 2026-08-25/27 AisenShot Scene Engine 方案取代。当前 Canvas/seek 实现只作为 Phase 0 迁移基线，新生产路径仍保留“候选审阅后显式应用”的产品边界。 |
 
 ## 2026-08-12 分镜首尾帧
 
@@ -294,9 +294,9 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| 多端应用与共享能力组织 | OpenReel `package.json`、`pnpm-workspace.yaml`、`apps/{web,desktop,image,studio}/package.json`、`packages/*/package.json` | OpenReel 使用 pnpm monorepo：Web、Image 和 Studio 是独立 Vite 应用；Desktop 是 Electron 壳，其 renderer 构建直接调用 `@openreel/web`。共享 UI、视频核心、图像核心、AI/Agent 和 FX 包位于 `packages/*`。根目录的 Xcode/Android 条目不在 pnpm workspace 中。 | AisenLens 当前仅部署单一 Web 应用，不为未来桌面或移动端提前拆成 monorepo；若实际引入第二个可发布端，再抽取明确稳定的共享包，桌面端优先复用 Web 渲染层而非复制业务代码。 |
+| 多端应用与共享能力组织（历史决策） | OpenReel `package.json`、`pnpm-workspace.yaml`、`apps/{web,desktop,image,studio}/package.json`、`packages/*/package.json` | OpenReel 使用 pnpm monorepo：Web、Image 和 Studio 是独立 Vite 应用；Desktop 是 Electron 壳，其 renderer 构建直接调用 `@openreel/web`。共享 UI、视频核心、图像核心、AI/Agent 和 FX 包位于 `packages/*`。根目录的 Xcode/Android 条目不在 pnpm workspace 中。 | “必须等待第二个消费者才能建包”已由 2026-08-27 架构审核修订：普通共享包仍优先等待真实复用；具有独立构建/测试或跨语言 ABI 边界的基础引擎允许例外。当前只开发和验收 Web。 |
 
-| 2026-08-15 | Cross-platform workspace | OpenReel `package.json`, `pnpm-workspace.yaml`, and `apps/desktop/package.json`; OpenCut root `package.json` and `apps/{web,desktop}` | Both projects use workspace boundaries for independently released applications. OpenReel builds its Electron renderer by invoking the Web package build. | AisenLens will use pnpm workspaces with `apps/web` as the only UI/business source, an Electron desktop shell, and a Capacitor mobile shell. Shared packages will be introduced only after a second real consumer exists. |
+| 2026-08-15 | Cross-platform workspace | OpenReel `package.json`, `pnpm-workspace.yaml`, and `apps/desktop/package.json`; OpenCut root `package.json` and `apps/{web,desktop}` | Both projects use workspace boundaries for independently released applications. OpenReel builds its Electron renderer by invoking the Web package build. | AisenLens 使用 pnpm workspace，`apps/web` 是唯一 UI/业务来源。当前只开发和验收 Web；共享包通常等待真实复用，但具有独立构建/测试或跨语言 ABI 边界的基础引擎（如 Scene Engine）允许在单一产品消费者阶段建立。 |
 
 | 2026-08-15 | SEO metadata and crawl discovery | OpenReel `apps/web` search found no reusable route or prerendering pattern; OpenCut `apps/web/src/app/{metadata,robots,sitemap}.ts` | OpenCut centralizes brand metadata, robots directives, and sitemap entries. Its Next.js rendering stack is not suitable for direct adoption in the existing Vite application. | AisenLens keeps Vite and adapts the centralized metadata plus static `robots.txt`/`sitemap.xml` pattern. Public marketing content will receive stable URLs; editor and account surfaces will remain non-indexable. |
 

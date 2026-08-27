@@ -31,3 +31,19 @@
 - Project feature 负责当前项目的选择与加载边界。
 - App 层只提供路由、全局 Provider、布局和必要的初始化编排。
 - 不为旧的 `App.tsx` 状态路径保留长期双轨或兼容层。
+
+## 3. AisenShot 自动分镜算法与引擎优化
+
+**下一步**：只执行 `AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md` 的 Phase 0，先建立当前 JS 算法准确率/性能基线、WebCodecs/Mediabunny 能力矩阵和像素路径实测，再开始 C++/WASM 工程。
+
+当前约束：
+
+- 只开发和验收 Web，Desktop/Mobile 不作为阻塞门。
+- 不假定浏览器可以通过 `copyTo()` 请求 I420；原生平面、RGB 标准化和 Worker 低分辨率预处理由基准决定。
+- 先冻结颜色空间、VFR 帧映射、强媒体指纹、config hash、checkpoint envelope 和 task outcome。
+- 新引擎接管并通过回归后删除旧 Canvas/seek 检测，不长期保留双轨。
+
+详见：
+
+- `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`
+- `docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md`
