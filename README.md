@@ -27,3 +27,11 @@ Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android 
 ## Deployment
 
 Vercel deploys the Web application from the repository root with `pnpm --filter @aisenlens/web build`. Keep the Vercel project Root Directory empty and use `apps/web/dist` as its output directory.
+
+## Documentation
+
+- [Project architecture](docs/PROJECT_ARCHITECTURE.md)
+- [Operations and Supabase constraints](docs/OPERATIONS.md)
+- [AisenShot Scene Engine architecture](docs/AISENSHOT_SCENE_ENGINE_PLAN.md)
+- [AisenShot Scene Engine implementation plan](docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md)
+- [SEO and discoverability plan](docs/SEO_DISCOVERABILITY_PLAN.md)

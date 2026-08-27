@@ -1329,6 +1329,7 @@ src/
   - `previous-aisenlens/`: previous AisenLens demo.
   - `opensource-opencut/`: open-source reference project.
   - `opensource-openreel/`: open-source reference project.
+  - `opensource-PySceneDetect/`: open-source reference project.
 
   Rules:
 

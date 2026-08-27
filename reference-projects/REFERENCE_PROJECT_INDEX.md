@@ -1,5 +1,11 @@
 # 参考项目索引
 
+## 2026-08-25 AisenShot Scene Engine
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 本地分镜检测引擎 | OpenReel `packages/core/src/ai/cloud-job-types.ts`、`apps/web/src/components/editor/ai-panel/ai-kinds.config.ts`、`packages/core/src/media/{mediabunny-engine,types}.ts`；OpenCut `apps/web/src/wasm/{index,media-time}.ts`；PySceneDetect `scenedetect/{detector,scene_manager,stats_manager}.py`、`scenedetect/detectors/{content_detector,adaptive_detector,threshold_detector}.py`、`tests/test_detectors.py`、`benchmark/README.md`、`LICENSE`；本项目 Mediabunny 1.29.1 类型声明 | OpenReel 只提供云端场景检测能力边界，本地媒体层采用顺序解码与复用缓冲；OpenCut 将 WASM 核心与 TypeScript 整数媒体时间隔离；PySceneDetect 0.7.1（BSD-3-Clause）的核心可提炼为流式 detector、延迟事件/flush、共享帧指标、Content 固定阈值、Adaptive 前后窗口和 Threshold 淡变状态机。Mediabunny `VideoSampleSink.samples()` 与 `VideoSample.copyTo()` 可承接 WebCodecs 顺序解码和向预分配内存写帧。 | 新建独立 `@aisenlens/scene-engine` 规划：无 OpenCV/Python 运行时的 C++ core，经版本化 C ABI 编译为 baseline/SIMD WASM，在专用 Worker 内由 Mediabunny + WebCodecs 解码；第一阶段只做 Content、Adaptive、Threshold/Fade，结果以微秒时间戳和可解释 evidence 返回，由 Web 适配器转换为候选分镜。详见 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`。 |
+
 ## 2026-08-16 统一支持者身份
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
@@ -101,7 +107,7 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| 高密度编辑器排版 | Material Design 3 `styles/typography/type-scale-tokens`；OpenReel `apps/web/tailwind.config.js`、`apps/web/src/components/editor/panels/EditingTemplateControls.tsx`、`packages/ui/src/styles/globals.css`；OpenCut `apps/web/src/app/globals.css`、`apps/web/src/components/editor/scenes-view.tsx` | Material 以 label/body/title 的信息角色建立等级；OpenReel 以 `text-xs` 为编辑器控制主档，并单独提供 10px 辅助档；OpenCut 将工作区 `text-xs`、`text-sm` 配为约 11.5px、12.6px，时间码使用独立等宽紧凑档。 | 编辑器统一为 16px 页面标题、12px 面板标题和正文、11px 辅助信息、10px 时间码/标尺；8px 只允许时间轴狭窄分镜标签。角色类与执行边界记录于 `docs/EDITOR_TYPOGRAPHY_SYSTEM.md`。 |
+| 高密度编辑器排版 | Material Design 3 `styles/typography/type-scale-tokens`；OpenReel `apps/web/tailwind.config.js`、`apps/web/src/components/editor/panels/EditingTemplateControls.tsx`、`packages/ui/src/styles/globals.css`；OpenCut `apps/web/src/app/globals.css`、`apps/web/src/components/editor/scenes-view.tsx` | Material 以 label/body/title 的信息角色建立等级；OpenReel 以 `text-xs` 为编辑器控制主档，并单独提供 10px 辅助档；OpenCut 将工作区 `text-xs`、`text-sm` 配为约 11.5px、12.6px，时间码使用独立等宽紧凑档。 | 编辑器统一为 16px 页面标题、12px 面板标题和正文、11px 辅助信息、10px 时间码/标尺；8px 只允许时间轴狭窄分镜标签。当前项目边界记录于 `docs/PROJECT_ARCHITECTURE.md`。 |
 
 ## 2026-08-13 视频播放区域优化调研
 
@@ -249,16 +255,16 @@
 | 2026-08-12 | 模块划分 | `previous-aisenlens/apps/web/src/features/` | 旧项目按 `project`、`player`、`shots`、`auto-shot`、`screenshots`、`waveform`、`templates`、`groups`、`overlay`、`export`、`recording`、`settings` 划分 | AisenLens 采用“核心拉片模块 + 可选扩展能力”的分层方式 |
 | 2026-08-12 | 模块划分 | `opensource-opencut/opencut-classic-main/apps/web/src/` | OpenCut 分别设有 `media`、`preview`、`timeline`、`project`、`editor`、`canvas`、`export`、`rendering`、`transcription` 等模块 | 仅借鉴其媒体/时间线等成熟能力边界，不引入完整剪辑器范围 |
 | 2026-08-12 | 模块划分理念 | `opensource-openreel/openreel-video-main/README.md`、`apps/`、`packages/` 顶层目录 | 以界面层、状态/服务层、桥接协调层、独立核心能力层划分；媒体处理、存储与本地 AI 可独立替换 | AisenLens 按“项目领域模块 + 本地能力服务 + 可替换 AI/媒体引擎”设计，避免把技术引擎耦合到页面组件 |
-| 2026-08-12 | 编辑器模块架构 | 三个参考项目的顶层模块与架构说明 | 以模块化理念确定领域、能力与协调三层，而非复制具体业务目录 | 已固化到 `docs/EDITOR_MODULE_ARCHITECTURE.md`，后续先讨论数据结构再实现 |
+| 2026-08-12 | 编辑器模块架构 | 三个参考项目的顶层模块与架构说明 | 以模块化理念确定领域、能力与协调三层，而非复制具体业务目录 | 历史计划已收敛为当前项目边界，见 `docs/PROJECT_ARCHITECTURE.md` |
 | 2026-08-12 | OpenReel 数据结构 | `packages/core/src/types/project.ts`、`types/timeline.ts`、`storage/types.ts`、`storage/project-serializer.ts`、`apps/web/src/stores/timeline-store.ts` | 项目 JSON、媒体二进制、派生缓存、文件句柄和临时播放 UI 状态分开存储；项目格式具有版本号 | AisenLens 借鉴“持久领域数据与临时 UI 状态分离、二进制资源与项目 JSON 分离、可版本化导入导出”的原则；不照搬多轨剪辑实体 |
 | 2026-08-12 | OpenCut 数据结构 | `media/types.ts`、`timeline/types.ts`、`services/storage/types.ts`、`services/storage/service.ts`、`wasm/media-time.ts` | 以媒体元数据、场景/轨道、书签分层；项目序列化会清除运行时音频缓冲；二进制资源按项目放入 OPFS，元数据/项目放 IndexedDB；以整数 tick 避免浮点时间误差，并维护迁移链 | AisenLens 保留“媒体元数据与二进制分离、运行时对象不持久化、带迁移的版本格式、存储配额检查”；采用帧编号作为初期精确时间基准，暂不引入其多场景/多轨剪辑模型 |
-| 2026-08-12 | 数据结构基线 | OpenReel 与 OpenCut 的领域模型和本地存储设计 | 已确认使用版本化项目 JSON、资源分层、帧编号时间与迁移原则 | 已形成 `docs/EDITOR_DATA_STRUCTURE.md`，后续按实体逐项确认 |
-| 2026-08-12 | 项目与媒体字段 | OpenReel 的媒体引用与 OpenCut 的本地资源分层原则 | 已确认无视频项目、稳定封面、媒体文件指纹、默认引用与可选托管副本 | 已更新 `docs/EDITOR_DATA_STRUCTURE.md` 中的 `LensProject` 与 `ProjectMedia` |
+| 2026-08-12 | 数据结构基线 | OpenReel 与 OpenCut 的领域模型和本地存储设计 | 已确认使用版本化项目 JSON、资源分层、帧编号时间与迁移原则 | 历史设计已被当前 IndexedDB 实现替代；现行基线见 `docs/PROJECT_ARCHITECTURE.md` |
+| 2026-08-12 | 项目与媒体字段 | OpenReel 的媒体引用与 OpenCut 的本地资源分层原则 | 已确认无视频项目、稳定封面、媒体文件指纹、默认引用与可选托管副本 | 当前数据和媒体边界见 `docs/PROJECT_ARCHITECTURE.md` |
 | 2026-08-12 | 分镜模型 | `previous-aisenlens/.../features/shots/shot-store.js`、`shot-boundaries.js`、`shot-persistence.js`、`auto-shot/state.js`、`detector.js` | 分镜有稳定 ID、按时间派生序号、时长由相邻边界推导；自动检测记录视频指纹、阈值、最小间隔、进度和硬切/渐变切分置信度，并支持中断恢复 | AisenLens 保留稳定 ID、帧边界、自动检测溯源与可恢复任务；采用显式半开帧区间而非仅存开始时间，具体 `Shot` 字段待确认 |
-| 2026-08-12 | 分镜确认规则 | 旧项目的边界计算与自动检测溯源理念 | 已确认默认连续覆盖视频、边界联动、自动分镜草稿/人工确认，以及合并时资料归入前镜头 | 已更新 `docs/EDITOR_DATA_STRUCTURE.md` 的 `Shot`、`ShotDetectionMeta` 与边界编辑规则 |
+| 2026-08-12 | 分镜确认规则 | 旧项目的边界计算与自动检测溯源理念 | 已确认默认连续覆盖视频、边界联动、自动分镜草稿/人工确认，以及合并时资料归入前镜头 | 当前候选审阅边界见 `docs/PROJECT_ARCHITECTURE.md` |
 | 2026-08-12 | 自动分镜运行记录 | 旧项目保存媒体指纹、检测阈值、最小间隔与扫描游标的状态模型 | 已确认保留暂停/恢复能力及硬切、渐变切分溯源 | 已增加 `AutoShotRun` 和 `AutoShotSettings` 结构 |
 | 2026-08-12 | 模板规则 | `previous-aisenlens/.../features/templates/field-pool.js`、`template-editor.js`、`template-service.js`、`template-storage.js` | 字段池区分参考字段与用户字段；支持固定字段、字段选择、排序和字段选项；模板定义单独持久化 | AisenLens 借鉴字段池、固定字段、分组排序和独立模板持久化，但以稳定字段 ID、字段类型和项目快照替代字段名称映射 |
-| 2026-08-12 | 模板固定字段 | 旧项目固定字段与字段池理念 | 已确认镜号、时间范围、时长、截图为非模板的镜头基础信息；仅固定镜头描述分析字段 | 已更新 `docs/EDITOR_DATA_STRUCTURE.md` 的模板层级与字段规则 |
+| 2026-08-12 | 模板固定字段 | 旧项目固定字段与字段池理念 | 已确认镜号、时间范围、时长、截图为非模板的镜头基础信息；仅固定镜头描述分析字段 | 当前 feature 与数据边界见 `docs/PROJECT_ARCHITECTURE.md` |
 | 2026-08-12 | 模板参考标签 | 旧项目字段参考选项的辅助填写理念 | 已确认选项用于约束保存值，参考标签用于辅助思考；用户可逐字段维护参考标签 | 已在 `TemplateField` 增加 `referenceTerms`，并纳入项目模板快照 |
 | 2026-08-12 | 镜头分析值 | AisenLens 模板快照与 AI 溯源原则 | 已确认字段值按字段类型规范化保存；镜头描述记录事实；AI 不可直接覆盖正式分析值 | 已更新 `ShotAnalysis` 的值规则，待继续定义 AI 建议实体 |
 | 2026-08-12 | AI 建议确认 | 本地优先 AI 与人工审核原则 | 已确认 AI 建议逐条接受/拒绝，人工修改会使待处理建议失效，所有处理结果可追溯 | 已增加 `AiSuggestion` 与 `AiTaskRecord` 的关系和确认规则 |
