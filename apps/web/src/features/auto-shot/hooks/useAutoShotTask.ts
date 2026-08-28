@@ -65,7 +65,18 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
   }, [input.mediaFingerprint, input.projectId]);
 
   const start = useCallback(async ({ resume = false, restart = false }: { resume?: boolean; restart?: boolean } = {}) => {
-    if (!input.mediaFingerprint || !input.sourceUrl || input.durationSeconds <= 0) return null;
+    if (!input.mediaFingerprint) {
+      setError("当前项目尚未关联可用视频。请先选择本地视频。");
+      return null;
+    }
+    if (!input.sourceUrl) {
+      setError("当前视频地址不可用，请重新关联本地视频。");
+      return null;
+    }
+    if (input.durationSeconds <= 0) {
+      setError("尚未读取视频时长，请等待视频加载完成后重试。");
+      return null;
+    }
     const revision = revisionRef.current;
     setError(null);
     try {

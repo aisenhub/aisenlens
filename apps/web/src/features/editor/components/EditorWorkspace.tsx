@@ -2894,20 +2894,22 @@ export default function EditorWorkspace({
                           个候选切点；应用后会替换当前分镜。
                         </div>
                       )}
-                      {autoShotRun?.status === "failed" && (
+                      {(autoShotTask.error || autoShotRun?.status === "failed") && (
                         <p className="mb-2 editor-meta text-red-300">
-                          {autoShotTask.error ?? autoShotRun.error?.message ?? "自动分镜失败。"}
+                          {autoShotTask.error ?? autoShotRun?.error?.message ?? "自动分镜失败。"}
                         </p>
                       )}
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={autoShotRun?.status === "running"}
+                        disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
                         onClick={() => void startAutoShotDetection()}
                         className="h-7 w-full editor-body font-normal border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 disabled:cursor-wait disabled:opacity-50"
                       >
-                        {autoShotRun?.status === "paused"
+                        {autoShotTask.isActive && !autoShotRun
+                          ? "正在启动新自动分镜…"
+                          : autoShotRun?.status === "paused"
                           ? "继续新自动分镜"
                           : "新自动分镜"}
                       </Button>
