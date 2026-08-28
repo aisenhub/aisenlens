@@ -8,6 +8,20 @@ build/
 coverage/
 test-results/
 playwright-report/
+
+# The Web product imports these prebuilt WASM runtime assets. Keep the
+# Emscripten build directories ignored, but version the four deployable files
+# so cloud builders do not need a local Emscripten toolchain.
+!packages/
+!packages/scene-engine/
+!packages/scene-engine/dist/
+!packages/scene-engine/dist/wasm/
+!packages/scene-engine/dist/wasm/scene-engine.js
+!packages/scene-engine/dist/wasm/scene-engine.wasm
+!packages/scene-engine/dist/wasm-simd/
+!packages/scene-engine/dist/wasm-simd/scene-engine-simd.js
+!packages/scene-engine/dist/wasm-simd/scene-engine-simd.wasm
+
 # Keep browser test code in Git; ignore only large local video fixtures.
 apps/web/test/*.mov
 apps/web/test/*.mp4

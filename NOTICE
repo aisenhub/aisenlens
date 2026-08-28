@@ -18,5 +18,7 @@ or tool distributions and remain under their respective upstream licenses:
 - Emscripten SDK, LLVM-MinGW and CMake are build-time tools and are not
   redistributed in the AisenLens product bundle.
 
-No test video, evaluation dataset, generated WASM artifact, or local machine
-credential is included in the product distribution.
+No test video, evaluation dataset, or local machine credential is included in
+the product distribution. The four generated Scene Engine WASM runtime files
+are intentionally versioned because they are required by the Web product;
+local build caches and test artifacts remain excluded.

@@ -58,7 +58,7 @@ corepack pnpm --filter @aisenlens/scene-engine configure:wasm
 corepack pnpm --filter @aisenlens/scene-engine build:wasm
 ```
 
-生成物位于已忽略的 `dist/wasm/scene-engine.js` 与 `dist/wasm/scene-engine.wasm`。模块使用 `SceneEngineModule` 工厂、固定 64 MiB 线性内存、无 memory growth、无 SIMD/pthreads，并只导出稳定 C ABI、`_malloc/_free` 以及 runtime `HEAPU8` 视图；Node ABI smoke 已确认 `asen_abi_version() === 1`。
+生成物位于版本控制的 `dist/wasm/scene-engine.js` 与 `dist/wasm/scene-engine.wasm`，让 Vercel 等 Web 构建环境无需安装 Emscripten 也能打包产品。重新生成这些运行时文件后必须连同源代码一起提交；CMake build 目录仍被忽略。模块使用 `SceneEngineModule` 工厂、固定 64 MiB 线性内存、无 memory growth、无 SIMD/pthreads，并只导出稳定 C ABI、`_malloc/_free` 以及 runtime `HEAPU8` 视图；Node ABI smoke 已确认 `asen_abi_version() === 1`。
 
 SIMD 产物单独构建：
 
