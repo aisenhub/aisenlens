@@ -2908,8 +2908,8 @@ export default function EditorWorkspace({
                         className="h-7 w-full editor-body font-normal border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 disabled:cursor-wait disabled:opacity-50"
                       >
                         {autoShotRun?.status === "paused"
-                          ? "继续自动分镜"
-                          : "开始自动分镜"}
+                          ? "继续新自动分镜"
+                          : "新自动分镜"}
                       </Button>
                       {autoShotRun?.status === "running" && (
                         <Button
