@@ -187,7 +187,7 @@ function sameMediaFingerprint(left: MediaSourceFingerprint, right: MediaSourceFi
 
 function assertAutoShotTaskRecord(task: AutoShotTaskRecord): void {
   if (!task.id || !task.projectId) throw new Error("自动分镜任务缺少标识。");
-  if (!task.mediaFingerprint || !task.mediaFingerprint.name || !Number.isSafeInteger(task.mediaFingerprint.size) || task.mediaFingerprint.size < 0 || !Number.isSafeInteger(task.mediaFingerprint.lastModified) || task.mediaFingerprint.lastModified < 0 || !task.mediaFingerprint.mimeType) {
+  if (!task.mediaFingerprint || !task.mediaFingerprint.name || !Number.isSafeInteger(task.mediaFingerprint.size) || task.mediaFingerprint.size < 0 || !Number.isSafeInteger(task.mediaFingerprint.lastModified) || task.mediaFingerprint.lastModified < 0 || typeof task.mediaFingerprint.mimeType !== "string") {
     throw new Error("自动分镜任务缺少有效媒体指纹。");
   }
   if (!task.config || !task.progress || !Array.isArray(task.candidates)) throw new Error("自动分镜任务结构无效。");

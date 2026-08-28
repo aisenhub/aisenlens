@@ -27,20 +27,39 @@ const VIDEO_MIME_TYPES = new Set(["video/mp4", "video/quicktime", "video/x-m4v",
 const AUDIO_EXTENSIONS = [".aac", ".flac", ".m4a", ".mp3", ".ogg", ".opus", ".wav", ".webm"];
 const AUDIO_MIME_TYPES = new Set(["audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/opus", "audio/wav", "audio/webm"]);
 
+const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".mov": "video/quicktime",
+  ".m4v": "video/x-m4v",
+  ".webm": "video/webm",
+  ".mkv": "video/x-matroska",
+};
+
+function inferMimeTypeFromName(name: string): string {
+  const extension = `.${name.split(".").pop()?.toLowerCase() ?? ""}`;
+  return MIME_TYPE_BY_EXTENSION[extension] ?? "application/octet-stream";
+}
+
+export function normalizeMediaSourceFingerprint(source: MediaSourceFingerprint): MediaSourceFingerprint {
+  return source.mimeType ? source : { ...source, mimeType: inferMimeTypeFromName(source.name) };
+}
+
 function createFingerprint(file: File): MediaSourceFingerprint {
   return {
     name: file.name,
     size: file.size,
     lastModified: file.lastModified,
-    mimeType: file.type,
+    mimeType: file.type || inferMimeTypeFromName(file.name),
   };
 }
 
 function fingerprintsMatch(left: MediaSourceFingerprint, right: MediaSourceFingerprint): boolean {
-  return left.name === right.name
-    && left.size === right.size
-    && left.lastModified === right.lastModified
-    && left.mimeType === right.mimeType;
+  const normalizedLeft = normalizeMediaSourceFingerprint(left);
+  const normalizedRight = normalizeMediaSourceFingerprint(right);
+  return normalizedLeft.name === normalizedRight.name
+    && normalizedLeft.size === normalizedRight.size
+    && normalizedLeft.lastModified === normalizedRight.lastModified
+    && normalizedLeft.mimeType === normalizedRight.mimeType;
 }
 
 function readNativeVideoMetadata(file: File): Promise<MediaAssetMetadata> {

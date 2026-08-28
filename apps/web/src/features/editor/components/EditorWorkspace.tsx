@@ -80,6 +80,7 @@ import type {
   AnnotationMarkerCategory,
 } from "../../annotation/types"
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
+import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
@@ -419,10 +420,14 @@ export default function EditorWorkspace({
     analysis: { maxWidth: 96, temporalSampling: { kind: "every-frame" as const } },
     diagnostics: "off" as const,
   }), [autoMinDuration, autoSensitivity])
+  const autoShotMediaFingerprint = useMemo(
+    () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
+    [media.source],
+  )
   const autoShotTask = useAutoShotTask({
     projectId,
     sourceUrl: videoUrl,
-    mediaFingerprint: media.source,
+    mediaFingerprint: autoShotMediaFingerprint,
     durationSeconds,
     frameRate: media.metadata?.frameRate ?? FRAMES_PER_SECOND,
     config: autoShotConfig,
