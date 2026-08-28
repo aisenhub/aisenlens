@@ -1,0 +1,22 @@
+AisenLens
+=========
+
+Copyright (c) 2026 AisenLens contributors.
+
+The AisenShot scene-engine implementation in this repository is an
+independent implementation. It does not copy source code from PySceneDetect,
+OpenCut, OpenReel, or the previous AisenLens demo. Those projects were used
+only for public design and data-model research as recorded in
+reference-projects/REFERENCE_PROJECT_INDEX.md.
+
+Third-party runtime and build dependencies are consumed through their package
+or tool distributions and remain under their respective upstream licenses:
+
+- React, React DOM, Vite, TypeScript, Tailwind CSS, pnpm and related packages:
+  see the package metadata and lockfile for the exact versions and licenses.
+- Mediabunny: see the installed package license and upstream distribution.
+- Emscripten SDK, LLVM-MinGW and CMake are build-time tools and are not
+  redistributed in the AisenLens product bundle.
+
+No test video, evaluation dataset, generated WASM artifact, or local machine
+credential is included in the product distribution.

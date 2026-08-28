@@ -1,6 +1,6 @@
 # AisenLens 开发待办
 
-> 状态：已确认，未开始实现
+> 状态：持续维护中；Zustand/App 状态迁移仍未开始，AisenShot Scene Engine 已完成 Phase 0–11 的可执行部分，当前处于 Phase 12 删除前验收与真实视频标定阶段
 >
 > 本文只记录已批准的后续架构工作，不代表对应代码已经存在。
 
@@ -34,7 +34,7 @@
 
 ## 3. AisenShot 自动分镜算法与引擎优化
 
-**下一步**：只执行 `AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md` 的 Phase 0，先建立当前 JS 算法准确率/性能基线、WebCodecs/Mediabunny 能力矩阵和像素路径实测，再开始 C++/WASM 工程。
+**当前进度**：Phase 0–11 的核心、C ABI、WASM/Worker、WebCodecs 适配、任务持久化和 React 最小接入已完成可执行部分；Phase 12 已建立删除前基线。下一步按 `AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md` 补齐真实视频产品 UI 全流程、准确率/性能标定，再删除旧 Canvas/seek 路径。
 
 当前约束：
 

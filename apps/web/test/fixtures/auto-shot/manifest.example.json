@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "phase-0-example",
+  "timebase": {
+    "timestampUnit": "microseconds",
+    "projectFrameRule": "ceil_quantized_fps",
+    "fpsQuantizationScale": 1000000,
+    "boundaryInterval": "half-open"
+  },
+  "matching": {
+    "hardCutToleranceFrames": [0, 1, 2],
+    "oneToOne": true,
+    "tieBreak": "earliest_prediction_then_input_order"
+  },
+  "fixtureTemplate": {
+    "id": "example-only",
+    "enabled": false,
+    "path": "<local-or-external-fixture-path>",
+    "source": {
+      "name": "<source-name>",
+      "url": "<source-url>",
+      "acquiredAt": "YYYY-MM-DD"
+    },
+    "license": "<license-or-authorization>",
+    "sha256": "<sha256>",
+    "media": {
+      "container": "<container>",
+      "codec": "<codec>",
+      "codedWidth": 1920,
+      "codedHeight": 1080,
+      "displayWidth": 1920,
+      "displayHeight": 1080,
+      "rotation": 0,
+      "audio": false,
+      "colorSpace": {
+        "matrix": "<matrix>",
+        "primaries": "<primaries>",
+        "transfer": "<transfer>",
+        "fullRange": false,
+        "bitDepth": 8
+      }
+    },
+    "timebase": {
+      "durationUs": 10000000,
+      "fpsNumerator": 30,
+      "fpsDenominator": 1,
+      "vfr": false,
+      "ptsPolicy": "decoder-presentation-order"
+    },
+    "annotations": {
+      "annotator": "<name-or-team>",
+      "hardCuts": [],
+      "fades": []
+    }
+  },
+  "fixtures": [
+    {
+      "id": "synthetic-color-sequence-v1",
+      "enabled": true,
+      "path": "apps/web/test/fixtures/auto-shot/synthetic.webm",
+      "source": {
+        "name": "AisenLens fixture generator",
+        "url": "local://scripts/generate-auto-shot-fixture.mjs",
+        "acquiredAt": "2026-08-27"
+      },
+      "license": "CC0-equivalent generated test material",
+      "sha256": "09FD690F4ACE87A88B05CE234E09F87F2B4B23CDF3A01925C0A4FC1449F8A6C0",
+      "media": {
+        "container": "webm",
+        "codec": "vp9",
+        "codedWidth": 640,
+        "codedHeight": 360,
+        "displayWidth": 640,
+        "displayHeight": 360,
+        "rotation": 0,
+        "audio": false,
+        "colorSpace": {
+          "matrix": "bt709",
+          "primaries": "bt709",
+          "transfer": "bt709",
+          "fullRange": false,
+          "bitDepth": 8
+        }
+      },
+      "timebase": {
+        "durationUs": 12273000,
+        "fpsNumerator": 30,
+        "fpsDenominator": 1,
+        "vfr": false,
+        "ptsPolicy": "decoder-presentation-order"
+      },
+      "annotations": {
+        "annotator": "fixture-generator",
+        "hardCuts": [
+          { "id": "cut-2s", "timestampUs": 2000000, "confidence": "confirmed", "source": "fixture-generator" },
+          { "id": "cut-8s", "timestampUs": 8000000, "confidence": "confirmed", "source": "fixture-generator" }
+        ],
+        "fades": [
+          { "id": "fade-4-to-6s", "startUs": 4000000, "endUs": 6000000, "boundaryUs": 5000000, "direction": "out-in", "throughBlack": false, "source": "fixture-generator" }
+        ]
+      }
+    },
+    {
+      "id": "local-h264-smoke-v1",
+      "enabled": true,
+      "path": "apps/web/test/test.mov",
+      "source": {
+        "name": "local copied development fixture",
+        "url": "local://apps/web/test/test.mov",
+        "acquiredAt": "2026-08-27"
+      },
+      "license": "unknown-local-copy; verify before redistribution",
+      "sha256": "832827E9D66564A12AD852D1C99606FC5F3D4846BFED7A2591455552C1DB23FD",
+      "media": {
+        "container": "mov",
+        "codec": "avc",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "rotation": 0,
+        "audio": true,
+        "colorSpace": {
+          "matrix": "bt709",
+          "primaries": "bt709",
+          "transfer": "bt709",
+          "fullRange": false,
+          "bitDepth": 8
+        }
+      },
+      "timebase": {
+        "durationUs": 99880000,
+        "fpsNumerator": 25,
+        "fpsDenominator": 1,
+        "vfr": false,
+        "ptsPolicy": "decoder-presentation-order"
+      },
+      "annotations": {
+        "annotator": "unlabelled-local-fixture",
+        "hardCuts": [],
+        "fades": []
+      }
+    }
+  ]
+}

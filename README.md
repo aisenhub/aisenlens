@@ -18,6 +18,7 @@ supabase/    Supabase migrations and functions
 corepack pnpm install
 corepack pnpm dev
 corepack pnpm build
+corepack pnpm scene-engine:verify:core
 corepack pnpm dev:desktop
 corepack pnpm sync:mobile
 ```
@@ -27,6 +28,11 @@ that connect to Supabase, copy `apps/web/.env.example` to `apps/web/.env.local`
 and provide the public Supabase URL and anonymous key; do not commit that file.
 
 Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android Studio is required for Android builds; Xcode on macOS is required for iOS builds.
+
+`scene-engine:verify:core` runs the native, baseline/SIMD WASM, TypeScript,
+contract, and parity checks without changing the normal Web build workflow.
+Current feature validation scope is Web; Desktop and Mobile remain optional
+platform checks.
 
 ## Deployment
 

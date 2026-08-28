@@ -4,6 +4,7 @@ import type { ShotGroupRecord } from "../group/types";
 import type { ShotRecord } from "../shot/types";
 import type { CompositionOverlaySettings } from "../composition-overlay/types";
 import type { ContentOverlaySettings } from "../content-overlay/types";
+import type { AutoShotTaskRecord } from "../auto-shot/types";
 
 export type MediaAssetStatus = "unlinked" | "linked" | "missing" | "unsupported";
 export type MediaAssetKind = "video" | "audio";
@@ -223,6 +224,9 @@ export interface ProjectRepository {
   getProjectAutoShotRun: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<AutoShotRunRecord | null>;
   saveProjectAutoShotRun: (run: AutoShotRunRecord) => Promise<void>;
   deleteProjectAutoShotRun: (projectId: string) => Promise<void>;
+  getAutoShotTask: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<AutoShotTaskRecord | null>;
+  saveAutoShotTask: (task: AutoShotTaskRecord) => Promise<void>;
+  deleteAutoShotTask: (projectId: string) => Promise<void>;
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
   replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[]) => Promise<void>;
   listProjectAnnotationMarkers: (projectId: string) => Promise<AnnotationMarker[]>;

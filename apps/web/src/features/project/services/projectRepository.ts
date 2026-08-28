@@ -1,11 +1,12 @@
 import type { AutoShotRunRecord, CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
+import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 12;
+const DATABASE_VERSION = 13;
 const PROJECTS_STORE = "projects";
 const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
@@ -111,8 +112,9 @@ function openDatabase(): Promise<IDBDatabase> {
     const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
     request.onerror = () => reject(request.error ?? new Error("无法打开本地项目仓库。"));
     request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result;
+      const oldVersion = event.oldVersion;
       if (!database.objectStoreNames.contains(PROJECTS_STORE)) {
         const projects = database.createObjectStore(PROJECTS_STORE, { keyPath: "id" });
         projects.createIndex("updatedAt", "updatedAt", { unique: false });
@@ -157,6 +159,9 @@ function openDatabase(): Promise<IDBDatabase> {
         const runs = database.createObjectStore(AUTO_SHOT_RUNS_STORE, { keyPath: "id" });
         runs.createIndex("projectId", "projectId", { unique: true });
       }
+      if (oldVersion < 13) {
+        request.transaction?.objectStore(AUTO_SHOT_RUNS_STORE).clear();
+      }
       if (!database.objectStoreNames.contains(SHOT_GROUPS_STORE)) {
         const groups = database.createObjectStore(SHOT_GROUPS_STORE, { keyPath: "id" });
         groups.createIndex("projectId", "projectId", { unique: false });
@@ -174,6 +179,24 @@ function openDatabase(): Promise<IDBDatabase> {
 
 function normalizeProject(project: ProjectRecord): ProjectRecord {
   return { ...project, compositionOverlay: normalizeCompositionOverlaySettings(project.compositionOverlay), contentOverlay: normalizeContentOverlaySettings(project.contentOverlay) };
+}
+
+function sameMediaFingerprint(left: MediaSourceFingerprint, right: MediaSourceFingerprint): boolean {
+  return left.name === right.name && left.size === right.size && left.lastModified === right.lastModified && left.mimeType === right.mimeType;
+}
+
+function assertAutoShotTaskRecord(task: AutoShotTaskRecord): void {
+  if (!task.id || !task.projectId) throw new Error("自动分镜任务缺少标识。");
+  if (!task.mediaFingerprint || !task.mediaFingerprint.name || !Number.isSafeInteger(task.mediaFingerprint.size) || task.mediaFingerprint.size < 0 || !Number.isSafeInteger(task.mediaFingerprint.lastModified) || task.mediaFingerprint.lastModified < 0 || !task.mediaFingerprint.mimeType) {
+    throw new Error("自动分镜任务缺少有效媒体指纹。");
+  }
+  if (!task.config || !task.progress || !Array.isArray(task.candidates)) throw new Error("自动分镜任务结构无效。");
+  if (!Number.isSafeInteger(task.progress.processedUs) || task.progress.processedUs < 0 || !Number.isSafeInteger(task.progress.durationUs) || task.progress.durationUs < 0 || !Number.isSafeInteger(task.progress.decodedFrames) || task.progress.decodedFrames < 0 || !Number.isSafeInteger(task.progress.candidateCount) || task.progress.candidateCount < 0) {
+    throw new Error("自动分镜任务进度无效。");
+  }
+  if (task.checkpoint && (task.checkpoint.schemaVersion !== 1 || !task.checkpoint.engineVersion || !task.checkpoint.configHash || !(task.checkpoint.coreState instanceof ArrayBuffer))) {
+    throw new Error("自动分镜 checkpoint schema、engine version 或 config hash 无效。");
+  }
 }
 
 function hasMediaAssetLibrary(project: LegacyProjectRecord): boolean {
@@ -513,6 +536,43 @@ export function createProjectRepository(): ProjectRepository {
     },
 
     async deleteProjectAutoShotRun(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readwrite");
+      const request = transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").openCursor(IDBKeyRange.only(projectId));
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        cursor.delete();
+        cursor.continue();
+      };
+      await transactionResult(transaction);
+    },
+
+    async getAutoShotTask(projectId: string, mediaFingerprint: MediaSourceFingerprint) {
+      const database = await openDatabase();
+      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readonly");
+      const task = await requestResult(transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").get(projectId)) as AutoShotTaskRecord | undefined;
+      if (!task) return null;
+      try {
+        assertAutoShotTaskRecord(task);
+      } catch {
+        return null;
+      }
+      return sameMediaFingerprint(task.mediaFingerprint, mediaFingerprint) ? task : null;
+    },
+
+    async saveAutoShotTask(task: AutoShotTaskRecord) {
+      assertAutoShotTaskRecord(task);
+      const database = await openDatabase();
+      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readwrite");
+      const store = transaction.objectStore(AUTO_SHOT_RUNS_STORE);
+      const existing = await requestResult(store.index("projectId").get(task.projectId)) as AutoShotTaskRecord | undefined;
+      if (existing && existing.id !== task.id) store.delete(existing.id);
+      store.put({ ...task, updatedAt: new Date().toISOString() });
+      await transactionResult(transaction);
+    },
+
+    async deleteAutoShotTask(projectId: string) {
       const database = await openDatabase();
       const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readwrite");
       const request = transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").openCursor(IDBKeyRange.only(projectId));

@@ -12,6 +12,9 @@ playwright-report/
 apps/web/test/*.mov
 apps/web/test/*.mp4
 apps/web/test/*.webm
+apps/web/test/fixtures/auto-shot/*.mov
+apps/web/test/fixtures/auto-shot/*.mp4
+apps/web/test/fixtures/auto-shot/*.webm
 apps/*/dist/
 apps/*/release/
 apps/*/node_modules/

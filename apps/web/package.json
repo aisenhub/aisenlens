@@ -9,9 +9,15 @@
     "postbuild": "node ../../scripts/prerender-public-routes.mjs",
     "preview": "vite preview",
     "format": "oxfmt",
+    "test:auto-shot-contract": "node --test test/auto-shot-contract.test.js",
+    "test:auto-shot-task-state": "node --experimental-strip-types --test test/auto-shot-task-state.test.ts",
+    "test:auto-shot-adapter": "node --experimental-strip-types --test test/auto-shot-scene-result-adapter.test.ts",
+    "test:auto-shot-task-service": "node --experimental-strip-types --test test/auto-shot-task-service.test.ts",
+    "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
     "test:video-export": "node --test test/video-export.browser.test.js"
   },
   "dependencies": {
+    "@aisenlens/scene-engine": "workspace:*",
     "@base-ui/react": "^1.7.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@supabase/supabase-js": "^2.112.2",

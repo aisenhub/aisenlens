@@ -44,6 +44,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@aisenlens/scene-engine':
+        specifier: workspace:*
+        version: link:../../packages/scene-engine
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -114,6 +117,12 @@ importers:
       vite:
         specifier: ^8.0.0
         version: 8.0.3(@types/node@22.19.17)(jiti@2.6.1)
+
+  packages/scene-engine:
+    dependencies:
+      mediabunny:
+        specifier: 1.29.1
+        version: 1.29.1
 
 packages:
 
@@ -790,6 +799,7 @@ packages:
   '@xmldom/xmldom@0.8.14':
     resolution: {integrity: sha512-T4EDRUBVZYRldYApjEJiU0e1stYWaRAX7CuSnKzrpwdZKo53zGV8/pqfzV6FfwNl9YThD2OumQYvqtvjvgG7aQ==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from "react"
+import { useCallback, useMemo, useState, useRef, useEffect } from "react"
 import { toast } from "sonner"
 import {
   Bookmark,
@@ -80,8 +80,8 @@ import type {
   AnnotationMarkerCategory,
 } from "../../annotation/types"
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
-import { runAutoShotDetection } from "../../auto-shot/services/autoShotService"
-import type { AutoShotRunRecord } from "../../project/types"
+import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
+import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
 import {
@@ -348,7 +348,6 @@ export default function EditorWorkspace({
     ])
   const [waveformPeaks, setWaveformPeaks] = useState<number[] | null>(null)
   const [waveformUnavailable, setWaveformUnavailable] = useState(false)
-  const [autoShotRun, setAutoShotRun] = useState<AutoShotRunRecord | null>(null)
   const [shotGroups, setShotGroups] = useState<ShotGroupRecord[]>([])
   const [selectedShotIds, setSelectedShotIds] = useState<string[]>([])
   const [groupKindDraft, setGroupKindDraft] = useState<ShotGroupKind>("scene")
@@ -368,7 +367,6 @@ export default function EditorWorkspace({
   const [videoExportProgress, setVideoExportProgress] =
     useState<VideoExportProgress | null>(null)
   const [videoExportError, setVideoExportError] = useState<string | null>(null)
-  const autoShotAbortRef = useRef<AbortController | null>(null)
   const shotPlaybackEndRef = useRef<number | null>(null)
   const boundaryCaptureKeysRef = useRef(new Set<string>())
   const boundaryCaptureRetriesRef = useRef(new Map<string, number>())
@@ -409,6 +407,27 @@ export default function EditorWorkspace({
     source: videoUrl,
     initialDurationSeconds: media.metadata?.durationSeconds ?? 0,
   })
+
+  const autoShotConfig = useMemo(() => ({
+    hardCut: {
+      kind: "content" as const,
+      threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 24))),
+      weights: { hue: 3333, saturation: 3333, luma: 3334 },
+    },
+    fade: null,
+    minimumSceneDurationUs: Math.max(1, Math.round(autoMinDuration * 1_000_000)),
+    analysis: { maxWidth: 96, temporalSampling: { kind: "every-frame" as const } },
+    diagnostics: "off" as const,
+  }), [autoMinDuration, autoSensitivity])
+  const autoShotTask = useAutoShotTask({
+    projectId,
+    sourceUrl: videoUrl,
+    mediaFingerprint: media.source,
+    durationSeconds,
+    frameRate: media.metadata?.frameRate ?? FRAMES_PER_SECOND,
+    config: autoShotConfig,
+  })
+  const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
 
   useMultiTrackAudioPreview({
     mediaAssets: mediaProject.mediaAssets,
@@ -956,25 +975,6 @@ export default function EditorWorkspace({
   }, [projectId])
 
   useEffect(() => {
-    if (!media.source) {
-      setAutoShotRun(null)
-      return
-    }
-    void projectRepository
-      .getProjectAutoShotRun(projectId, media.source)
-      .then(async (run) => {
-        if (run?.status === "running") {
-          const pausedRun = { ...run, status: "paused" as const }
-          await projectRepository.saveProjectAutoShotRun(pausedRun)
-          setAutoShotRun(pausedRun)
-          return
-        }
-        setAutoShotRun(run)
-      })
-    return () => autoShotAbortRef.current?.abort()
-  }, [media.source, projectId])
-
-  useEffect(() => {
     setTemplate(null)
     void loadOrCreateProjectTemplate(projectId).then(setTemplate)
   }, [projectId])
@@ -1252,39 +1252,15 @@ export default function EditorWorkspace({
   }
 
   const startAutoShotDetection = async (restart = false) => {
-    if (!media.source || durationSeconds <= 0) return
-    autoShotAbortRef.current?.abort()
-    if (restart) {
-      await projectRepository.deleteProjectAutoShotRun(projectId)
-      setAutoShotRun(null)
-    }
-    const controller = new AbortController()
-    autoShotAbortRef.current = controller
-    void runAutoShotDetection({
-      projectId,
-      sourceUrl: videoUrl,
-      mediaFingerprint: media.source,
-      durationSeconds,
-      frameRate: media.metadata?.frameRate ?? FPS,
-      sensitivity: autoSensitivity,
-      minimumShotSeconds: autoMinDuration,
-      resumeRun: restart ? null : autoShotRun,
-      signal: controller.signal,
-      onUpdate: setAutoShotRun,
-    })
+    const shouldResume = !restart && autoShotRun?.status === "paused"
+    await autoShotTask.start({ resume: shouldResume, restart })
   }
 
   const applyAutoShotCuts = () => {
     if (!autoShotRun || autoShotRun.status !== "completed") return
     const frameRate = media.metadata?.frameRate ?? FPS
     const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
-    const boundaries = [
-      0,
-      ...autoShotRun.cuts
-        .map((cut) => cut.frame)
-        .filter((frame) => frame > 0 && frame < totalFrames),
-      totalFrames,
-    ]
+    const boundaries = [0, ...autoShotRun.candidates.map((candidate) => candidate.endFrame).filter((frame) => frame > 0 && frame < totalFrames), totalFrames]
     const nextShots = boundaries
       .slice(0, -1)
       .map((startFrame, index) => ({
@@ -2895,11 +2871,7 @@ export default function EditorWorkspace({
                           <div className="flex justify-between">
                             <span>正在扫描真实画面</span>
                             <span className="font-mono text-accent">
-                              {Math.round(
-                                (autoShotRun.cursorFrame /
-                                  Math.max(1, autoShotRun.durationFrames)) *
-                                  100,
-                              )}
+                              {Math.round((autoShotRun.progress.processedUs / Math.max(1, autoShotRun.progress.durationUs)) * 100)}
                               %
                             </span>
                           </div>
@@ -2907,7 +2879,7 @@ export default function EditorWorkspace({
                             <div
                               className="h-full bg-accent"
                               style={{
-                                width: `${(autoShotRun.cursorFrame / Math.max(1, autoShotRun.durationFrames)) * 100}%`,
+                                width: `${(autoShotRun.progress.processedUs / Math.max(1, autoShotRun.progress.durationUs)) * 100}%`,
                               }}
                             />
                           </div>
@@ -2917,14 +2889,14 @@ export default function EditorWorkspace({
                         <div className="mb-2 rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
                           检测到{" "}
                           <span className="font-mono text-green-300">
-                            {autoShotRun.cuts.length}
+                            {autoShotRun.candidates.length}
                           </span>{" "}
                           个候选切点；应用后会替换当前分镜。
                         </div>
                       )}
                       {autoShotRun?.status === "failed" && (
                         <p className="mb-2 editor-meta text-red-300">
-                          {autoShotRun.errorMessage ?? "自动分镜失败。"}
+                          {autoShotTask.error ?? autoShotRun.error?.message ?? "自动分镜失败。"}
                         </p>
                       )}
                       <Button
@@ -2944,7 +2916,7 @@ export default function EditorWorkspace({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => autoShotAbortRef.current?.abort()}
+                          onClick={() => void autoShotTask.pause()}
                           className="mt-1 h-7 w-full editor-body font-normal text-text-muted hover:text-white"
                         >
                           暂停扫描

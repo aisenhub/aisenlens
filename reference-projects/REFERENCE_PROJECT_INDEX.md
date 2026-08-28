@@ -349,3 +349,21 @@
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
 | 早期支持者产品共创反馈 | OpenReel `apps/web/src` 的反馈相关检索；OpenCut `apps/web/src/feedback/components/feedback-popover.tsx`、`app/api/feedback/route.ts`、`db/schema.ts` | OpenReel 未提供面向用户的反馈入口；OpenCut 将轻量反馈收集放在编辑器入口的 Popover 中，并在本地保存草稿与历史。AisenLens 已有带分类、标题、内容校验及身份关联的 Supabase RPC。 | 复用 AisenLens 现有反馈服务和 Base UI Dialog，以适配多字段反馈表单；不复制 OpenCut 的 API、数据库或本地历史方案，不新增依赖、接口或表。 |
+
+## 2026-08-27 自动分镜 Phase 0 Web 能力验证
+
+| 当前模块 | 参考项目与文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 自动分镜像素路径与浏览器能力 | 本轮未新增参考项目代码查阅；结合已记录的 OpenReel/OpenCut 媒体边界与本地 Chrome/WebCodecs/Mediabunny spike | 已实测 H.264/NV12 原生平面复制、RGBA 标准化复制、OffscreenCanvas 低分辨率预处理及 VP9 解码错误分支；这些是本机浏览器事实，不把旧参考项目行为当作浏览器能力结论。 | 沿用参考项目“解码对象与派生结果分离、能力层可替换”的原则；具体像素格式、错误分支和候选路径以 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md` 的实测矩阵为准。 |
+
+## 2026-08-27 自动分镜 Phase 4 Threshold/Fade
+
+| 当前模块 | 参考项目与文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| Threshold/Fade 状态机 | PySceneDetect `scenedetect/detectors/threshold_detector.py`、`tests/test_detectors.py`、`scenedetect/scene_manager.py` | Threshold 以逐帧亮度阈值穿越配对 fade-out/fade-in，fade bias 只影响成对区间的建议边界，末尾未闭合 fade 由显式开关决定；SceneManager 对 detector 延迟事件有独立缓冲语义。 | 采用独立 `ThresholdDetector`，只消费 `SharedFrameMetrics.mean_luma_q`，使用微秒时间和定点 bias；不复制 Python/OpenCV 实现，不把 fade 简化为 Content hard cut。事件融合、最终过滤和 checkpoint 已接入 Phase 4 核心。 |
+
+## 2026-08-27 自动分镜 Phase 5 C ABI
+
+| 当前模块 | 参考项目与文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| WASM/C ABI 边界 | OpenReel `packages/creation-bindings/src/wasm.ts`；OpenCut `apps/web/src/wasm/{index.ts,media-time.ts}` | OpenReel 将 WASM 实例化与宿主 backend 隔离；OpenCut 在 TS 侧恢复整数媒体时间约束，不把 Rust/WASM 内部对象直接暴露给业务层。 | AisenLens 先冻结纯 C ABI：固定宽度结构、opaque handle、调用方拥有帧/事件/ checkpoint 缓冲；后续 WASM/TS 只绑定该边界，不复制参考项目实现。 |

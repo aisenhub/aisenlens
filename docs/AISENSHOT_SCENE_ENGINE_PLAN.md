@@ -1,10 +1,10 @@
 # AisenShot Scene Engine 架构规划
 
-> 状态：已完成第二轮架构审核，尚未实施
+> 状态：架构已审核，Phase 1–9 引擎实现与 Phase 10–11 Web 接入已落地；Phase 11.5 产品视频回归与 Phase 12 最终清理待完成
 >
 > 初版日期：2026-08-25
 >
-> 最后修订：2026-08-27
+> 最后修订：2026-08-28
 > 范围：分镜检测核心、浏览器运行时与前端集成边界  
 > 不包含：现有业务代码修改、UI 改版、关键帧提取及其他视频分析能力
 
@@ -847,6 +847,9 @@ AutoShotPanel / EditorWorkspace
 13. checkpoint 由 Worker envelope 与 C++ core state 组成；恢复要求精确版本、强媒体身份和完整结果前缀。
 14. 先融合跨检测器事件，再对最终边界执行 minimum scene duration。
 
-## 19. 规划完成后的下一项工作
+## 19. 当前实施后的下一项工作
 
-下一阶段只应执行 Phase 0：确认 API/schema、选择 Emscripten 构建版本、建立合成与真实 fixture、记录当前 JS 基线并验证浏览器像素路径。Phase 0 完成并记录结果前，不应开始 C++ Phase 1、React 接入或替换现有自动分镜业务链路。
+Phase 0–10 的引擎与运行时工作、Phase 11 的 Web 任务接入和 Phase 12 删除前基线已经完成可执行部分。下一步只推进
+`docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md` 中仍开放的验收项：使用真实 H.264 视频完成产品 UI 全流程回归，补齐
+准确率、性能和内存标定；在这些证据通过前，不删除旧 Canvas/seek 基线服务，也不宣称 Phase 12 完成。Zustand/App 会话与业务
+状态迁移属于独立待办，不作为当前 Web 自动分镜验收的隐式前置条件。

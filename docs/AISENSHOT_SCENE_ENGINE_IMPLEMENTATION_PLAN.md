@@ -1,10 +1,10 @@
 # AisenShot Scene Engine 开发实施计划
 
-> 状态：已完成第二轮审核，待从 Phase 0 开始执行
+> 状态：Phase 0–5 native 核心与 C ABI、Phase 6.1–6.5、Phase 7.1–7.5、Phase 8.1–8.5、Phase 9、Phase 10 已完成；Phase 11 已接入并等待真实视频产品矩阵收口，Phase 12 删除前基线已建立，后续删除/标定待真实素材
 >
 > 初版日期：2026-08-25
 >
-> 最后修订：2026-08-27
+> 最后修订：2026-08-28
 >
 > 依据：已审核通过的 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`
 >
@@ -40,7 +40,7 @@
 
 - **可行性基线（Phase 0）**：当前 JS 算法已有可复现准确率/性能记录，至少一种目标 Web 浏览器像素路径完成真实视频 smoke，公共契约已冻结。
 - **工程最小可运行版本（Phase 1）**：原生 C++ 引擎可以创建、顺序接收合成帧、flush、reset 和销毁；尚不检测切点，稳定输出零事件。
-- **算法最小可用版本（Phase 2）**：Content Detector 在原生测试中可稳定检测合成硬切，尚不接 WASM 或 UI。
+- **算法最小可用版本（Phase 3）**：Content 与 Adaptive Detector 在原生测试中可稳定运行，尚不接 WASM 或 UI。
 - **浏览器最小可用版本（Phase 8）**：真实短视频可在 Worker 中经 WebCodecs 解码并由 baseline WASM 输出镜头边界，主线程不接收像素帧。
 - **产品最小可用版本（Phase 11）**：现有自动分镜入口使用新引擎完成运行、暂停/继续、结果审阅和显式应用。
 
@@ -51,7 +51,7 @@
 | 已确认问题 | 实施影响 | 处理阶段 |
 | --- | --- | --- |
 | `packages/scene-engine/` 尚不存在，`packages/` 当前为空 | 必须先创建独立 workspace 包，不能直接在 Web feature 中写算法 | Phase 1 |
-| 当前环境未发现 CMake、原生 C++ 编译器、CTest 或 Emscripten | Phase 1/6 开始前必须完成工具链预检；安装工具需单独获得执行环境许可 | Phase 1、Phase 6 |
+| CMake、原生 C++ 编译器和 CTest 已安装并验证；Emscripten 6.0.8 已安装并验证 | Phase 1–5 使用便携版 CMake/LLVM-MinGW；Phase 6 使用固定 emsdk 6.0.8 | Phase 6 |
 | 仓库没有通用 C++/TypeScript 单测框架 | 原生侧先使用 CTest + 无外部依赖的轻量测试可执行文件；TS 侧复用 Node `node:test`，不为此引入大型测试框架 | Phase 1、Phase 6 |
 | 根 `build` 当前只构建 `@aisenlens/web` | Engine 必须有独立 configure/build/test 脚本；接入前再把必要检查纳入总体验收 | Phase 1、Phase 12 |
 | 当前 `AutoShotRunRecord` 使用整数帧、`confidence` 和旧 `cuts` 结构 | 不能直接承载新引擎微秒时间、`score/threshold/evidence`、版本、配置 hash 和 checkpoint | Phase 10、Phase 11 |
@@ -83,6 +83,7 @@
 创建：
 
 - `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`
+- `apps/web/test/auto-shot-contract.test.js`：Task 0.1 的纯 Node 契约测试；浏览器基线测试仍由 Task 0.2 创建。
 - `apps/web/test/auto-shot-baseline.browser.test.js`
 - `apps/web/test/fixtures/auto-shot/manifest.example.json`
 - `scripts/evaluate-auto-shot.mjs`
@@ -324,16 +325,16 @@ git diff --check
 
 创建：
 
-- `packages/scene-engine/cpp/src/detectors/threshold_detector.h`
-- `packages/scene-engine/cpp/src/detectors/threshold_detector.cpp`
-- `packages/scene-engine/cpp/src/core/min_scene_filter.h`
+- `packages/scene-engine/cpp/include/aisenshot/threshold_detector.h`
+- `packages/scene-engine/cpp/src/core/threshold_detector.cpp`
+- `packages/scene-engine/cpp/include/aisenshot/min_scene_filter.h`
 - `packages/scene-engine/cpp/src/core/min_scene_filter.cpp`
-- `packages/scene-engine/cpp/src/core/event_resolver.h`
+- `packages/scene-engine/cpp/include/aisenshot/event_resolver.h`
 - `packages/scene-engine/cpp/src/core/event_resolver.cpp`
-- `packages/scene-engine/cpp/src/core/checkpoint.h`
+- `packages/scene-engine/cpp/include/aisenshot/checkpoint.h`
 - `packages/scene-engine/cpp/src/core/checkpoint.cpp`
 - `packages/scene-engine/cpp/tests/threshold_detector_test.cpp`
-- `packages/scene-engine/cpp/tests/min_scene_filter_test.cpp`
+- `packages/scene-engine/cpp/tests/event_resolver_test.cpp`（包含 MinSceneFilter 用例）
 - `packages/scene-engine/cpp/tests/event_resolver_test.cpp`
 - `packages/scene-engine/cpp/tests/checkpoint_test.cpp`
 
@@ -971,9 +972,9 @@ Web 基线与像素路径验证
 
 ### 4.2 Phase 0 任务单：规格、现有基线与 Web 像素路径验证
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 0.1：冻结评估输入与评分契约
+#### [x] Task 0.1：冻结评估输入与评分契约
 
 **输入**：当前 `autoShotService.ts`、项目帧语义、批准架构文档和本地测试素材约定。
 
@@ -986,7 +987,9 @@ Web 基线与像素路径验证
 
 **完成检查**：同一预测结果重复评分完全一致，所有标注可追溯且时间语义无歧义。
 
-#### [ ] Task 0.2：记录当前 JS 算法基线
+**完成记录（2026-08-27）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`、示例 manifest 和 `apps/web/test/auto-shot-contract.test.js`；已固定一对一匹配、0/1/2 项目帧容差、fade 半开区间、量化 FPS + `ceil` 项目帧投影、首尾 clamp、重复 PTS ordinal、durationFrames 与素材追溯规则。验证命令 `corepack pnpm test:auto-shot-contract` 通过（6/6），`git diff --check` 通过。未提交任何视频本体。
+
+#### [x] Task 0.2：记录当前 JS 算法基线
 
 **操作**：
 
@@ -997,7 +1000,9 @@ Web 基线与像素路径验证
 
 **完成检查**：基线可在同一环境重复运行，差异有解释且报告不依赖肉眼判断。
 
-#### [ ] Task 0.3：验证 WebCodecs/Mediabunny 像素能力
+**完成记录（2026-08-27）**：已新增可重复生成的合成素材脚本、浏览器基线测试和统一评分脚本；基线报告记录 Chrome/Windows、素材 SHA-256、准确率指标、边界偏移、总耗时、长任务与峰值内存。当前 JS 在合成标注集上产生 5 个 hard-cut 候选，0/1/2 帧容差均 `TP=0, FP=5, FN=2`，fade 命中 `1/1` 但有 4 个额外候选，结果已写入 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`。验证命令 `corepack pnpm test:auto-shot-baseline` 与 `corepack pnpm evaluate:auto-shot` 通过；素材本体保持 `.gitignore` 忽略。
+
+#### [x] Task 0.3：验证 WebCodecs/Mediabunny 像素能力
 
 **操作**：
 
@@ -1008,7 +1013,9 @@ Web 基线与像素路径验证
 
 **完成检查**：形成目标 Web 浏览器能力矩阵，每个不支持分支都有明确 capability/error 决定。
 
-#### [ ] Task 0.4：比较候选预处理与采样路径
+**完成记录（2026-08-27）**：已新增 `auto-shot-capability.verification.ts` 并接入浏览器基线 harness；实测 H.264 sample 为 NV12，原生 copy 与 RGBA copy 成功，I420 显式转换失败，VP9 WebM 的 `VideoSampleSink` 返回明确 `Decoding error`，所有样本均执行 close。能力矩阵与生产候选决策已写入 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`，验证命令 `corepack pnpm test:auto-shot-baseline` 通过。
+
+#### [x] Task 0.4：比较候选预处理与采样路径
 
 **操作**：
 
@@ -1019,7 +1026,9 @@ Web 基线与像素路径验证
 
 **完成检查**：选出至少一个通过准确率和性能门槛的生产候选；若没有，Phase 0 标记阻塞并调整方案，不进入 C++ 实现。
 
-#### [ ] Task 0.5：冻结跨阶段公共契约
+**完成记录（2026-08-27）**：已完成浏览器端到端 decode/copy/preprocess 测量并写入 Phase 0 报告；在标注 VP8 合成素材上以逐帧 RGBA 签名作为路径级基线，`96×54` OffscreenCanvas 候选 Recall 为 `1.0`、Recall delta `0`，平均预处理 `3.42ms`/帧；原生平面路径 Recall `0.5`，不作为默认低精度路径。已选定 Worker 内固定低分辨率预处理候选，并保留 NV12/RGBA 高保真能力分支；真正 detector 接入后仍需按 Phase 12 复验。
+
+#### [x] Task 0.5：冻结跨阶段公共契约
 
 **操作**：
 
@@ -1031,13 +1040,15 @@ Web 基线与像素路径验证
 
 **最终交付物**：可复现当前基线、Web 能力矩阵、像素路径决定、评分工具和冻结公共契约。
 
+**完成记录（2026-08-27）**：已将 FrameView 色彩/几何字段、微秒时间、强媒体指纹、规范化 config hash、engine state version、checkpoint core/envelope 边界、task outcome 和跨后端确定性规则同步到架构方案与 Phase 0 报告；已更新参考索引。`corepack pnpm test:auto-shot-contract`、`corepack pnpm build`、`corepack pnpm evaluate:auto-shot` 与 `git diff --check` 均通过；Task 0.4 的路径级 Recall 门槛也已通过，因此 Phase 0 验收完成，可进入 Phase 1。
+
 **Phase 0 验收门**：Task 0.1-0.5 全部完成且 Web 验证通过，才能开始 Phase 1。
 
 ### 4.3 Phase 1 任务单：原生 C++ 工程骨架与最小生命周期
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 1.1：工作区与工具链预检
+#### [x] Task 1.1：工作区与工具链预检
 
 **输入**：仓库根目录、批准架构文档、本实施计划。
 **操作**：
@@ -1051,7 +1062,9 @@ Web 基线与像素路径验证
 **交付物**：预检记录写入 `packages/scene-engine/README.md` 的 Prerequisites；若因工具缺失不能验证，明确标记 Phase 1 尚未完成。
 **禁止**：修改业务文件、下载 PySceneDetect/OpenCV、开始 Emscripten 安装。
 
-#### [ ] Task 1.2：创建 workspace 包元数据
+**完成记录（2026-08-27）**：已核验 `AGENTS.md`、根/Web `package.json`、`pnpm-workspace.yaml`、`.mise.toml`、`.gitignore` 和 Phase 0 报告；Node `v24.19.0`、pnpm `11.24.0`、便携版 CMake/CTest `4.4.2` 和 LLVM-MinGW Clang `22.1.8` 均已验证可用。Phase 1 当时按计划未安装 Emscripten；后续已由 Task 6.1 安装并验证 emsdk 6.0.8。
+
+#### [x] Task 1.2：创建 workspace 包元数据
 
 **操作**：
 
@@ -1063,7 +1076,9 @@ Web 基线与像素路径验证
 **完成检查**：`corepack pnpm --filter @aisenlens/scene-engine exec node -p "process.cwd()"` 能定位包目录。
 **禁止**：增加 npm 运行时依赖、创建第二个 scene engine 包、改 Web package。
 
-#### [ ] Task 1.3：建立 CMake/CTest 最小工程
+**完成记录（2026-08-27）**：已创建唯一的 `@aisenlens/scene-engine` workspace 包及根代理脚本；`corepack pnpm --filter @aisenlens/scene-engine exec node -p "process.cwd()"` 可定位包目录。CMake/native 脚本因工具链缺失尚未执行。
+
+#### [x] Task 1.3：建立 CMake/CTest 最小工程
 
 **操作**：
 
@@ -1077,7 +1092,9 @@ Web 基线与像素路径验证
 **完成检查**：空算法核心能在 Debug 与 Release 配置完成 configure/build/test。
 **禁止**：加入 Emscripten flags、SIMD、OpenCV、FetchContent 或第三方测试框架。
 
-#### [ ] Task 1.4：落地基础值类型
+**完成记录（2026-08-27）**：已建立单一 CMake/CTest 工程，C++17、无扩展、静态核心库、warning 选项和可选 sanitizer 均已配置；LLVM-MinGW `clang++ 22.1.8` 下 Debug、Release 构建与 CTest 全部通过。
+
+#### [x] Task 1.4：落地基础值类型
 
 **操作**：
 
@@ -1090,7 +1107,9 @@ Web 基线与像素路径验证
 **完成检查**：每个 public header 均能被最小 C++ translation unit 单独 include 并编译。
 **禁止**：暴露 STL 对象给未来 C ABI、加入项目 frame/ShotRecord 类型、实现未来能力占位类。
 
-#### [ ] Task 1.5：实现最小 SceneEngine 生命周期
+**完成记录（2026-08-27）**：已落地 `FrameView`、`PlaneView`、色彩/像素枚举、`SceneEvent`、`EngineConfig`、`ISceneDetector`、`ErrorCode` 和 `SceneEngine` 公共头；未引入浏览器、React、数据库或 Emscripten 头文件。
+
+#### [x] Task 1.5：实现最小 SceneEngine 生命周期
 
 **操作**：
 
@@ -1103,7 +1122,9 @@ Web 基线与像素路径验证
 **完成检查**：同一 engine reset 前后处理同一输入，状态和零事件输出一致。
 **禁止**：在此任务中计算亮度、HSV、直方图或任何切点。
 
-#### [ ] Task 1.6：先写测试用例并补齐实现
+**完成记录（2026-08-27）**：已实现空 pipeline 的 process/flush/reset 生命周期、格式/plane/stride/visible rect/色彩/时间顺序校验、flush 后明确错误和 reset 恢复；当前合法帧只返回零事件。
+
+#### [x] Task 1.6：先写测试用例并补齐实现
 
 **操作**：
 
@@ -1116,7 +1137,9 @@ Web 基线与像素路径验证
 **完成检查**：CTest 输出具体失败用例名；所有用例通过且无 sanitizer 报告。
 **禁止**：使用真实视频、Canvas、WebCodecs 或需要网络下载的 fixture。
 
-#### [ ] Task 1.7：文档与边界审计
+**完成记录（2026-08-27）**：已新增轻量断言工具、统一 test main、带 padding 的 I420/NV12/RGBX/RGBA synthetic frame factory，覆盖生命周期、重复 flush、倒退 timestamp/index、非法 stride/plane/dimensions/visible rect/bit depth/color metadata 等稳定错误类别。Debug、Release 和 sanitizer Debug 的 CTest 均通过。
+
+#### [x] Task 1.7：文档与边界审计
 
 **操作**：
 
@@ -1135,11 +1158,13 @@ Web 基线与像素路径验证
 
 **Phase 1 验收门**：上述交付物全部存在，native Release、sanitizer Debug、Web build 和 diff check 全部通过。任一项未验证时，状态只能是“Phase 1 未完成”，不得开始 Phase 2。
 
+**完成记录（2026-08-27）**：已更新 `packages/scene-engine/README.md` 的实际工具链路径和边界；已完成禁止依赖审计，native Release/sanitizer Debug、Web build、契约/浏览器测试和 `git diff --check` 均通过，满足进入 Phase 2 的前置条件。
+
 ### 4.4 Phase 2 任务单：共享帧指标与 Content Detector
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 2.1：核验 Phase 1 并冻结 Content 测试契约
+#### [x] Task 2.1：核验 Phase 1 并冻结 Content 测试契约
 
 **输入**：Phase 1 原生核心、合成帧工厂、批准架构中的 Content 公式与事件语义。
 
@@ -1153,9 +1178,11 @@ Web 基线与像素路径验证
 
 **完成检查**：测试名称能逐项表达契约，失败原因来自尚未实现的 metrics/Content，而不是 fixture 或构建错误。
 
+**完成记录（2026-08-27）**：已核验 Phase 1 Release/Debug sanitizer CTest；新增 `frame_metrics_test.cpp`、`content_detector_test.cpp` 及格式、padding、奇数尺寸、visible rect、亮度/色相变化和阈值边界用例。Content 的 0..10000 定点值、首帧不触发、阈值相等触发、微秒时间和最短镜头约束已冻结。
+
 **禁止**：接入 Adaptive/Threshold、复制 PySceneDetect Python 结构、为了匹配默认阈值而隐式改变颜色规则。
 
-#### [ ] Task 2.2：实现统一像素读取与下采样
+#### [x] Task 2.2：实现统一像素读取与下采样
 
 **操作**：
 
@@ -1169,7 +1196,9 @@ Web 基线与像素路径验证
 
 **禁止**：引入 OpenCV/libyuv、Canvas 规则、平台特定 SIMD、第二套格式专属 detector。
 
-#### [ ] Task 2.3：实现 SharedFrameMetrics
+**完成记录（2026-08-27）**：已实现 `downscale.*` 与 `yuv_to_hsv.*`，覆盖 I420、NV12、RGBX、RGBA、padding stride、visible rect、奇数尺寸及 BT.601/709、full/limited range 的定点读取；未引入第三方像素库。
+
+#### [x] Task 2.3：实现 SharedFrameMetrics
 
 **操作**：
 
@@ -1183,7 +1212,9 @@ Web 基线与像素路径验证
 
 **禁止**：在 metrics 层判断切点、发出 SceneEvent 或持有 detector 配置。
 
-#### [ ] Task 2.4：实现 Content Detector 并接入 pipeline
+**完成记录（2026-08-27）**：`SharedFrameMetrics` 已以一次分析遍历产生 mean_luma、三分量差值和 content_score，并仅保留下一帧量化分析表面；首帧、重复帧和确定性回归测试通过。
+
+#### [x] Task 2.4：实现 Content Detector 并接入 pipeline
 
 **操作**：
 
@@ -1197,7 +1228,9 @@ Web 基线与像素路径验证
 
 **禁止**：同时默认启用 Content 与 Adaptive、在 detector 内重新遍历像素、把项目帧号写入事件。
 
-#### [ ] Task 2.5：建立 Content golden 与阶段回归
+**完成记录（2026-08-27）**：已实现 `ContentDetector`、Content 配置校验、阈值下方/相等/上方、最短镜头和 reset/flush 行为，并接入 SceneEngine；`DetectorKind::None` 保持零事件。
+
+#### [x] Task 2.5：建立 Content golden 与阶段回归
 
 **操作**：
 
@@ -1211,11 +1244,13 @@ Web 基线与像素路径验证
 
 **Phase 2 验收门**：Content golden、批准格式/颜色空间容差、决策确定性、sanitizer 和既有回归全部通过；未通过时不得开始 Adaptive。
 
+**完成记录（2026-08-27）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_2_CONTENT.md` 交接记录与 native golden 用例；Debug、Release、sanitizer CTest、Web build 和禁止依赖审计均通过，满足进入 Phase 3 的前置条件。
+
 ### 4.5 Phase 3 任务单：Adaptive Detector
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 3.1：先建立 Adaptive 行为测试
+#### [x] Task 3.1：先建立 Adaptive 行为测试
 
 **输入**：Phase 2 稳定的 Content score 序列与共享 metrics。
 
@@ -1230,7 +1265,9 @@ Web 基线与像素路径验证
 
 **禁止**：用真实视频肉眼判断替代窗口测试、在测试中容忍未解释的一帧偏移。
 
-#### [ ] Task 3.2：实现 Adaptive 滚动窗口
+**完成记录（2026-08-27）**：已新增 `adaptive_detector_test.cpp`，固定孤立高峰、look-ahead 两帧、零邻域、首帧、flush 和 reset 的行为，事件时间指向窗口中心帧。
+
+#### [x] Task 3.2：实现 Adaptive 滚动窗口
 
 **操作**：
 
@@ -1244,7 +1281,9 @@ Web 基线与像素路径验证
 
 **禁止**：读取 FrameView 像素、重算 HSV/Content score、按平均帧率计算窗口时间。
 
-#### [ ] Task 3.3：接入配置与 detector pipeline
+**完成记录（2026-08-27）**：已实现 `AdaptiveDetector`，使用定长 Content score 窗口、交叉乘法 ratio 比较、零邻域保护、min content、lookahead 和确定性尾部 flush；不读取像素。
+
+#### [x] Task 3.3：接入配置与 detector pipeline
 
 **操作**：
 
@@ -1258,7 +1297,9 @@ Web 基线与像素路径验证
 
 **禁止**：删除 Content、让两个 hard-cut 结果未经 resolver 直接混合、提前实现 Fade。
 
-#### [ ] Task 3.4：确定性与阶段交接
+**完成记录（2026-08-27）**：已增加 Adaptive 阈值/窗口/min score 配置及严格校验；`DetectorKind` 明确选择 Content 或 Adaptive，SceneEngine 每帧只构建一次共享 metrics。
+
+#### [x] Task 3.4：确定性与阶段交接
 
 **操作**：
 
@@ -1272,11 +1313,13 @@ Web 基线与像素路径验证
 
 **Phase 3 验收门**：look-ahead、持续运动抑制、尾部 flush、单次 metrics 和全量回归全部通过。
 
+**完成记录（2026-08-27）**：native Debug、Release、sanitizer Debug Phase 3 CTest 和 Web build 均通过；Adaptive/Content 测试均为固定整数决策，README 与 Phase 3 交接记录已同步，WASM/Web Worker 接入留待后续阶段。
+
 ### 4.6 Phase 4 任务单：Threshold/Fade、融合、过滤与 checkpoint
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 4.1：先建立 Threshold/Fade 状态机测试
+#### [x] Task 4.1：先建立 Threshold/Fade 状态机测试
 
 **输入**：Phase 2 `mean_luma` 指标、批准的 fade 区间和 bias 语义。
 
@@ -1291,7 +1334,9 @@ Web 基线与像素路径验证
 
 **禁止**：把 fade 简化成普通 Content hard cut、使用项目帧率推算持续时间。
 
-#### [ ] Task 4.2：实现 Threshold/Fade Detector
+**完成记录（2026-08-27）**：已新增 `threshold_detector_test.cpp`，覆盖 floor/ceiling、向下/向上穿越、完整 fade、未闭合结尾、bias、VFR 微秒时间和 reset；测试独立于 Content/Adaptive。
+
+#### [x] Task 4.2：实现 Threshold/Fade Detector
 
 **操作**：
 
@@ -1305,7 +1350,9 @@ Web 基线与像素路径验证
 
 **禁止**：在 Threshold 内读取像素、丢弃 fade interval、提前做业务镜头创建。
 
-#### [ ] Task 4.3：先测试并实现 EventResolver
+**完成记录（2026-08-27）**：已实现 `ThresholdDetector`，使用 `mean_luma_q`、floor/ceiling、fade bias、区间 evidence、`emit_final_fade` 和微秒最短时长；已接入 SceneEngine 的可选 threshold 分支。
+
+#### [x] Task 4.3：先测试并实现 EventResolver
 
 **操作**：
 
@@ -1318,7 +1365,9 @@ Web 基线与像素路径验证
 
 **禁止**：在 resolver 中提前执行最终 minimum scene duration、转换为 AisenLens `ShotRecord` 或做 UI 文案映射。
 
-#### [ ] Task 4.4：先测试并实现最终 MinSceneFilter
+**完成记录（2026-08-27）**：已实现 `EventResolver` 的确定排序、同时间 hard-cut 合并、fade 区间内 hard-cut 聚合和 source mask 保留，测试验证输入顺序扰动不改变结果。
+
+#### [x] Task 4.4：先测试并实现最终 MinSceneFilter
 
 **操作**：
 
@@ -1331,7 +1380,9 @@ Web 基线与像素路径验证
 
 **禁止**：在跨 detector 融合前执行最终 minimum scene duration、静默删除所有被抑制事件证据。
 
-#### [ ] Task 4.5：实现版本化 checkpoint
+**完成记录（2026-08-27）**：已实现 `MinSceneFilter`，按微秒过滤相邻融合边界，并合并被抑制候选的 source mask；不读取平均帧率。
+
+#### [x] Task 4.5：实现版本化 checkpoint
 
 **操作**：
 
@@ -1345,7 +1396,9 @@ Web 基线与像素路径验证
 
 **禁止**：写 IndexedDB、包含媒体 Blob、允许旧/未知 schema 猜测恢复。
 
-#### [ ] Task 4.6：完整核心验收
+**完成记录（2026-08-27）**：已完成独立 checkpoint core 的显式 little-endian schema、magic、精确 engine state version/config hash 校验和截断/损坏测试；`SceneEngine::export_checkpoint/import_checkpoint` 已纳入前帧 metrics、Adaptive/Fade 状态及引擎生命周期，并以连续运行 parity 测试验证导入失败不修改状态。
+
+#### [x] Task 4.6：完整核心验收
 
 **操作**：
 
@@ -1359,11 +1412,13 @@ Web 基线与像素路径验证
 
 **Phase 4 验收门**：所有 detector 可按批准组合运行，VFR/flush/融合/checkpoint 确定性和 sanitizer 全部通过。
 
+**完成记录（2026-08-27）**：SceneEngine 已统一收集 hard-cut/fade 候选，经过 EventResolver 与 MinSceneFilter 后按确定顺序输出，并将融合历史纳入 checkpoint；Content-only、Adaptive-only、Threshold 并行配置、flush、恢复 parity、native Release、sanitizer、Web build 和 `git diff --check` 均通过。Phase 4 验收门已满足。
+
 ### 4.7 Phase 5 任务单：稳定 C ABI 与原生 ABI 一致性
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 5.1：冻结并编译检查 C ABI header
+#### [x] Task 5.1：冻结并编译检查 C ABI header
 
 **输入**：Phase 4 已稳定的 C++ API、事件和 checkpoint 语义。
 
@@ -1379,7 +1434,9 @@ Web 基线与像素路径验证
 
 **禁止**：使用 Embind、把 JSON 字符串作为逐帧边界、直接导出 C++ class。
 
-#### [ ] Task 5.2：实现句柄、配置与帧缓冲 ABI
+**完成记录（2026-08-27）**：已新增纯 C `scene_engine_abi.h`，包含固定宽度配置/帧/事件结构、显式 ABI version、opaque handle 和稳定 status；C smoke translation unit 与 C++ offset/size static assertions 均通过。
+
+#### [x] Task 5.2：实现句柄、配置与帧缓冲 ABI
 
 **操作**：
 
@@ -1393,7 +1450,9 @@ Web 基线与像素路径验证
 
 **禁止**：让调用方持有 C++ 指针、每帧重新创建 engine、在 ABI 内读取视频文件。
 
-#### [ ] Task 5.3：实现事件批量读取与 checkpoint ABI
+**完成记录（2026-08-27）**：已实现 `asen_create/destroy/process_frame/flush` 及配置、FrameView、SceneEvent 转换；异常被限制在 ABI 边界内，C++/C ABI Content parity 测试通过。
+
+#### [x] Task 5.3：实现事件批量读取与 checkpoint ABI
 
 **操作**：
 
@@ -1407,7 +1466,9 @@ Web 基线与像素路径验证
 
 **禁止**：为每个事件字段创建单独导出函数、返回内部 vector 指针。
 
-#### [ ] Task 5.4：建立 C++/C ABI parity
+**完成记录（2026-08-27）**：已新增 `asen_read_events` 的 offset/capacity/written/total 批量读取接口，以及 checkpoint 长度查询、调用方缓冲写入和 import 校验；C++/C ABI 测试覆盖零容量查询与单批读取。
+
+#### [x] Task 5.4：建立 C++/C ABI parity
 
 **操作**：
 
@@ -1421,11 +1482,13 @@ Web 基线与像素路径验证
 
 **Phase 5 验收门**：纯 C header smoke、所有 ABI 错误路径、C++/C ABI 事件与 checkpoint parity 全部通过。
 
+**完成记录（2026-08-27）**：Clang/LLVM-MinGW 下已完成 C++/C Content 事件 parity、C ABI 批量读取、checkpoint 长度查询/import parity 与 sanitizer 回归；纯 C smoke、布局断言、错误路径和 Web build 均通过。MSVC 当前环境不可用，已在 Phase 5 交接记录中明确列出，Phase 5 验收完成。
+
 ### 4.8 Phase 6 任务单：Emscripten baseline WASM 与 TypeScript 低层封装
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[-] 进行中`
 
-#### [ ] Task 6.1：预检并固定 Emscripten 工具链
+#### [x] Task 6.1：预检并固定 Emscripten 工具链
 
 **输入**：Phase 5 C ABI、当前 CMake 与 workspace 工具版本。
 
@@ -1439,9 +1502,11 @@ Web 基线与像素路径验证
 
 **完成检查**：一个最小 C ABI smoke module 可由固定工具链编译并由当前 Node 实例化。
 
+**阶段记录（2026-08-27）**：已克隆 emsdk 并固定版本 6.0.8。官方 `wasm-binaries.zip` 通过分段下载后完成完整性校验并解压；`emsdk activate 6.0.8` 成功，`emcc 6.0.8`、`emcmake` 和 `packages/scene-engine` 的 Emscripten 静态库 smoke build 均已验证通过。本 Task 完成；正式 WASM target 留给 Task 6.2。
+
 **禁止**：使用浮动 `latest`、安装后不记录版本、开始 SIMD/pthreads、引入 Embind。
 
-#### [ ] Task 6.2：建立 baseline WASM CMake target
+#### [x] Task 6.2：建立 baseline WASM CMake target
 
 **操作**：
 
@@ -1453,9 +1518,11 @@ Web 基线与像素路径验证
 
 **完成检查**：干净目录下可用一条文档化命令生成 baseline WASM，native build 不受 Emscripten flags 污染。
 
+**完成记录（2026-08-27）**：新增 `cmake/EmscriptenOptions.cmake` 和无 `main` 的 WASM translation unit；同一 C++ core/C ABI 通过 `emcmake` 生成模块化 `dist/wasm/scene-engine.js` 与 `scene-engine.wasm`。baseline 使用 `SceneEngineModule`、固定 64 MiB 内存、关闭 memory growth/SIMD/pthreads，导出稳定 C ABI、`_malloc/_free` 并显式提供 runtime `HEAPU8` 视图；`configure:wasm`、`build:wasm`、Node ABI version smoke 和 `git diff --check` 均通过，native target 未受 Emscripten flags 污染。
+
 **禁止**：提交临时 build 目录、把 WASM 二进制手工复制进 Web public、改变根 `build` 的现有含义。
 
-#### [ ] Task 6.3：定义 TypeScript 公共契约
+#### [x] Task 6.3：定义 TypeScript 公共契约
 
 **操作**：
 
@@ -1469,7 +1536,9 @@ Web 基线与像素路径验证
 
 **禁止**：在 TS 侧重新实现 detector、把 `confidence` 用作 raw score、公开 C ABI struct 作为调用 API。
 
-#### [ ] Task 6.4：实现 wasmRuntime
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/api/{types,config,errors}.ts`、`src/result/normalizeResult.ts` 和唯一公共出口 `src/index.ts`。公共契约覆盖配置、事件/边界、进度、任务结果、checkpoint envelope 与稳定错误码；时间统一为安全整数微秒，检测原始值保留 `score`、`threshold`、`strength`、`evidence` 命名。配置校验拒绝未知字段、非法 detector 组合和不符合 C++ 固定点权重规则的输入；Node contract tests 与 strict TypeScript 检查通过。当前实现不导出 Emscripten、Worker、Mediabunny、React 或项目实体。
+
+#### [x] Task 6.4：实现 wasmRuntime
 
 **操作**：
 
@@ -1483,7 +1552,9 @@ Web 基线与像素路径验证
 
 **禁止**：在 runtime 中解码媒体、创建 Worker、逐事件字段调用 C 函数。
 
-#### [ ] Task 6.5：建立 native/WASM ABI parity
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/wasmRuntime.ts`。runtime 负责模块实例化与 ABI 版本校验、C ABI 配置映射、预分配 plane/frame 缓冲、内存视图刷新、单事件/批量事件读取、flush、checkpoint 查询/导入以及幂等 dispose；底层状态码统一转换为稳定 `SceneEngineError`，不把 Emscripten Module/HEAP 或指针暴露给公共出口。fake ABI 生命周期/错误测试与真实 baseline WASM 合成 RGBX 内容切点测试通过。
+
+#### [x] Task 6.5：建立 native/WASM ABI parity
 
 **操作**：
 
@@ -1495,13 +1566,15 @@ Web 基线与像素路径验证
 
 **最终交付物**：固定 Emscripten baseline 构建、低层 TS 契约/runtime 和 native/WASM parity。
 
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/test/abi-parity.test.ts`，使用真实 baseline WASM 覆盖 Content、Adaptive、Threshold/Fade、flush、批量事件读取及 checkpoint 导入/导出；native CTest 已覆盖对应 detector、事件顺序、checkpoint 与 C ABI。WASM 与 native 均保持整数微秒、presentation index、事件类型/source 和 raw score/threshold/evidence 语义一致。Node contract/parity tests 7/7 通过。
+
 **Phase 6 验收门**：干净构建、ABI 版本校验、native/WASM 全矩阵 parity、strict TS 和既有回归全部通过。
 
 ### 4.9 Phase 7 任务单：Worker 协议、客户端与合成帧纵向链路
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成（7.1–7.5）`
 
-#### [ ] Task 7.1：先定义并测试 Worker 协议
+#### [x] Task 7.1：先定义并测试 Worker 协议
 
 **输入**：Phase 6 public types、wasmRuntime 和批准 Worker 状态图。
 
@@ -1517,7 +1590,9 @@ Web 基线与像素路径验证
 
 **禁止**：在协议中传 React state、IndexedDB record、Mediabunny 类型或逐帧图像。
 
-#### [ ] Task 7.2：实现 SceneEngineClient
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/protocol.ts`，定义双向 discriminated union、jobId 约束、INIT/READY、START/PAUSE/CANCEL/DISPOSE 和全部终态消息；状态转换器会忽略旧 job 消息、拒绝非法顺序，并对终态后的消息保持幂等。协议测试覆盖合法暂停恢复、取消、旧任务消息和 dispose。
+
+#### [x] Task 7.2：实现 SceneEngineClient
 
 **操作**：
 
@@ -1531,7 +1606,9 @@ Web 基线与像素路径验证
 
 **禁止**：让 React 组件直接 new Worker、在 client 内做媒体解码或项目持久化。
 
-#### [ ] Task 7.3：实现 Worker 状态机与资源生命周期
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/client/SceneEngineClient.ts`，通过注入式 Worker 工厂实现初始化等待、单任务约束、jobId 隔离、progress、AbortSignal、pause/cancel/dispose 和确定性 completion outcome；暂停后通过新 job 恢复，不复用旧任务。fake Worker 测试覆盖正常暂停、取消、并发 start、dispose 和 AbortSignal。
+
+#### [x] Task 7.3：实现 Worker 状态机与资源生命周期
 
 **操作**：
 
@@ -1545,7 +1622,9 @@ Web 基线与像素路径验证
 
 **禁止**：抢占 C++ 正在处理的帧、同时运行多个重型任务、吞掉 Worker 顶层错误。
 
-#### [ ] Task 7.4：实现单缓冲池和测试帧源
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/scene-engine.worker.ts`，实现测试帧源的 idle/initializing/ready/running/pausing/cancelling/终态状态流转；pause 在当前帧处理并导出完整 checkpoint 后结束，cancel 不导出 checkpoint，完成/取消/异常均释放 runtime 和帧源。Worker 测试覆盖完成、暂停、取消和 runtime 失败。
+
+#### [x] Task 7.4：实现单缓冲池和测试帧源
 
 **操作**：
 
@@ -1559,7 +1638,9 @@ Web 基线与像素路径验证
 
 **禁止**：提前实现环形/双缓冲、把合成帧生产接口当成产品 API。
 
-#### [ ] Task 7.5：实际 module Worker smoke 与交接
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/frameBufferPool.ts`，首版只保留一个 runtime-owned frame buffer；同一尺寸/像素格式复用，布局变化重新 reserve，重复 release 幂等。单元测试确认缓冲数量不会随帧数增长，测试帧源仅存在于 test support。
+
+#### [x] Task 7.5：实际 module Worker smoke 与交接
 
 **操作**：
 
@@ -1569,15 +1650,17 @@ Web 基线与像素路径验证
 4. 运行 native、WASM parity、Worker tests、package/Web build 和 diff check。
 5. README 记录客户端生命周期、并发限制和 pause/cancel 区别。
 
+**完成记录（2026-08-27）**：已启动本地 Vite 服务并在浏览器中确认 Web 首页加载完成且无控制台错误；`apps/web/test/scene-engine-module.worker.ts` 的 dev smoke 已修复启动期消息丢失问题：Worker 先缓存顶层模块加载期间的 `INIT`，依赖加载后回放；WASM 改为显式 fetch 二进制并通过 `instantiateWasm` 注入。Chrome 152 已验证立即发送 `INIT` 可到达 `READY`，并完成两帧 `START → PROGRESS → COMPLETED`，输出 1 个 hard-cut。`scripts/verify-scene-engine-web-build.mjs` 已确认 production Worker/WASM 产物，`scripts/verify-scene-engine-web-preview.mjs` 又在 `/aisenlens/` 非根路径完成 `READY → STARTED → PROGRESS → CHECKPOINT` smoke；本任务验收完成。
+
 **最终交付物**：稳定 Worker 协议、SceneEngineClient、Worker 状态机、单缓冲和合成纵向测试。
 
 **Phase 7 验收门**：协议穷尽、全部终态资源释放、暂停/恢复 parity、浏览器 module Worker smoke 全部通过。
 
 ### 4.10 Phase 8 任务单：Mediabunny/WebCodecs 真实视频链路
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成（8.1–8.5）`
 
-#### [ ] Task 8.1：建立媒体 fixture 与能力测试矩阵
+#### [x] Task 8.1：建立媒体 fixture 与能力测试矩阵
 
 **输入**：Phase 7 Worker 链路、现有 Mediabunny 版本、Phase 0 批准的像素路径和 Web 能力矩阵。
 
@@ -1593,7 +1676,9 @@ Web 基线与像素路径验证
 
 **禁止**：提交来源不明视频、把公开评测数据集纳入产品包、增加 Canvas seek fallback。
 
-#### [ ] Task 8.2：实现 mediaDecoder 顺序解码
+**完成记录（2026-08-27）**：复核现有 `test.mov` 与 `manifest.example.json`，补充 `auto-shot-media.verification.ts`/Worker 到浏览器基线；能力矩阵继续记录 H.264/MP4 的 NV12、色彩元数据、WebCodecs/VideoFrame/OffscreenCanvas 能力，以及 VP9/WebM 明确解码错误。素材来源、SHA-256、尺寸、时间基和标注均可追溯，未提交来源不明视频。
+
+#### [x] Task 8.2：实现 mediaDecoder 顺序解码
 
 **操作**：
 
@@ -1607,7 +1692,9 @@ Web 基线与像素路径验证
 
 **禁止**：逐时间点 `getSample()` 随机 seek、把 VideoSample 发给主线程、在 decoder 中判定场景。
 
-#### [ ] Task 8.3：实现直接写入 WASM frame buffer
+**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/mediaDecoder.ts`，使用 `VideoSampleSink.samples()` 顺序读取 Blob，映射 timestamp/duration、尺寸、rotation、format、8-bit 限制、色彩元数据和实际 plane layout；每个 sample 在 `finally` 中 close，并提供 opened/closed/submitted/skipped 统计。Chrome 152 浏览器 smoke 对 H.264 素材验证 timestamp 单调、12 帧提交和 openedSamples=closedSamples=12；`scene-engine` strict typecheck、17 项 contract/parity tests、Web build 均通过。为保证重复 PTS ordinal 绝对确定性，当前 checkpoint 重放从流首部开始，关键帧 warm-up 优化留给 Task 8.4。
+
+#### [x] Task 8.3：实现直接写入 WASM frame buffer
 
 **操作**：
 
@@ -1621,7 +1708,9 @@ Web 基线与像素路径验证
 
 **禁止**：宣称硬件 surface 到 WASM 物理零复制、使用 `getImageData()`、把 RGBA Canvas 当静默降级。
 
-#### [ ] Task 8.4：接入 Worker 任务、暂停与错误
+**完成记录（2026-08-27）**：`WasmFrameBuffer` 已改为单一 WASM-backed allocation，并暴露 `copyDestination`/`planeOffsets`；同一 backing view 写入时 runtime 会跳过重复 JS→WASM copy。`mediaDecoder` 接收兼容 target 并校验 decoded plane layout，`MediaFrameSource.createFrameTarget()` 在首个可解码 sample 确定像素格式后预留固定布局，真实 Worker 将该 target 传入 decoder；Worker 合约测试确认 source-owned target 被转发。内存增长/布局变化会触发稳定错误，正常 H.264 smoke 未逐帧 reserve。
+
+#### [x] Task 8.4：接入 Worker 任务、暂停与错误
 
 **操作**：
 
@@ -1635,7 +1724,9 @@ Web 基线与像素路径验证
 
 **禁止**：Worker 访问 IndexedDB 业务模型、直接创建 ShotRecord、错误时调用旧 detector。
 
-#### [ ] Task 8.5：浏览器、内存与打包资源验收
+**完成记录（2026-08-27）**：新增 `apps/web/test/scene-engine-media-module.worker.ts`，Chrome 152 已将 `test.mov` 的真实 Mediabunny source 接入 baseline WASM Worker，限制前 12 帧完成 `READY → STARTED → PROGRESS → COMPLETED`；生命周期 smoke 又验证了真实媒体 `pause → CHECKPOINT → resume → COMPLETED`、`cancel → CANCELLED` 和损坏 Blob → `ERROR`。直接 decoder smoke 对 opened/closed sample 做了对账，Worker 在所有终态释放 source/runtime；本 Task 验收完成。
+
+#### [x] Task 8.5：浏览器、内存与打包资源验收
 
 **操作**：
 
@@ -1649,11 +1740,13 @@ Web 基线与像素路径验证
 
 **Phase 8 验收门**：真实视频检测、一次必要复制、无主线程像素、sample 全释放、内存有界和打包资源 smoke 全部通过。
 
+**完成记录（2026-08-27）**：新增 `scripts/verify-scene-engine-web-build.mjs`，在独立输出目录执行 Vite production build，确认生成 Worker chunk 与 hashed WASM asset；新增 `scripts/verify-scene-engine-web-preview.mjs`，以 `/aisenlens/` 非根路径静态部署 production 输出并由 Chrome 152 实际加载 Worker/WASM，完成真实 H.264 前 12 帧的 `READY → STARTED → PROGRESS → CHECKPOINT` smoke。真实媒体生命周期 smoke 已覆盖 pause/resume/cancel/error。合成 fixture 与 H.264 fixture 各运行两次，边界/帧序列一致；合成内存 smoke 在真实 baseline WASM Worker 中连续处理 200 帧，确认单次 reserve、WASM 内存 `67108864 → 67108864` 字节且无增长；浏览器 baseline 记录 JS heap 峰值约 22.8–24.1 MB，sample opened/closed 对账通过。Phase 8 验收门通过。
+
 ### 4.11 Phase 9 任务单：WASM SIMD 构建、探测与一致性
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 9.1：建立 SIMD 独立构建产物
+#### [x] Task 9.1：建立 SIMD 独立构建产物
 
 **输入**：Phase 8 baseline 正确性与性能基线。
 
@@ -1669,7 +1762,9 @@ Web 基线与像素路径验证
 
 **禁止**：删除 baseline、启用 pthreads、改变 detector 公式以追求 SIMD 速度。
 
-#### [ ] Task 9.2：实现能力探测和后端选择
+**完成记录（2026-08-28）**：新增 `AISENSHOT_WASM_SIMD` CMake 选项及 `configure:wasm:simd`/`build:wasm:simd` 脚本，输出独立的 `dist/wasm-simd/scene-engine-simd.js/.wasm`；baseline 仍保持独立产物。加入共享帧指标 SIMD 增量路径后，重新构建的 SIMD WASM SHA-256 为 `A7F25ADCE1E6717A621D4E14C4CD75BC0E45E72A4C24EA528D1071C6E2995486`（148188 bytes），baseline 为 `B7688C181E6B8486B398CD7E9AF02D8D53367B86B6DFBC0821332BC1E2D7CAF1`（146064 bytes）。`simd-parity.test.ts` 验证 `WebAssembly.validate`、ABI version、Content 事件和 flush 与 baseline 一致。
+
+#### [x] Task 9.2：实现能力探测和后端选择
 
 **操作**：
 
@@ -1683,7 +1778,9 @@ Web 基线与像素路径验证
 
 **禁止**：按帧探测、把 probe 逻辑放入 React、吞掉无法解释的 SIMD 初始化错误。
 
-#### [ ] Task 9.3：在共享预处理层增加 SIMD 优化
+**完成记录（2026-08-28）**：新增 `src/worker/featureProbe.ts` 与 `src/worker/wasmBackendLoader.ts`。Worker 初始化时只执行一次最小 `v128.const` `WebAssembly.validate()`，支持强制选择 SIMD 或 baseline；SIMD 资源缺失/编译/实例化失败只在初始化阶段回退 baseline，成功初始化后 backend 固定。新增 25 项 contract tests 覆盖 probe false/异常、强制 baseline、加载缓存、SIMD 失败回退、baseline 失败透传和显式 reset/re-init；production Vite build 生成两套 hashed WASM 资源，Chrome 152 在 `/aisenlens/` 非根路径真实加载并报告 `READY.backend/version`，随后完成 H.264 `START → PROGRESS → CHECKPOINT`。未发生运行中 backend 切换或静默吞错，Task 9.2 验收完成。
+
+#### [x] Task 9.3：在共享预处理层增加 SIMD 优化
 
 **操作**：
 
@@ -1697,7 +1794,9 @@ Web 基线与像素路径验证
 
 **禁止**：复制一套 SIMD detector、移除标量基准、在没有 profile 证据时全面重写。
 
-#### [ ] Task 9.4：建立 parity 与性能门槛
+**完成记录（2026-08-28）**：Phase 8 路径 profile 显示浏览器端主要成本在解码与原生 plane copy，因此没有改动 Mediabunny、颜色转换或 detector 公式；在共享 `frame_metrics.cpp` 中仅对已有上一帧 luma/hue/saturation 字节差值累加增加 `__wasm_simd128__` 路径，使用 pairwise widening 累加，标量路径保留并处理尾部。无前一帧时仍走同一采样/转换逻辑，所有 detector、resolver、filter 和 checkpoint 保持共用。`scene-engine:test:simd` parity 通过；`scene-engine:benchmark:simd` 对 400 个 96×54 RGBX 热帧重复 3 轮，连续 profile 的 SIMD 中位数相对 baseline 约快 6.6%–7.6%，但报告仍仅作为回归信号。
+
+#### [x] Task 9.4：建立 parity 与性能门槛
 
 **操作**：
 
@@ -1709,7 +1808,9 @@ Web 基线与像素路径验证
 
 **完成检查**：parity 全通过，性能报告可复现且明确实际提升/退化。
 
-#### [ ] Task 9.5：全量回归与交接
+**完成记录（2026-08-28）**：`simd-parity.test.ts` 已覆盖 RGBX、I420、NV12 合成帧的 ABI/事件 parity；浏览器 backend parity smoke 使用同一 `test.mov` 分别运行 baseline 与 SIMD，Chrome 152 报告两者均解码 12 帧、duration `99880000` 微秒且 boundaries 完全一致。`scene-engine:benchmark:simd` 输出固定 96×54、400 个热帧、3 轮中位数，pairwise SIMD 优化后连续三次 profile 均观察到约 6.6%–7.6% 加速，满足当前性能门槛；生产恢复 SIMD 默认，仍保留初始化失败回退和 backend 固定策略。
+
+#### [x] Task 9.5：全量回归与交接
 
 **操作**：
 
@@ -1722,11 +1823,13 @@ Web 基线与像素路径验证
 
 **Phase 9 验收门**：能力选择、所有 fixture parity、性能记录、baseline 回归和跨壳加载全部通过。
 
+**完成记录（2026-08-28）**：已完成 native CTest、25 项 TypeScript/Worker contract、SIMD 多格式 parity、baseline/SIMD H.264 浏览器 parity、常规 Web build、production Worker/WASM hashed 资源 build、`/aisenlens/` 非根路径 Chrome 152 preview、真实媒体生命周期 smoke、内存 smoke、backend 微基准和 `git diff --check`。pairwise SIMD 累加在固定机器上连续 profile 约提升 6.6%–7.6%，因此恢复 SIMD 生产默认；初始化失败仍回退 baseline，任务运行中不会切换 backend。Phase 9 验收门通过，可进入后续业务适配阶段。
+
 ### 4.12 Phase 10 任务单：AisenLens 业务适配层与持久化边界
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[x] 已完成`
 
-#### [ ] Task 10.1：核验 Web feature 边界并定义业务类型
+#### [x] Task 10.1：核验 Web feature 边界并定义业务类型
 
 **输入**：Phase 9 `@aisenlens/scene-engine` public API、现有 auto-shot/project/timeline 类型。
 
@@ -1742,7 +1845,9 @@ Web 基线与像素路径验证
 
 **禁止**：修改 `EditorWorkspace`、改 IndexedDB schema、把现有旧 record 扩展成双轨 union。
 
-#### [ ] Task 10.2：测试先行实现 sceneResultAdapter
+**完成记录（2026-08-28）**：核验了现有 auto-shot、project、shot、timeline 相关边界，新增 `apps/web/src/features/auto-shot/types.ts` 与 `taskState.ts`。业务类型独立表达 task、progress、candidate、Engine evidence 和 repository 窄接口；仅从 `@aisenlens/scene-engine` public index 引用类型，不导入 React、Worker internal、WASM runtime 或 Mediabunny。新增生命周期转换测试并通过 Web TypeScript strict 检查，未修改 `EditorWorkspace`、IndexedDB schema、旧 `AutoShotRunRecord` 或现有 UI。
+
+#### [x] Task 10.2：测试先行实现 sceneResultAdapter
 
 **操作**：
 
@@ -1756,7 +1861,9 @@ Web 基线与像素路径验证
 
 **禁止**：在多个组件散落 timestamp 转换、使用平均帧率参与 Engine 决策、创建 ShotRecord 副作用。
 
-#### [ ] Task 10.3：测试先行实现 autoShotTaskService
+**完成记录（2026-08-28）**：新增 `features/auto-shot/sceneResultAdapter.ts`，集中执行 Phase 0 的 quantized-FPS + ceil timestamp 映射；对 0/结尾边界、VFR 时间戳、重复投影帧、fade evidence、零 duration、非法 timebase 和负 timestamp 增加测试。适配结果只生成确定性的 `[startFrame, endFrame)` 候选与尾段，不写入 project/ShotRecord，并保留 engine version、config hash、source detector、score、threshold 和 evidence。
+
+#### [x] Task 10.3：测试先行实现 autoShotTaskService
 
 **操作**：
 
@@ -1770,7 +1877,9 @@ Web 基线与像素路径验证
 
 **禁止**：导入 `EditorWorkspace`、直接访问 window/indexedDB、并行写旧/new auto-shot record。
 
-#### [ ] Task 10.4：连接 workspace 依赖和测试脚本
+**完成记录（2026-08-28）**：新增 `features/auto-shot/autoShotTaskService.ts`，注入 Engine client factory、窄 repository、config resolver、clock 和 id 生成器；服务冻结 normalized config 与媒体指纹 key，处理 progress、pause/resume、cancel、failed、completed 和 restart，并在终态拒绝旧任务 progress、取消不保存 checkpoint。新增 3 组 fake client/repository 测试覆盖运行中更新、结果适配、checkpoint resume、取消、失败和 restart，全部通过；未连接 IndexedDB、React 生命周期或现有 UI。
+
+#### [x] Task 10.4：连接 workspace 依赖和测试脚本
 
 **操作**：
 
@@ -1784,7 +1893,9 @@ Web 基线与像素路径验证
 
 **禁止**：在本阶段切换 UI、修改 project repository、创建临时双写 feature flag。
 
-#### [ ] Task 10.5：阶段审计与交接
+**完成记录（2026-08-28）**：`apps/web` 已声明 `@aisenlens/scene-engine: workspace:*`，package public entry/types/exports 已补齐，pnpm lockfile 更新并通过 supply-chain policy。新增 adapter/task-state/task-service 测试脚本，Web strict TypeScript、常规 build、production Worker/WASM build 均通过；production bundle 检查未发现 synthetic/test source 引用，现有 UI 未启动新任务。
+
+#### [x] Task 10.5：阶段审计与交接
 
 **操作**：
 
@@ -1797,11 +1908,13 @@ Web 基线与像素路径验证
 
 **Phase 10 验收门**：无 React 的 adapter/service 全状态测试、时间映射测试、Web build 与边界审计全部通过。
 
+**完成记录（2026-08-28）**：边界审计确认 `apps/web/src/components` 与 `pages` 没有新增 Worker/WASM/Mediabunny import；Phase 10 未修改旧 `autoShotService.ts`、`AutoShotRunRecord`、`projectRepository.ts`、`EditorWorkspace.tsx` 或 IndexedDB。Engine contract、adapter、task-state、task-service 测试、Web strict TypeScript、Web build、生产 bundle synthetic source 检查和 `git diff --check` 均通过。Phase 11 交接时实际 `projectRepository.ts` 使用 `DATABASE_VERSION = 12` 与 `auto-shot-runs` 派生 store；该事实已用于建立升级夹具，当前版本已在 Phase 11 提升至 13，禁止双写旧/新 schema。
+
 ### 4.13 Phase 11 任务单：React 最小接入与持久化原子切换
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[-] 进行中（11.1 已完成；11.2–11.5 已接入，待全流程回归）`
 
-#### [ ] Task 11.1：建立持久化升级回归夹具
+#### [x] Task 11.1：建立持久化升级回归夹具
 
 **输入**：Phase 10 task record、现有 IndexedDB `auto-shot-runs` store，以及执行时从 `projectRepository.ts` 读取的实际 `DATABASE_VERSION`；不得把本文记录的历史版本号当成事实来源。
 
@@ -1817,7 +1930,9 @@ Web 基线与像素路径验证
 
 **禁止**：读取旧 cuts 并转换为新 checkpoint、双写两个 schema、清空整个数据库。
 
-#### [ ] Task 11.2：原子切换 project 类型与 repository
+**完成记录（2026-08-28）**：读取并核对了 `projectRepository.ts` 的实际 IndexedDB upgrade 逻辑，新增 `apps/web/test/project-repository-migration.verification.ts` 及浏览器 smoke 入口。夹具包含项目、媒体字段、镜头、截图、注释和旧 `AutoShotRunRecord`；数据库从版本 12 升级到版本 13 时只清理 `auto-shot-runs`，项目、镜头、截图和注释逐项保留。未读取旧 cuts，也未清空其他 store。
+
+#### [-] Task 11.2：原子切换 project 类型与 repository
 
 **操作**：
 
@@ -1831,7 +1946,9 @@ Web 基线与像素路径验证
 
 **禁止**：保留旧字段 optional 兼容、通过 `as` 绕过 schema、删除用户镜头/项目/注释数据。
 
-#### [ ] Task 11.3：实现 useAutoShotTask
+**完成记录（2026-08-28，进行中）**：数据库版本已提升至 13，升级事务原子清理旧派生记录；`ProjectRepository` 新增 `getAutoShotTask/saveAutoShotTask/deleteAutoShotTask`，使用同一 `auto-shot-runs` store，写入前校验强媒体指纹、进度和 checkpoint 的 `schemaVersion/engineVersion/configHash`，按 `projectId` 原子替换保证唯一。浏览器 smoke 已覆盖 round-trip、项目唯一性、媒体指纹不匹配失效和删除。旧 service/type 仍保留至 Phase 12 删除前审计，当前不再被 `EditorWorkspace` 生产调用，后续需完成旧 schema 符号清理。
+
+#### [-] Task 11.3：实现 useAutoShotTask
 
 **操作**：
 
@@ -1845,7 +1962,9 @@ Web 基线与像素路径验证
 
 **禁止**：让组件直接访问 Worker、把大结果存入 Zustand、在 hook 中做像素处理。
 
-#### [ ] Task 11.4：局部替换 EditorWorkspace 自动分镜控制
+**完成记录（2026-08-28，进行中）**：新增 `useAutoShotTask.ts`，组合 task service、repository 和生产 Worker client，处理项目/媒体切换、running 任务转 paused、卸载取消、stale revision、pause/cancel/resume/restart 和候选状态；hook 不读取像素、不直接写 shot 数据。task service 现会在 resume 前校验 checkpoint 的媒体指纹、配置快照、schemaVersion、engineVersion 和 configHash，失配时删除任务并要求重新扫描。仍需补齐 React hook 专项测试和真实浏览器生命周期矩阵。
+
+#### [-] Task 11.4：局部替换 EditorWorkspace 自动分镜控制
 
 **操作**：
 
@@ -1859,7 +1978,9 @@ Web 基线与像素路径验证
 
 **禁止**：顺手拆分整个 3640 行组件、修改设计、让 Worker 直接写 project/shot repository。
 
-#### [ ] Task 11.5：Web 产品全流程回归
+**完成记录（2026-08-28，进行中）**：`EditorWorkspace.tsx` 已移除旧自动分镜 service、旧 AbortController、旧 record 字段和旧 repository 调用，改由 `useAutoShotTask` 提供状态/命令；保留原有按钮、灵敏度/最短时长控件、候选审阅和一次性应用分镜流程。Web strict TypeScript 与 production build 已通过，待真实浏览器产品流程回归。
+
+#### [-] Task 11.5：Web 产品全流程回归
 
 **操作**：
 
@@ -1871,7 +1992,9 @@ Web 基线与像素路径验证
 
 **完成检查**：产品路径全部使用新 Engine，旧 service 文件虽尚存在但无生产调用。
 
-#### [ ] Task 11.6：阶段审计与切换交接
+**阶段记录（2026-08-28，进行中）**：已通过数据库升级浏览器 smoke、Worker 层 H.264 生命周期 smoke（暂停恢复完成、取消、错误）、本地首页/项目库/空项目编辑器启动检查、Web strict TypeScript、production build、Engine contract 25/25、task-state/adapter/task-service tests 及 `git diff --check`。尚未宣称开始/暂停/刷新/继续/取消/应用/撤销的完整产品 UI 浏览器矩阵已全部通过，待补充真实视频上传后的专项交互回归后再关闭本任务。
+
+#### [x] Task 11.6：阶段审计与切换交接
 
 **操作**：
 
@@ -1882,13 +2005,15 @@ Web 基线与像素路径验证
 
 **最终交付物**：新 task persistence、DB 升级、React hook、EditorWorkspace 最小接入和产品回归证据。
 
+**完成记录（2026-08-28）**：完成生产引用审计并新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_11_HANDOFF.md`。确认旧 service/type/repository 符号仅剩测试和待删除路径，`EditorWorkspace` 已无旧生产调用；同时记录 Phase 11.5 的真实产品浏览器矩阵和 React hook 专项测试仍待完成，Desktop/Mobile 维持范围外。
+
 **Phase 11 验收门**：DB 原子升级、全生命周期、显式应用/撤销、主线程边界及 Web 回归全部通过；否则不得删除旧文件。
 
 ### 4.14 Phase 12 任务单：整体验收、旧路径删除与标定
 
-**阶段状态**：`[ ] 未开始`
+**阶段状态**：`[-] 进行中（12.1、12.5 已完成当前可执行部分；12.2–12.4、12.6 等待真实视频产品矩阵与准确率/性能数据）`
 
-#### [ ] Task 12.1：建立删除前验收基线
+#### [-] Task 12.1：建立删除前验收基线
 
 **输入**：Phase 11 生产新链路、旧路径引用证据清单。
 
@@ -1902,6 +2027,8 @@ Web 基线与像素路径验证
 **完成检查**：存在可审计的“新链路已接管、旧路径无生产引用”证据。
 
 **禁止**：凭人工点击一次就删除旧实现、把当前范围外的 Desktop/Mobile 写成已验证。
+
+**完成记录（2026-08-28，当前可执行部分）**：新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`，记录 native、C ABI、baseline/SIMD、Worker 生命周期、Web build/preview、IndexedDB 12→13 升级和旧生产引用审计结果。真实视频产品 UI 全流程、准确率和性能/内存报告仍未完成，因此暂不删除旧路径。
 
 #### [ ] Task 12.2：删除旧自动分镜实现与字段
 
@@ -1945,7 +2072,7 @@ Web 基线与像素路径验证
 
 **禁止**：用不可复现绝对数字作为上线承诺、为性能提前改变算法语义。
 
-#### [ ] Task 12.5：许可证、文档与持续检查
+#### [-] Task 12.5：许可证、文档与持续检查
 
 **操作**：
 
@@ -1956,6 +2083,8 @@ Web 基线与像素路径验证
 5. 检查生成 WASM、fixtures 和评估数据的发布包含关系，产品包不得携带测试数据集。
 
 **完成检查**：新环境可按 README 构建/测试，许可证与实际依赖一致，CI 能捕获核心回归。
+
+**完成记录（2026-08-28，当前可执行部分）**：新增根目录 `NOTICE`，同步 Scene Engine README、架构/计划文档和根 README；新增 `scene-engine:verify:core` 根验收脚本，覆盖 native、WASM、TypeScript contract 和 SIMD parity。仍需在后续 CI 环境完成发布包含关系与完整许可证审计。
 
 #### [ ] Task 12.6：最终全矩阵验收
 
