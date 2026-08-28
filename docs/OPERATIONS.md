@@ -2,7 +2,7 @@
 
 > 状态：当前运维基线
 >
-> 最后核对：2026-08-25
+> 最后核对：2026-08-28
 
 本文档保留持续有效的服务端、发布与后台操作约束；具体功能的开发过程不作为运维手册保留。
 
@@ -32,6 +32,12 @@ Supabase 负责账户和受控的线上交互，不承载用户本地项目与�
 ## 4. 发布与线上核验
 
 Web 发布使用仓库根目录的 `pnpm build`，实际构建目标为 `@aisenlens/web`。Vercel 项目 Root Directory 保持为空，输出目录使用 `apps/web/dist`。桌面和移动端分别由 Electron 与 Capacitor 的现有 scripts 构建或同步；它们使用同一 Web 构建产物。
+
+Scene Engine 的浏览器运行时文件位于 `packages/scene-engine/dist/wasm/` 与
+`packages/scene-engine/dist/wasm-simd/`；四个 JS/WASM 运行时产物是 Web 发布所需的
+版本化文件，必须随源码提交。测试和其他可再生构建产物仍不提交。Vercel 构建中由
+Emscripten 生成模块引起的 `node:module` browser-externalized 提示目前为预期兼容分支，
+不作为发布故障处理；包体积与预渲染日志的后续优化见 `DEVELOPMENT_TODO.md`。
 
 每次发布前至少完成：
 
