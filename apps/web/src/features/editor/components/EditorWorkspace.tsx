@@ -48,7 +48,6 @@ import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Textarea } from "../../../components/ui/textarea"
-import { Checkbox } from "../../../components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -96,8 +95,11 @@ import type {
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
-import { resolveAutoShotConfig } from "../../auto-shot/config/resolveAutoShotConfig"
+import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
+import { getResearchPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
+import { listPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
+import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
 import {
@@ -298,10 +300,6 @@ export default function EditorWorkspace({
   const [titleDraft, setTitleDraft] = useState(projectTitle)
   const [liteCache, setLiteCache] = useState(128)
   const [openRef, setOpenRef] = useState<string | null>(null)
-  // Temporary Phase 11 fallback: 100 resolves to threshold 1800 on the real-media
-  // regression video. Phase 12 replaces this slider and mapping with the resolver.
-  const [autoSensitivity, setAutoSensitivity] = useState(100) // 10-100
-  const [autoMinDuration, setAutoMinDuration] = useState(0.8) // seconds
 
   useEffect(() => setMediaProject(project), [project])
   const handleMediaProjectUpdated = useCallback(
@@ -428,32 +426,31 @@ export default function EditorWorkspace({
     initialDurationSeconds: media.metadata?.durationSeconds ?? 0,
   })
 
-  const autoShotResolved = useMemo(() => resolveAutoShotConfig({
-    schemaVersion: 1,
-    presetId: "general",
-    detail: "balanced",
-    transitions: "hard-cuts",
-    minimumSceneDuration: { mode: "custom", seconds: autoMinDuration },
-    overrides: {
-      hardCut: {
-        kind: "content",
-        threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 34))),
-        weights: { hue: 3333, saturation: 3333, luma: 3334 },
-      },
-    },
-  }), [autoMinDuration, autoSensitivity])
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
     [media.source],
   )
+  const [autoShotMediaIdentityDigest, setAutoShotMediaIdentityDigest] = useState<string | null>(null)
+  const autoShotControl = useAutoShotControl({
+    projectId,
+    mediaIdentityDigest: autoShotMediaIdentityDigest,
+    catalog: "research",
+  })
   const autoShotTask = useAutoShotTask({
     projectId,
     sourceUrl: videoUrl,
     mediaFingerprint: autoShotMediaFingerprint,
     durationSeconds,
     frameRate: media.metadata?.frameRate ?? FRAMES_PER_SECOND,
-    resolved: autoShotResolved,
+    resolved: autoShotControl.resolved,
   })
+  useEffect(() => {
+    setAutoShotMediaIdentityDigest(autoShotTask.mediaIdentityDigest)
+  }, [autoShotTask.mediaIdentityDigest])
+  const autoShotPresets = useMemo(
+    () => listPresetDefinitions(getResearchPresetRegistry(), "research"),
+    [],
+  )
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
   const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])
   const [pendingAutoShotApply, setPendingAutoShotApply] = useState<{ taskId: string; output: AutoShotApplyOutput } | null>(null)
@@ -1312,6 +1309,11 @@ export default function EditorWorkspace({
       toast.error("自动分镜结果已更新，请重新打开应用确认。")
       return
     }
+    if (!autoShotRun.controlSnapshot) {
+      setPendingAutoShotApply(null)
+      toast.error("该自动分镜任务缺少控制快照，请重新扫描后再应用。")
+      return
+    }
     const { output: applied } = pendingAutoShotApply
     let recoverySnapshot
     try {
@@ -1339,7 +1341,7 @@ export default function EditorWorkspace({
     for (const candidate of autoShotRun.candidates) {
       if (excludedAutoShotCandidateIds.includes(candidate.id)) continue
       const shot = applied.shots.find((item) => applied.shotFrames[item.id]?.first === candidate.startFrame && applied.shotFrames[item.id]?.last === candidate.endFrame - 1)
-      if (shot) provenance[shot.id] = { source: "auto-shot", taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: "legacy-auto-shot", presetVersion: 1, engineVersion: candidate.engineVersion, configHash: candidate.configHash }
+      if (shot) provenance[shot.id] = { source: "auto-shot", taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash }
     }
     autoShotDetectionRef.current = provenance
     setShotNotes((current) => retainShotMap(current, retainedShotIds))
@@ -2877,160 +2879,34 @@ export default function EditorWorkspace({
                 {/* ── 分镜 ── */}
                 {activeTool === "shot" && (
                   <div className="flex flex-col gap-4">
-                    {/* 自动分镜 */}
-                    <div>
-                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
-                        自动分镜
-                      </p>
-                      <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-bg-deep mb-2">
-                        <div className="flex items-center justify-between">
-                          <span className="editor-meta text-text-dim">
-                            切割灵敏度
-                          </span>
-                          <span className="editor-meta font-mono text-accent">
-                            {autoSensitivity}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={10}
-                          max={100}
-                          value={autoSensitivity}
-                          onChange={(e) => setAutoSensitivity(+e.target.value)}
-                          className="editor-range"
-                          style={
-                            {
-                              "--editor-range-progress": `${((autoSensitivity - 10) / 90) * 100}%`,
-                            } as React.CSSProperties
-                          }
-                        />
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="editor-meta text-text-dim">
-                            最短时长
-                          </span>
-                          <span className="editor-meta font-mono text-accent">
-                            {autoMinDuration.toFixed(1)}s
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.5}
-                          max={10}
-                          step={0.1}
-                          value={autoMinDuration}
-                          onChange={(e) =>
-                            setAutoMinDuration(Number(e.target.value))
-                          }
-                          className="editor-range"
-                          style={
-                            {
-                              "--editor-range-progress": `${((autoMinDuration - 0.5) / 9.5) * 100}%`,
-                            } as React.CSSProperties
-                          }
-                        />
-                      </div>
-                      {autoShotRun?.status === "running" && (
-                        <div className="mb-2 rounded-lg border border-accent/25 bg-accent/8 px-2.5 py-2 editor-meta text-text-dim">
-                          <div className="flex justify-between">
-                            <span>正在扫描真实画面</span>
-                            <span className="font-mono text-accent">
-                              {Math.round((autoShotRun.progress.processedUs / Math.max(1, autoShotRun.progress.durationUs)) * 100)}
-                              %
-                            </span>
-                          </div>
-                          <div className="mt-2 h-1 overflow-hidden rounded bg-bg-input">
-                            <div
-                              className="h-full bg-accent"
-                              style={{
-                                width: `${(autoShotRun.progress.processedUs / Math.max(1, autoShotRun.progress.durationUs)) * 100}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {autoShotRun?.status === "completed" && (
-                        <div className="mb-2 rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
-                          检测到{" "}
-                          <span className="font-mono text-green-300">
-                            {autoShotRun.candidates.filter((candidate) => candidate.kind !== "tail").length}
-                          </span>{" "}
-                          个分镜边界，生成 {" "}
-                          <span className="font-mono text-green-300">
-                            {autoShotRun.candidates.length}
-                          </span>{" "}
-                          段候选分镜；应用后会替换当前分镜。
-                          <div className="mt-2 max-h-28 space-y-1 overflow-auto border-t border-green-400/10 pt-2">
-                            {autoShotRun.candidates.map((candidate, index) => {
-                              const excluded = excludedAutoShotCandidateIds.includes(candidate.id)
-                              return (
-                                <label key={candidate.id} className="flex cursor-pointer items-center gap-2 text-text-muted">
-                                  <Checkbox
-                                    checked={!excluded}
-                                    onCheckedChange={(checked) => {
-                                      const next = checked ? excludedAutoShotCandidateIds.filter((id) => id !== candidate.id) : [...excludedAutoShotCandidateIds, candidate.id]
-                                      setExcludedAutoShotCandidateIds(next)
-                                      void projectRepository.saveAutoShotTask({ ...autoShotRun, review: { ...autoShotRun.review, excludedCandidateIds: next, updatedAt: new Date().toISOString() } })
-                                    }}
-                                  />
-                                  <span>片段 {index + 1} · {candidate.kind === "tail" ? "尾段" : candidate.kind === "fade" ? "淡入淡出" : "硬切"}</span>
-                                </label>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {(autoShotTask.error || autoShotRun?.status === "failed") && (
-                        <p className="mb-2 editor-meta text-red-300">
-                          {autoShotTask.error ?? autoShotRun?.error?.message ?? "自动分镜失败。"}
-                        </p>
-                      )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
-                        onClick={() => void startAutoShotDetection()}
-                        className="h-7 w-full editor-body font-normal border-accent/30 bg-accent/8 text-accent hover:bg-accent/15 disabled:cursor-wait disabled:opacity-50"
-                      >
-                        {autoShotTask.isActive && !autoShotRun
-                          ? "正在启动新自动分镜…"
-                          : autoShotRun?.status === "paused"
-                          ? "继续新自动分镜"
-                          : "新自动分镜"}
-                      </Button>
-                      {autoShotRun?.status === "running" && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void autoShotTask.pause()}
-                          className="mt-1 h-7 w-full editor-body font-normal text-text-muted hover:text-white"
-                        >
-                          暂停扫描
-                        </Button>
-                      )}
-                      {autoShotRun?.status === "completed" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={previewAutoShotCuts}
-                          className="mt-1 h-7 w-full editor-body font-normal"
-                        >
-                          应用候选分镜
-                        </Button>
-                      )}
-                      {autoShotRun && autoShotRun.status !== "running" && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void startAutoShotDetection(true)}
-                          className="mt-1 h-7 w-full editor-body font-normal text-text-muted hover:text-white"
-                        >
-                          重新扫描
-                        </Button>
-                      )}
-                    </div>
+                    <AutoShotControlPanel
+                      settings={autoShotControl.settings}
+                      resolved={autoShotControl.resolved}
+                      presets={autoShotPresets}
+                      dirty={autoShotControl.dirty}
+                      record={autoShotRun}
+                      isActive={autoShotTask.isActive}
+                      error={autoShotTask.error}
+                      excludedCandidateIds={excludedAutoShotCandidateIds}
+                      onChange={autoShotControl.updateSettings}
+                      onReset={autoShotControl.resetSettings}
+                      onStart={() => void startAutoShotDetection()}
+                      onPause={() => void autoShotTask.pause()}
+                      onRestart={() => void startAutoShotDetection(true)}
+                      onPreview={previewAutoShotCuts}
+                      onToggleCandidate={(candidateId, included) => {
+                        const next = included
+                          ? excludedAutoShotCandidateIds.filter((id) => id !== candidateId)
+                          : [...excludedAutoShotCandidateIds, candidateId]
+                        setExcludedAutoShotCandidateIds(next)
+                        if (autoShotRun) {
+                          void projectRepository.saveAutoShotTask({
+                            ...autoShotRun,
+                            review: { ...autoShotRun.review, excludedCandidateIds: next, updatedAt: new Date().toISOString() },
+                          })
+                        }
+                      }}
+                    />
                     <ShotGroupPanel
                         isSelecting={isSelectingGroupShots}
                         selectedShotCount={

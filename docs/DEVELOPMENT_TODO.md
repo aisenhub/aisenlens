@@ -1,6 +1,6 @@
 # AisenLens 开发待办
 
-> 状态：持续维护中；Zustand/App 状态迁移仍未开始，AisenShot Scene Engine 的 Phase 11 技术与产品链路验收已完成；人工质量标注按用户决定延期至 Phase 12，Phase 12 现已开始，研究控制面板与标定基础正在开发，生产晋升仍未开始
+> 状态：持续维护中；AisenShot Scene Engine 的 Phase 11 技术与产品链路验收已完成；人工质量标注按用户决定延期至 Phase 12.3B/12.3C，Phase 12.6A–12.6D 的研究配置、Zustand 控制器、任务冻结和新控制面板已完成，标定与生产晋升仍未开始
 >
 > 本文只记录已批准的后续架构工作，不代表对应代码已经存在。
 
@@ -34,7 +34,7 @@
 
 ## 3. AisenShot 自动分镜算法与引擎优化
 
-**当前进度**：Phase 0–10 的核心、C ABI、WASM/Worker、WebCodecs 适配已完成；Phase 11 已有任务持久化和 React 最小接线，但第二轮审计确认它尚未通过最终验收。现存 Phase 12 基线只是准备性历史记录。旧“灵敏度 + 最短时长”UI 只承担最小接入验证，不作为最终产品控制。
+**当前进度**：Phase 0–10 的核心、C ABI、WASM/Worker、WebCodecs 适配已完成；Phase 11 技术、生命周期、数据保护和 Web 产品链路已通过验收。Phase 12 已删除旧 Canvas/seek 路径并完成研究控制面基础；人工质量标注、search/holdout、缺失媒体重绑证据和 production 晋升仍未关闭。
 
 强制执行顺序：
 
@@ -43,12 +43,13 @@
 3. Phase 11 门关闭后重建删除前基线，再删除无生产引用的旧 Canvas/seek 自动分镜路径和旧字段。
 4. 已建立唯一 resolver 与 research/production 双 catalog，并登记五个待标定研究预设；下一步按 PySceneDetect 的 Content、Adaptive、Threshold/Fade、最短镜头和过滤器**语义**完成研究型控制面板与候选审阅。研究面板必须显式显示“待标定”，其数值不得称为生产默认。
 5. 已引入最新 Zustand，新增按 `projectId + mediaIdentityDigest` 隔离的 auto-shot 设置 store 与控制 hook；不保存 Blob、Worker、候选或 checkpoint，不写 localStorage/IndexedDB。
-6. Phase 12.2 已删除旧 Canvas/seek 自动分镜 service、旧 `AutoShotRunRecord`、旧 repository 方法和旧基线入口；Phase 12.6B 已开始将任务控制快照接入记录与 IndexedDB version 14，完整冻结快照接线待继续完成。
-7. **临时可运行兜底（2026-08-29，已验证）**：旧“灵敏度”映射固定在阈值 `1800`；该映射只是 Phase 11 临时修复，Task 12.6D 必须删除，不能作为 production preset 证据。
+6. Phase 12.2 已删除旧 Canvas/seek 自动分镜 service、旧 `AutoShotRunRecord`、旧 repository 方法和旧基线入口；Phase 12.6B 已完成任务控制快照、resolver 冻结、resume 使用旧快照和 IndexedDB version 14 迁移。
+7. **Phase 12 控制面（2026-08-29，已验证）**：旧“灵敏度 + 最短时长”映射已删除；编辑器现在通过 research catalog、Zustand 设置草稿和 resolver 生成冻结任务快照，面板明确显示“研究配置 · 待标定”。
 8. 在研究面板之后建立独立 `features/scene-calibration` 人工标定工作台：只产生带强媒体身份与微秒真值的 JSON/评分输入，不改写正式镜头或创作标记。严格拆分 search/holdout，sweep 和外部 AI 只能读取 search。
 9. **算法质量事项（2026-08-29）**：人工质量标注已由用户明确延期至 Phase 12；在标注和 holdout 评分完成前，不得将任何当前 preset 或算法标记为 production 可用。
-10. 只把通过冻结指标门槛和独立 holdout 的 preset 晋升 production catalog；普通产品入口此后只枚举已晋升项目，research catalog 仅限明确的研究/标定模式。
-11. 完成性能、内存、数据库数据保护、production preview 和全产品矩阵后，才关闭 Phase 12。
+10. **Phase 12.6C/12.6D（2026-08-29）**：新控制面板支持预设、检出程度、转场、最短镜头、高级阈值、运行/暂停/重扫、候选排除和应用前预览；lint/build、配置/设置/task service 测试和 IndexedDB migration smoke 均通过。
+11. 只把通过冻结指标门槛和独立 holdout 的 preset 晋升 production catalog；普通产品入口此后只枚举已晋升项目，research catalog 仅限明确的研究/标定模式。
+12. 完成性能、内存、数据库数据保护、人工标注/search/holdout、production preview 和全产品矩阵后，才关闭 Phase 12。
 
 当前约束：
 

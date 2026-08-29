@@ -119,7 +119,6 @@ export function createAutoShotTaskService(
   async function start(
     input: StartAutoShotTaskInput,
   ): Promise<AutoShotTaskHandle> {
-    const config = input.resolved.engineConfig
     const configSnapshot = { text: input.resolved.configHash, canonical: input.resolved.canonicalConfig }
     const existing = await dependencies.repository.getAutoShotTask(
       input.projectId,
@@ -166,8 +165,19 @@ export function createAutoShotTaskService(
         )
       }
     }
+    const effectiveResolved = input.resume && existing?.status === "paused" && existing.controlSnapshot && existing.configHash
+      ? {
+          ...input.resolved,
+          settings: existing.controlSnapshot,
+          engineConfig: existing.config,
+          canonicalConfig: canonicalizeSceneDetectionConfig(existing.config),
+          configHash: existing.configHash,
+        }
+      : input.resolved
+    const effectiveInput = effectiveResolved === input.resolved ? input : { ...input, resolved: effectiveResolved }
+    const config = effectiveResolved.engineConfig
     const record = baseRecord(
-      input,
+      effectiveInput,
       createId(),
       checkpoint,
     )

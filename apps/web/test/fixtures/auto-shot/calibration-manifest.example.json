@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "scene-calibration",
+  "datasetVersion": "example-v1",
+  "matching": {
+    "hardCutToleranceFrames": [0, 1, 2],
+    "oneToOne": true
+  },
+  "fixtures": [],
+  "notes": "Schema-only example. Do not place video bytes or absolute local paths in Git. Real search and holdout manifests must be separate files with source/license/checksum and reviewed annotations."
+}

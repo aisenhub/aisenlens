@@ -12,6 +12,8 @@
     "test:auto-shot-contract": "pnpm --filter @aisenlens/web test:auto-shot-contract",
     "test:auto-shot-config": "pnpm --filter @aisenlens/web test:auto-shot-config",
     "test:auto-shot-settings-store": "pnpm --filter @aisenlens/web test:auto-shot-settings-store",
+    "test:scene-calibration": "pnpm --filter @aisenlens/web test:scene-calibration",
+    "scene-calibration": "node --experimental-strip-types scripts/scene-calibration.mjs",
     "test:editor-history": "pnpm --filter @aisenlens/web test:editor-history",
     "test:retain-shot-map": "pnpm --filter @aisenlens/web test:retain-shot-map",
     "test:auto-shot-baseline": "pnpm --filter @aisenlens/web test:auto-shot-baseline",

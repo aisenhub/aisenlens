@@ -15,7 +15,6 @@ import type {
   AutoShotTaskControlSnapshot,
   DetectionDetail,
   ResolvedAutoShotConfiguration,
-  defaultAutoShotControlSettings,
 } from "./types";
 import { AutoShotConfigError as ConfigError } from "./types";
 
@@ -56,10 +55,12 @@ function validateSettings(settings: AutoShotControlSettings): void {
   if (settings.schemaVersion !== 1) issue("INVALID_SETTINGS", "schemaVersion", "自动分镜设置版本不受支持。", settings.schemaVersion);
   if (!DETAIL_VALUES.includes(settings.detail)) issue("INVALID_SETTINGS", "detail", "检出程度不受支持。", settings.detail);
   if (!TRANSITION_VALUES.includes(settings.transitions)) issue("INVALID_SETTINGS", "transitions", "转场选择不受支持。", settings.transitions);
-  if (settings.minimumSceneDuration.mode === "custom" && (!Number.isFinite(settings.minimumSceneDuration.seconds) || settings.minimumSceneDuration.seconds < 0.1 || settings.minimumSceneDuration.seconds > 30)) {
-    issue("INVALID_SETTINGS", "minimumSceneDuration.seconds", "自定义最短镜头必须在 0.1 至 30 秒之间。", settings.minimumSceneDuration.seconds);
+  const durationMode = (settings.minimumSceneDuration as { mode: string }).mode;
+  const customSeconds = (settings.minimumSceneDuration as { seconds?: unknown }).seconds;
+  if (durationMode === "custom" && (typeof customSeconds !== "number" || !Number.isFinite(customSeconds) || customSeconds < 0.1 || customSeconds > 30)) {
+    issue("INVALID_SETTINGS", "minimumSceneDuration.seconds", "自定义最短镜头必须在 0.1 至 30 秒之间。", customSeconds);
   }
-  if (settings.minimumSceneDuration.mode !== "preset" && settings.minimumSceneDuration.mode !== "custom") issue("INVALID_SETTINGS", "minimumSceneDuration.mode", "最短镜头模式不受支持。", settings.minimumSceneDuration.mode);
+  if (durationMode !== "preset" && durationMode !== "custom") issue("INVALID_SETTINGS", "minimumSceneDuration.mode", "最短镜头模式不受支持。", durationMode);
 }
 
 function resolveMinimumSeconds(settings: AutoShotControlSettings, presetSeconds: number): number {

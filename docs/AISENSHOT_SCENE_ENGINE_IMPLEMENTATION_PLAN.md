@@ -1,6 +1,6 @@
 # AisenShot Scene Engine 开发实施计划
 
-> 状态：Phase 0–10 已完成；Phase 11 已完成最小代码接线，11.7 的 canonical config hash、强媒体身份服务、interrupted 生命周期和候选应用领域命令已进入代码与契约测试；仍需完成 task/checkpoint 的强身份持久化替换、review/provenance、真实产品矩阵后才能关闭验收门。Phase 12 仅有准备性基线/文档记录，正式标定、控制面板、旧路径删除与最终验收须在 Phase 11 关闭后执行
+> 状态：Phase 0–10 已完成；Phase 11 的技术、生命周期、数据保护和 Web 产品链路已完成验收。人工质量标注按用户明确决定延期至 Phase 12.3B/12.3C，缺失媒体重绑仍需补做 Edge 原生选择器证据；Phase 12 已进入控制面板与标定开发阶段。
 >
 > 初版日期：2026-08-25
 >
@@ -2327,6 +2327,14 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 制造 split 泄漏、媒体身份不符、样本不足、checksum 变化、标注分歧和非法配置时命令确定性
 失败；合法小 fixture 可在 CI 跑契约，受限/真实视频不进入产品包。
 
+**阶段记录（2026-08-29，进行中）**：已创建独立 `features/scene-calibration/` 真值模型、
+`CalibrationWorkbench` 组件和 calibration service；支持 hard-cut 候选接受/拒绝、手动新增/移动/
+删除、不确定区间、强媒体身份与研究运行快照字段。已实现 search/holdout manifest 的来源泄漏、
+schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
+边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，参数搜索明确只读 search。当前仍缺
+真实人工标注数据、完整 JSON 导出/复读 UI、checksum 复核和满足 8.1 数量门槛的 search/holdout，
+因此本任务保持未完成，不能进入 12.3C 生产晋升。
+
 #### [ ] Task 12.3C：标定、独立留出验收与生产晋升
 
 **前置条件**：Task 12.3B 通过，且实际本地数据达到控制设计 8.1 的数量/质量门槛。若素材
@@ -2414,7 +2422,7 @@ Context/第二套状态；Web build 通过。
 也不写 localStorage/IndexedDB；切换媒体身份不会继承其他媒体草稿。新增 2 项 store 隔离/重置
 测试，配置 resolver、lint、Web build 均通过。
 
-#### [ ] Task 12.6B：扩展任务快照、review 与 IndexedDB schema
+#### [x] Task 12.6B：扩展任务快照、review 与 IndexedDB schema
 
 **前置条件**：Task 12.6A 通过，复用 Phase 11 的强媒体身份和 canonical hash。
 
@@ -2434,12 +2442,13 @@ Context/第二套状态；Web build 通过。
 **完成检查**：数据库 fixture 从 12 经 13 到当前版本链式升级通过；没有旧 sensitivity task
 兼容读取/双写；完整快照可复现同一 Engine config。
 
-**进行记录（2026-08-29）**：已先将 IndexedDB 当前版本提升至 14，并在 `AutoShotTaskRecord` 中
-预留 `controlSnapshot` 字段及 repository 校验；旧 `auto-shot-runs` 在 12→14 升级时继续整体清理。
-完整的“resolver 生成快照 → task service 只接收 resolved configuration → resume 使用冻结快照”
-接线将在研究控制面板接入前完成，Task 12.6B 暂不勾选。
+**完成记录（2026-08-29）**：IndexedDB 当前版本提升至 14，`AutoShotTaskRecord` 保存 resolver
+生成的 `controlSnapshot`；task service 新扫描入口只接收 `ResolvedAutoShotConfiguration`，开始时
+冻结 engine config/canonical hash/preset catalog/version，resume 通过身份、配置和 checkpoint
+校验后直接使用已保存快照，不重新解析 registry。repository 增加控制快照与 config hash 一致性
+校验，12→14 迁移 smoke、task service 7/7、lint/build/typecheck 均通过。
 
-#### [ ] Task 12.6C：实现研究型控制面板与候选审阅组件
+#### [x] Task 12.6C：实现研究型控制面板与候选审阅组件
 
 **前置条件**：Task 12.6B 通过；先按项目 UI 复用顺序检查现有 Button、Dialog、Tooltip、Tabs、
 DropdownMenu、Input、Checkbox 和 Sonner，不满足时才按 AGENTS.md 引入 shadcn 组件。
@@ -2461,7 +2470,14 @@ DropdownMenu、Input、Checkbox 和 Sonner，不满足时才按 AGENTS.md 引入
 **完成检查**：组件测试/浏览器 smoke 覆盖研究普通/高级、待标定状态、运行/暂停/中断/完成、
 候选排除和确认；每次组件修改后运行 `corepack pnpm build`。
 
-#### [ ] Task 12.6D：接入 EditorWorkspace 并删除临时控制映射
+**完成记录（2026-08-29）**：新增 `AutoShotControlPanel`、`PresetSelector`、`BasicSettings`、
+`AdvancedSettings` 和 `RunStatus`，仅展示 research catalog，并在面板、摘要和运行状态中明确
+“研究配置 · 待标定”。面板支持预设、检出程度、转场、预设/自定义最短镜头、Content/Adaptive/Fade
+高级参数、运行/暂停/继续/重扫、候选纳入/排除和应用前预览；运行中设置只读，结果仍复用 Phase 11
+的 review 与 impact summary 流程。配置解析 4/4、设置隔离 2/2、task service 7/7、lint/build
+均通过。
+
+#### [x] Task 12.6D：接入 EditorWorkspace 并删除临时控制映射
 
 **前置条件**：Task 12.6C 通过。
 
@@ -2478,6 +2494,13 @@ DropdownMenu、Input、Checkbox 和 Sonner，不满足时才按 AGENTS.md 引入
 
 **完成检查**：普通/高级研究模式生成的快照可复现且明确标记待标定；EditorWorkspace 不导入
 Worker/WASM/Mediabunny，不再直接重建自动镜头。
+
+**完成记录（2026-08-29）**：`EditorWorkspace` 已改为通过 `useAutoShotControl → resolver →
+useAutoShotTask → task service` 接线，删除 `autoSensitivity`、`autoMinDuration`、线性 threshold
+映射和内联候选审阅 UI；任务启动前配置未就绪时显式阻止并提示。媒体身份计算完成后按项目/媒体摘要
+隔离设置，任务记录冻结 research control snapshot；运行中修改不会改变当前任务。Web lint/build、
+Scene Engine typecheck、配置/设置/task service 测试和 IndexedDB migration smoke 均通过。后续
+人工质量标注、search/holdout 和缺失媒体重绑仍不属于本任务完成范围。
 
 **禁止**：把产品 preset 写入 Scene Engine 包、让 React 直接拼装 C ABI/EngineConfig、在
 Zustand 存储大型结果、自动猜测内容类型、显示未验证选项、保留旧 UI 兼容分支。

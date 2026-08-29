@@ -15,7 +15,7 @@ interface UseAutoShotTaskInput {
   mediaFingerprint: MediaSourceFingerprint | null;
   durationSeconds: number;
   frameRate: number;
-  resolved: ResolvedAutoShotConfiguration;
+  resolved: ResolvedAutoShotConfiguration | null;
 }
 
 function fpsRational(frameRate: number): { numerator: number; denominator: number } {
@@ -107,6 +107,10 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       setError("尚未读取视频时长，请等待视频加载完成后重试。");
       return null;
     }
+    if (!input.resolved) {
+      setError("自动分镜配置尚未准备好，请先等待配置面板加载完成。");
+      return null;
+    }
     if (startingRef.current || handleRef.current) return null;
     startingRef.current = true;
     const revision = revisionRef.current;
@@ -179,5 +183,13 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
     return next;
   }, [record]);
 
-  return { record, error, start, pause, cancel, isActive };
+  return {
+    record,
+    error,
+    start,
+    pause,
+    cancel,
+    isActive,
+    mediaIdentityDigest: mediaIdentity?.mediaIdentityDigest ?? null,
+  };
 }
