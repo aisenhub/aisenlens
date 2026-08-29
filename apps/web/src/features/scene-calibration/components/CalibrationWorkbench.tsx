@@ -10,16 +10,18 @@ interface CalibrationWorkbenchProps {
   onRejectCandidate: (candidateId: string) => void;
   onAddBoundary: () => void;
   onMarkUncertain: () => void;
+  onAnnotatorChange?: (annotator: string) => void;
   onExport: () => void;
 }
 
-export default function CalibrationWorkbench({ annotation, candidates, onAcceptCandidate, onRejectCandidate, onAddBoundary, onMarkUncertain, onExport }: CalibrationWorkbenchProps) {
+export default function CalibrationWorkbench({ annotation, candidates, onAcceptCandidate, onRejectCandidate, onAddBoundary, onMarkUncertain, onExport, onAnnotatorChange }: CalibrationWorkbenchProps) {
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-bg-card p-3">
       <div className="flex items-center justify-between">
         <div><h2 className="text-sm font-medium text-text">人工质量标注</h2><p className="mt-1 text-[10px] text-text-dim">只记录 hard-cut 真值，不修改正式镜头；当前集合：{annotation.split}</p></div>
         <span className="rounded-full border border-amber-300/20 bg-amber-300/5 px-2 py-0.5 text-[10px] text-amber-200">Phase 12 · {annotation.reviewStatus === "reviewed" ? "已复核" : "待复核"}</span>
       </div>
+      {onAnnotatorChange && <label className="block"><span className="text-[10px] text-text-dim">标注者</span><input className="mt-1 h-7 w-full rounded-lg border border-input bg-bg-input/30 px-2 text-xs text-text" value={annotation.annotator === "未填写" ? "" : annotation.annotator} placeholder="填写姓名或团队" onChange={(event) => onAnnotatorChange(event.target.value)} /></label>}
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <Button type="button" variant="outline" size="sm" onClick={onAddBoundary}><Plus className="size-3" />新增边界</Button>
         <Button type="button" variant="outline" size="sm" onClick={onMarkUncertain}><Flag className="size-3" />标记不确定</Button>

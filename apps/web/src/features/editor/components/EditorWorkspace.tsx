@@ -100,6 +100,9 @@ import { getResearchPresetRegistry } from "../../auto-shot/config/resolveAutoSho
 import { listPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
+import CalibrationWorkbench from "../../scene-calibration/components/CalibrationWorkbench"
+import { addUncertainRange, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
+import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
 import {
@@ -150,6 +153,7 @@ import useEditorShortcuts from "../shortcuts/useEditorShortcuts"
 import AudioTrackPanel from "../../media/components/AudioTrackPanel"
 import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPreview"
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
+import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -454,11 +458,36 @@ export default function EditorWorkspace({
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
   const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])
   const [pendingAutoShotApply, setPendingAutoShotApply] = useState<{ taskId: string; output: AutoShotApplyOutput } | null>(null)
+  const [calibrationAnnotation, setCalibrationAnnotation] = useState<CalibrationAnnotationRecord | null>(null)
 
   useEffect(() => {
     setExcludedAutoShotCandidateIds(autoShotRun?.review.excludedCandidateIds ?? [])
     setPendingAutoShotApply(null)
-  }, [autoShotRun?.id])
+    if (!autoShotRun) {
+      setCalibrationAnnotation(null)
+      return
+    }
+    const annotation = createCalibrationAnnotation({
+      fixtureId: `${projectId}:${autoShotRun.mediaIdentity.mediaIdentityDigest.slice(0, 16)}`,
+      source: media.source,
+      mediaIdentity: autoShotRun.mediaIdentity,
+      frameRate: media.metadata?.frameRate ?? FPS,
+    })
+    if (autoShotRun.controlSnapshot) {
+      annotation.researchRun = {
+        presetId: autoShotRun.controlSnapshot.preset.id,
+        presetVersion: autoShotRun.controlSnapshot.preset.version,
+        catalog: "research",
+        detail: autoShotRun.controlSnapshot.detail,
+        config: structuredClone(autoShotRun.config),
+        canonicalConfig: canonicalizeSceneDetectionConfig(autoShotRun.config),
+        configHash: autoShotRun.configHash ?? "",
+        engineVersion: autoShotRun.engineVersion ?? autoShotRun.candidates[0]?.engineVersion ?? "unknown",
+        candidateIds: autoShotRun.candidates.map((candidate) => candidate.id),
+      }
+    }
+    setCalibrationAnnotation(annotation)
+  }, [autoShotRun?.id, media.metadata?.frameRate, media.source, projectId])
 
   useMultiTrackAudioPreview({
     mediaAssets: mediaProject.mediaAssets,
@@ -1301,6 +1330,36 @@ export default function EditorWorkspace({
       return
     }
     setPendingAutoShotApply({ taskId: autoShotRun.id, output: applied })
+  }
+
+  const updateCalibration = (updater: (current: CalibrationAnnotationRecord) => CalibrationAnnotationRecord) => {
+    setCalibrationAnnotation((current) => current ? updater(current) : current)
+  }
+
+  const exportCalibrationAnnotation = () => {
+    if (!calibrationAnnotation) return
+    const blob = new Blob([serializeCalibrationAnnotation(calibrationAnnotation)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${calibrationAnnotation.fixtureId.replace(/[^a-zA-Z0-9_-]+/g, "-")}.annotation.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const addCalibrationBoundaryAtPlayhead = () => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    updateCalibration((current) => updateHardCutAnnotation(current, "add", {
+      timestampUs: Math.round(currentTime * 1_000_000),
+      frame: Math.max(1, Math.round(currentTime * frameRate)),
+    }))
+  }
+
+  const markCalibrationUncertainAtPlayhead = () => {
+    const startUs = Math.max(0, Math.round(currentTime * 1_000_000))
+    const endUs = Math.min(Math.max(startUs + 100_000, startUs + 1_000_000), Math.max(startUs + 1, Math.round(durationSeconds * 1_000_000)))
+    if (endUs <= startUs) return
+    updateCalibration((current) => addUncertainRange(current, { startUs, endUs, reason: "待人工确认" }))
   }
 
   const applyAutoShotCuts = async () => {
@@ -2907,6 +2966,18 @@ export default function EditorWorkspace({
                         }
                       }}
                     />
+                    {autoShotRun?.status === "completed" && calibrationAnnotation && (
+                      <CalibrationWorkbench
+                        annotation={calibrationAnnotation}
+                        candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
+                        onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
+                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { id: `candidate:${candidateId}` }))}
+                        onAddBoundary={addCalibrationBoundaryAtPlayhead}
+                        onMarkUncertain={markCalibrationUncertainAtPlayhead}
+                        onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
+                        onExport={exportCalibrationAnnotation}
+                      />
+                    )}
                     <ShotGroupPanel
                         isSelecting={isSelectingGroupShots}
                         selectedShotCount={

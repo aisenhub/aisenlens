@@ -1,4 +1,6 @@
 import type { AutoShotCandidate } from "../../auto-shot/types";
+import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
+import type { MediaSourceFingerprint } from "../../project/types";
 import type {
   CalibrationAnnotationRecord,
   CalibrationBoundaryConfidence,
@@ -27,6 +29,29 @@ function issue(code: CalibrationValidationIssue["code"], path: string, message: 
 
 function validInteger(value: unknown, min = 0): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= min;
+}
+
+export function createCalibrationAnnotation(input: { fixtureId: string; split?: CalibrationSplit; source: MediaSourceFingerprint | null; mediaIdentity: AutoShotMediaIdentity; frameRate: number; }): CalibrationAnnotationRecord {
+  const sourceName = input.source?.name ?? "local-media";
+  const extension = sourceName.includes(".") ? sourceName.split(".").pop()!.toLowerCase() : "unknown";
+  const durationUs = input.mediaIdentity.durationUs;
+  return {
+    schemaVersion: 1,
+    annotationId: `annotation:${input.fixtureId}:${input.mediaIdentity.mediaIdentityDigest.slice(0, 12)}`,
+    fixtureId: input.fixtureId,
+    split: input.split ?? "search",
+    source: { workId: input.fixtureId, name: sourceName, url: `local://${sourceName}`, acquiredAt: new Date().toISOString().slice(0, 10), license: "unknown-local-copy; verify before redistribution" },
+    media: { container: extension, codec: input.mediaIdentity.codec, codedWidth: input.mediaIdentity.codedWidth, codedHeight: input.mediaIdentity.codedHeight, displayWidth: input.mediaIdentity.displayWidth, displayHeight: input.mediaIdentity.displayHeight, rotation: input.mediaIdentity.rotation, durationUs, fpsNumerator: Math.max(1, Math.round(input.frameRate * 1000)), fpsDenominator: 1000 },
+    mediaIdentity: structuredClone(input.mediaIdentity),
+    sha256: input.mediaIdentity.contentDigest,
+    annotator: "未填写",
+    reviewer: null,
+    reviewStatus: "unreviewed",
+    hardCuts: [],
+    uncertainRanges: [],
+    researchRun: null,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function validateAnnotation(annotation: CalibrationAnnotationRecord, path: string): CalibrationValidationIssue[] {
