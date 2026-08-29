@@ -2333,7 +2333,9 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 已实现 search/holdout manifest 的来源泄漏、
 schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
 边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，支持标注 JSON 导出/复读，参数搜索
-明确只读 search。当前仍缺真实人工标注数据、工作台接入编辑器、checksum 复核和满足 8.1 数量门槛的 search/holdout，
+明确只读 search。标注工作台已接入编辑器分镜面板，可在扫描完成后对 hard-cut 候选进行接受/拒绝、
+按播放头新增边界、标记不确定区间、填写标注者并导出 JSON。当前仍缺真实人工标注数据、跨刷新持久化、
+checksum 复核和满足 8.1 数量门槛的 search/holdout，
 因此本任务保持未完成，不能进入 12.3C 生产晋升。
 
 #### [ ] Task 12.3C：标定、独立留出验收与生产晋升

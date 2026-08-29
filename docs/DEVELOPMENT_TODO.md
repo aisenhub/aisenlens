@@ -48,8 +48,9 @@
 8. 在研究面板之后建立独立 `features/scene-calibration` 人工标定工作台：只产生带强媒体身份与微秒真值的 JSON/评分输入，不改写正式镜头或创作标记。严格拆分 search/holdout，sweep 和外部 AI 只能读取 search。
 9. **算法质量事项（2026-08-29）**：人工质量标注已由用户明确延期至 Phase 12；在标注和 holdout 评分完成前，不得将任何当前 preset 或算法标记为 production 可用。
 10. **Phase 12.6C/12.6D（2026-08-29）**：新控制面板支持预设、检出程度、转场、最短镜头、高级阈值、运行/暂停/重扫、候选排除和应用前预览；lint/build、配置/设置/task service 测试和 IndexedDB migration smoke 均通过。
-11. 只把通过冻结指标门槛和独立 holdout 的 preset 晋升 production catalog；普通产品入口此后只枚举已晋升项目，research catalog 仅限明确的研究/标定模式。
-12. 完成性能、内存、数据库数据保护、人工标注/search/holdout、production preview 和全产品矩阵后，才关闭 Phase 12。
+11. **Phase 12.3B（2026-08-29，进行中）**：人工标注工作台已接入编辑器分镜面板，可接受/拒绝候选、按播放头新增 hard-cut、标记不确定区间、填写标注者并导出 JSON；标注目前为会话内草稿，跨刷新持久化和真实数据集仍待完成。
+12. 只把通过冻结指标门槛和独立 holdout 的 preset 晋升 production catalog；普通产品入口此后只枚举已晋升项目，research catalog 仅限明确的研究/标定模式。
+13. 完成性能、内存、数据库数据保护、人工标注/search/holdout、production preview 和全产品矩阵后，才关闭 Phase 12。
 
 当前约束：
 
