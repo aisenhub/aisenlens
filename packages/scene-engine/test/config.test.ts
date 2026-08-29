@@ -24,3 +24,11 @@ test("requires fixed-point weights to sum to the C++ scale", () => {
   };
   assert.throws(() => validateSceneDetectionConfig(invalid), { code: "INVALID_CONFIG" });
 });
+
+test("accepts the complete signed fade bias range", () => {
+  for (const bias of [-1000, 0, 1000]) {
+    const config = structuredClone(DEFAULT_SCENE_DETECTION_CONFIG);
+    config.fade = { mode: "floor", threshold: 12, bias, emitFinalFade: true };
+    assert.equal(validateSceneDetectionConfig(config).fade?.bias, bias);
+  }
+});

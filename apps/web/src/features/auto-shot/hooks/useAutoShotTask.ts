@@ -5,6 +5,9 @@ import projectRepository from "../../project/services/projectRepository";
 import type { MediaSourceFingerprint } from "../../project/types";
 import { createAutoShotTaskService, type AutoShotTaskHandle, type StartAutoShotTaskInput } from "../autoShotTaskService";
 import type { AutoShotTaskRecord } from "../types";
+import { recoverAutoShotTaskStatus } from "../taskState";
+import { createAutoShotMediaIdentity } from "../mediaIdentityService";
+import type { AutoShotMediaIdentity } from "../mediaIdentity";
 
 interface UseAutoShotTaskInput {
   projectId: string;
@@ -25,7 +28,10 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
   const [record, setRecord] = useState<AutoShotTaskRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
+  const [mediaIdentity, setMediaIdentity] = useState<AutoShotMediaIdentity | null>(null);
   const handleRef = useRef<AutoShotTaskHandle | null>(null);
+  const startingRef = useRef(false);
+  const cancellationRef = useRef<Promise<unknown> | null>(null);
   const revisionRef = useRef(0);
   const service = useMemo(() => createAutoShotTaskService({
     createClient: () => createSceneEngineClient({
@@ -37,18 +43,36 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
 
   useEffect(() => {
     const revision = ++revisionRef.current;
+    startingRef.current = false;
     setError(null);
     setRecord(null);
     setIsActive(false);
-    if (!input.mediaFingerprint) return;
+    setMediaIdentity(null);
+    if (!input.mediaFingerprint || !input.sourceUrl) return;
     let active = true;
-    void projectRepository.getAutoShotTask(input.projectId, input.mediaFingerprint).then(async (existing) => {
+    void fetch(input.sourceUrl).then(async (response) => {
+      if (!response.ok) throw new Error(`无法读取视频素材：${response.status}`);
+      const blob = await response.blob();
+      const identity = await createAutoShotMediaIdentity(new File([blob], input.mediaFingerprint?.name ?? "video", { type: input.mediaFingerprint?.mimeType ?? blob.type }));
+      if (!active || revision !== revisionRef.current) return null;
+      setMediaIdentity(identity);
+      return projectRepository.getAutoShotTask(input.projectId, identity);
+    }).then(async (existing) => {
+      if (!existing) return;
       if (!active || revision !== revisionRef.current) return;
-      if (existing?.status === "running") {
-        const paused = { ...existing, status: "paused" as const, updatedAt: new Date().toISOString() };
-        await projectRepository.saveAutoShotTask(paused);
+      // A user may start while the identity digest is still being computed.
+      // Never let the late repository read overwrite that live task state.
+      if (handleRef.current || startingRef.current) return;
+      if (existing?.status === "running" || existing?.status === "paused") {
+        const recoveredStatus = recoverAutoShotTaskStatus(existing.status, existing.checkpoint);
+        if (recoveredStatus === existing.status) {
+          setRecord(existing);
+          return;
+        }
+        const interrupted = { ...existing, status: recoveredStatus, updatedAt: new Date().toISOString() };
+        await projectRepository.saveAutoShotTask(interrupted);
         if (!active || revision !== revisionRef.current) return;
-        setRecord(paused);
+        setRecord(interrupted);
         return;
       }
       setRecord(existing);
@@ -57,12 +81,19 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
     });
     return () => {
       active = false;
+      startingRef.current = false;
       const handle = handleRef.current;
       handleRef.current = null;
       setIsActive(false);
-      if (handle) void handle.cancel().catch(() => undefined);
+      if (handle) {
+        const cancellation = handle.cancel().catch(() => undefined);
+        cancellationRef.current = cancellation;
+        void cancellation.finally(() => {
+          if (cancellationRef.current === cancellation) cancellationRef.current = null;
+        });
+      }
     };
-  }, [input.mediaFingerprint, input.projectId]);
+  }, [input.mediaFingerprint, input.projectId, input.sourceUrl]);
 
   const start = useCallback(async ({ resume = false, restart = false }: { resume?: boolean; restart?: boolean } = {}) => {
     if (!input.mediaFingerprint) {
@@ -77,9 +108,13 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       setError("尚未读取视频时长，请等待视频加载完成后重试。");
       return null;
     }
+    if (startingRef.current || handleRef.current) return null;
+    startingRef.current = true;
     const revision = revisionRef.current;
     setError(null);
     try {
+      await cancellationRef.current;
+      if (revision !== revisionRef.current) return null;
       const source = await fetch(input.sourceUrl).then((response) => {
         if (!response.ok) throw new Error(`无法读取视频素材：${response.status}`);
         return response.blob();
@@ -88,7 +123,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       const taskInput: StartAutoShotTaskInput = {
         projectId: input.projectId,
         source,
-        mediaFingerprint: input.mediaFingerprint,
+        mediaIdentity: mediaIdentity ?? await createAutoShotMediaIdentity(new File([source], input.mediaFingerprint.name, { type: input.mediaFingerprint.mimeType })),
         config: input.config,
         durationUs: Math.max(1, Math.round(input.durationSeconds * 1_000_000)),
         fpsNumerator: fps.numerator,
@@ -102,6 +137,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       const handle = await service.start(taskInput);
       handleRef.current = handle;
       if (revision === revisionRef.current) setIsActive(true);
+      startingRef.current = false;
       void handle.completion.then((completed) => {
         if (revision === revisionRef.current) setRecord(completed);
         if (handleRef.current?.taskId === handle.taskId) {
@@ -117,11 +153,12 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       });
       return handle;
     } catch (cause) {
+      startingRef.current = false;
       const message = cause instanceof Error ? cause.message : "自动分镜失败。";
       if (revision === revisionRef.current) setError(message);
       return null;
     }
-  }, [input.config, input.durationSeconds, input.frameRate, input.mediaFingerprint, input.projectId, input.sourceUrl, service]);
+  }, [input.config, input.durationSeconds, input.frameRate, input.mediaFingerprint, input.projectId, input.sourceUrl, mediaIdentity, service]);
 
   const pause = useCallback(async () => {
     const handle = handleRef.current;

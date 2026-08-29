@@ -2,11 +2,19 @@ import type { AnalysisFieldValue } from "../template/types";
 
 export type ShotStatus = "draft" | "confirmed";
 
-export interface ShotDetectionMeta {
-  runId: string | null;
-  kind: "hard-cut" | "gradual-transition" | "manual";
-  confidence: number | null;
-}
+export type ShotDetectionMeta =
+  | { source: "manual" }
+  | {
+      source: "auto-shot";
+      taskId: string;
+      candidateId: string;
+      kind: "hard-cut" | "fade" | "tail";
+      mediaIdentityDigest: string;
+      presetId: string;
+      presetVersion: number;
+      engineVersion: string;
+      configHash: string;
+    };
 
 export interface ShotRecord {
   id: string;

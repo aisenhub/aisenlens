@@ -2,6 +2,10 @@
 
 日期：2026-08-28
 
+> 状态：准备性历史快照，不代表 Task 12.1 或 Phase 12 已完成。Phase 11 第二轮审计将改变
+> media identity、config hash、task/review 与 shot provenance 契约；Phase 11 验收门关闭后
+> 必须在最终 schema 和代码上完整重跑并更新本文件，不能直接复用下列通过项。
+
 ## 已通过矩阵
 
 | 范围 | 验证 |
@@ -16,6 +20,7 @@
 
 ## 尚未关闭的验收项
 
+- 强媒体身份、canonical config/hash、刷新后的 `interrupted` 语义、应用领域命令与正式镜头 provenance。
 - 真实视频上传后的产品 UI 全流程（开始、暂停、刷新、继续、取消、重扫、审阅、应用、撤销）。
 - 新引擎相对 Phase 0 JS 基线的准确率评分；当前已登记的合成 WebM 仅适合旧 JS 基线，Worker 明确记录 VP9 能力限制。
 - 完整产品矩阵通过前，不删除旧 Canvas/seek 基线服务和旧 record 类型。

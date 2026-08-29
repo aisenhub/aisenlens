@@ -6,9 +6,11 @@ import type {
   SceneEngineResult,
   SceneTimePoint,
 } from "@aisenlens/scene-engine";
-import type { MediaSourceFingerprint } from "../project/types";
+import type { AutoShotMediaIdentity } from "./mediaIdentity";
 
-export type AutoShotTaskStatus = "running" | "paused" | "completed" | "failed" | "cancelled";
+export type { AutoShotMediaIdentity, AutoShotMediaIdentityDigestStrategy } from "./mediaIdentity";
+
+export type AutoShotTaskStatus = "running" | "paused" | "completed" | "failed" | "cancelled" | "interrupted";
 
 export interface AutoShotCandidate {
   id: string;
@@ -32,11 +34,18 @@ export interface AutoShotProgress {
   candidateCount: number;
 }
 
+export interface AutoShotTaskReview {
+  excludedCandidateIds: string[];
+  updatedAt: string | null;
+  appliedAt: string | null;
+}
+
 /** Web business record; it intentionally does not mirror the engine C ABI. */
 export interface AutoShotTaskRecord {
   id: string;
   projectId: string;
-  mediaFingerprint: MediaSourceFingerprint;
+  mediaIdentity: AutoShotMediaIdentity;
+  review: AutoShotTaskReview;
   config: SceneDetectionConfig;
   status: AutoShotTaskStatus;
   engineVersion: string | null;
@@ -51,7 +60,7 @@ export interface AutoShotTaskRecord {
 }
 
 export interface AutoShotTaskRepository {
-  getAutoShotTask(projectId: string, mediaFingerprint: MediaSourceFingerprint): Promise<AutoShotTaskRecord | null>;
+  getAutoShotTask(projectId: string, mediaIdentity: AutoShotMediaIdentity): Promise<AutoShotTaskRecord | null>;
   saveAutoShotTask(task: AutoShotTaskRecord): Promise<void>;
   deleteAutoShotTask(projectId: string): Promise<void>;
 }

@@ -38,7 +38,7 @@ test("media frame source forwards checkpoint and target to the decoder and dispo
     },
     dispose() { disposed = true; },
   };
-  const checkpoint = { schemaVersion: 1, engineVersion: "test", configHash: "fnv1a32-00000000", mediaFingerprint: "sha256:test", resumeAfter: { timestampUs: 500, timestampOrdinal: 0, nextPresentationIndex: 1 }, committedBoundaries: [], coreState: new ArrayBuffer(0) } satisfies SceneEngineCheckpoint;
+  const checkpoint = { schemaVersion: 1, engineVersion: "test", configHash: "fnv1a64-v1:0000000000000000", mediaIdentityDigest: "sha256:test", resumeAfter: { timestampUs: 500, timestampOrdinal: 0, nextPresentationIndex: 1 }, committedBoundaries: [], coreState: new ArrayBuffer(0) } satisfies SceneEngineCheckpoint;
   const source = new MediaFrameSource(decoder, checkpoint);
   const target = {} as never;
   const frames = [];

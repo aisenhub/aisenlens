@@ -19,6 +19,7 @@ corepack pnpm install
 corepack pnpm dev
 corepack pnpm build
 corepack pnpm scene-engine:verify:core
+corepack pnpm scene-engine:verify:web-preview
 corepack pnpm dev:desktop
 corepack pnpm sync:mobile
 ```
@@ -31,6 +32,10 @@ Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android 
 
 `scene-engine:verify:core` runs the native, baseline/SIMD WASM, TypeScript,
 contract, and parity checks without changing the normal Web build workflow.
+`scene-engine:verify:web-preview` runs the production Worker/WASM smoke at the
+non-root `/aisenlens/` path. It uses `apps/web/test/test.mov` by default; choose
+another repository-local video with `AISENLENS_SCENE_FIXTURE`, for example
+`$env:AISENLENS_SCENE_FIXTURE='apps/web/test/test03.mov'; corepack pnpm scene-engine:verify:web-preview`.
 Current feature validation scope is Web; Desktop and Mobile remain optional
 platform checks.
 
@@ -44,4 +49,5 @@ Vercel deploys the Web application from the repository root with `pnpm --filter 
 - [Operations and Supabase constraints](docs/OPERATIONS.md)
 - [AisenShot Scene Engine architecture](docs/AISENSHOT_SCENE_ENGINE_PLAN.md)
 - [AisenShot Scene Engine implementation plan](docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md)
+- [AisenShot automatic scene control design](docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md)
 - [SEO and discoverability plan](docs/SEO_DISCOVERABILITY_PLAN.md)

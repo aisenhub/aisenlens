@@ -98,7 +98,7 @@ export type EngineConfig = SceneDetectionConfig;
 
 export interface StartSceneDetectionRequest {
   source: Blob;
-  mediaFingerprint: string;
+  mediaIdentityDigest: string;
   config: SceneDetectionConfig;
   checkpoint?: SceneEngineCheckpoint;
 }
@@ -107,7 +107,7 @@ export interface SceneEngineCheckpoint {
   schemaVersion: 1;
   engineVersion: string;
   configHash: string;
-  mediaFingerprint: string;
+  mediaIdentityDigest: string;
   resumeAfter: {
     timestampUs: Microseconds;
     timestampOrdinal: number;

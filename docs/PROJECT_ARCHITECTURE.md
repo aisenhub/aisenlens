@@ -1,8 +1,8 @@
 # AisenLens 项目架构
 
-> 状态：当前实现基线
+> 状态：当前实现基线与已批准演进边界
 >
-> 最后核对：2026-08-27
+> 最后核对：2026-08-28
 
 本文档记录当前代码已经采用的长期架构边界。具体功能的历史计划、实施过程和已失效的数据模型不作为项目规范保留。
 
@@ -40,7 +40,7 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 13，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。版本 13 升级只清理旧的可重新生成自动分镜派生记录。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 13，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。版本 13 升级只清理旧的可重新生成自动分镜派生记录；后续自动分镜 task/review schema 变化仍需提升版本并用逐版本夹具证明不会触碰正式项目数据。
 
 正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。备份服务导出经校验的项目包；恢复快照保存项目、镜头、镜头组、标注和模板，恢复时通过仓库服务写回。新增持久化结构必须通过 `projectRepository.ts` 的版本化升级处理，不能由 UI 直接写 IndexedDB。
 
@@ -48,15 +48,31 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 4. 编辑器能力边界
 
-编辑器由 `EditorPage` 和 feature 模块组合。媒体预览、时间轴、镜头、标注、构图/内容叠层、模板与导出保持独立；叠层只服务预览和截图，不应修改原始视频。自动分镜首先生成可审阅的候选结果，用户显式确认后才更新镜头数据。
+编辑器由 `EditorPage` 和 feature 模块组合。媒体预览、时间轴、镜头、标注、构图/内容叠层、模板与导出保持独立；叠层只服务预览和截图，不应修改原始视频。自动分镜首先生成可审阅的候选结果，用户显式确认后再通过单一、可撤销的领域命令更新镜头数据；Worker、React 组件和结果适配器均不得直接写正式镜头。
 
 当前 `auto-shot` 生产入口使用 Worker + WASM Scene Engine 和 `useAutoShotTask`；旧浏览器视频/Canvas 检测器仅保留在迁移基线测试和待 Phase 12 删除路径，不再由编辑器生产调用。
 
-## 5. AisenShot 的未来替换边界
+自动分镜的已批准目标控制采用独立的 feature 配置层：用户选择内容预设、检出程度、
+转场类型和最短镜头，唯一纯解析器将其转换为严格的 `SceneDetectionConfig`；预设版本由
+registry 注入，任务同时冻结用户设置快照、预设版本、canonical config/hash 和引擎配置。
+React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”“短视频”等产品概念。
+该控制层和 Zustand 设置 store 尚未实施，只有通过独立 holdout 门槛的 preset 才能进入
+生产 registry 与 UI。完整边界见
+[自动分镜控制系统设计](AISENSHOT_CONTROL_SYSTEM_DESIGN.md)。
 
-已批准的 AisenShot Scene Engine 将作为 `packages/scene-engine/` 中独立于 React 与项目领域模型的 C++/WASM 包。其输入是经过已验证策略规范化的解码帧，输出是带证据的镜头边界；Web Worker 负责 WebCodecs/Mediabunny 解码、像素预处理、WASM 调度、checkpoint envelope 和结果回传，TypeScript 适配器才将结果转换为可审阅的候选分镜。生产像素路径必须先通过 Phase 0 的 Web 端到端基准，不预设浏览器能够请求 I420，也不把 Desktop/Mobile 当作当前实施门槛。
+自动分镜恢复使用版本化强媒体身份，不以文件名、MIME、修改时间或普通四字段 fingerprint
+作为最终依据。只有完整 checkpoint 已持久化的任务才能标记为 `paused`；刷新或崩溃遗留的
+`running` 记录必须进入 `interrupted` 并重扫。任务记录按项目唯一且可被新扫描覆盖，因此
+正式镜头需保存独立、不可变的最小 provenance 快照，不能仅引用当前 task。
 
-实施时仅按已批准的架构与分阶段计划推进：
+## 5. AisenShot Scene Engine 边界
+
+`packages/scene-engine/` 是独立于 React 与项目领域模型的 C++/WASM 包。其输入是经过已验证策略规范化的解码帧，输出是带证据的镜头边界；Web Worker 负责 WebCodecs/Mediabunny 解码、像素预处理、WASM 调度、checkpoint envelope 和结果回传，TypeScript 适配器只将结果转换为可审阅的候选分镜。生产像素路径以 Phase 0 的 Web 端到端基准为依据，不预设浏览器能够请求 I420，也不把 Desktop/Mobile 当作当前实施门槛。
+
+当前 Phase 0–10 已完成，Phase 11 的最小生产接线已存在，但强媒体身份、canonical config
+hash、刷新/中断生命周期、候选应用领域命令、正式镜头 provenance 和真实产品矩阵仍是
+开放验收项。必须先关闭这些项，再进入 Phase 12 的配置标定、Zustand 控制层、UI 和旧路径
+删除。实施时仅按已批准的架构与分阶段计划推进：
 
 - [AisenShot Scene Engine 架构方案](AISENSHOT_SCENE_ENGINE_PLAN.md)
 - [AisenShot Scene Engine 实施计划](AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md)

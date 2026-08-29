@@ -43,17 +43,27 @@ import {
 } from "../../project/services/screenshotService"
 import projectRepository from "../../project/services/projectRepository"
 import formatTimecode from "../utils/formatTimecode"
+import retainShotMap from "../utils/retainShotMap"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Textarea } from "../../../components/ui/textarea"
+import { Checkbox } from "../../../components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog"
 import type { MediaAsset } from "../../project/types"
 import type { ProjectRecord } from "../../project/types"
 import {
   loadProjectShots,
   saveProjectShots,
 } from "../../shot/services/shotService"
-import type { ShotRecord } from "../../shot/types"
+import type { ShotDetectionMeta, ShotRecord } from "../../shot/types"
 import {
   mergeAdjacentShotRanges,
   moveSharedShotBoundary,
@@ -63,6 +73,10 @@ import {
   splitManualShotAtFrame,
 } from "../../shot/services/manualShotService"
 import { loadOrCreateProjectTemplate } from "../../template/services/templateService"
+import {
+  applyAutoShotCandidates,
+  type AutoShotApplyOutput,
+} from "../../auto-shot/applyAutoShotCandidates"
 import {
   getShotAnalysisCompleteness,
   normalizeProjectTemplate,
@@ -157,6 +171,7 @@ interface EditorHistorySnapshot {
   }>
   shotNotes: Record<string, { content: string; analysis: string }>
   shotDims: Record<string, Record<string, AnalysisFieldValue>>
+  shotDetection: Record<string, ShotDetectionMeta>
   annotationMarkers: AnnotationMarker[]
   shotGroups: ShotGroupRecord[]
   activeShot: number
@@ -239,6 +254,7 @@ export default function EditorWorkspace({
 }: EditorWorkspaceProps) {
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
+  const autoShotDetectionRef = useRef<Record<string, ShotDetectionMeta>>({})
   const [activeShot, setActiveShot] = useState(0)
   const [panel, setPanel] = useState<Panel>("frame")
   const [activeTool, setActiveTool] = useState<PanelToolId>(null)
@@ -281,7 +297,9 @@ export default function EditorWorkspace({
   const [titleDraft, setTitleDraft] = useState(projectTitle)
   const [liteCache, setLiteCache] = useState(128)
   const [openRef, setOpenRef] = useState<string | null>(null)
-  const [autoSensitivity, setAutoSensitivity] = useState(50) // 0-100
+  // Temporary Phase 11 fallback: 100 resolves to threshold 1800 on the real-media
+  // regression video. Phase 12 replaces this slider and mapping with the resolver.
+  const [autoSensitivity, setAutoSensitivity] = useState(100) // 10-100
   const [autoMinDuration, setAutoMinDuration] = useState(0.8) // seconds
 
   useEffect(() => setMediaProject(project), [project])
@@ -412,7 +430,7 @@ export default function EditorWorkspace({
   const autoShotConfig = useMemo(() => ({
     hardCut: {
       kind: "content" as const,
-      threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 24))),
+      threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 34))),
       weights: { hue: 3333, saturation: 3333, luma: 3334 },
     },
     fade: null,
@@ -433,6 +451,13 @@ export default function EditorWorkspace({
     config: autoShotConfig,
   })
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
+  const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])
+  const [pendingAutoShotApply, setPendingAutoShotApply] = useState<{ taskId: string; output: AutoShotApplyOutput } | null>(null)
+
+  useEffect(() => {
+    setExcludedAutoShotCandidateIds(autoShotRun?.review.excludedCandidateIds ?? [])
+    setPendingAutoShotApply(null)
+  }, [autoShotRun?.id])
 
   useMultiTrackAudioPreview({
     mediaAssets: mediaProject.mediaAssets,
@@ -470,6 +495,7 @@ export default function EditorWorkspace({
       shotBoundaryScreenshotIds: structuredClone(shotBoundaryScreenshotIds),
       shotNotes: structuredClone(shotNotes),
       shotDims: structuredClone(shotDims),
+      shotDetection: structuredClone(autoShotDetectionRef.current),
       annotationMarkers: structuredClone(annotationMarkers),
       shotGroups: structuredClone(shotGroups),
       activeShot,
@@ -503,6 +529,7 @@ export default function EditorWorkspace({
       setShotBoundaryScreenshotIds(snapshot.shotBoundaryScreenshotIds)
       setShotNotes(snapshot.shotNotes)
       setShotDims(snapshot.shotDims)
+      autoShotDetectionRef.current = structuredClone(snapshot.shotDetection)
       setAnnotationMarkers(snapshot.annotationMarkers)
       setShotGroups(snapshot.shotGroups)
       setActiveShot(snapshot.activeShot)
@@ -704,7 +731,7 @@ export default function EditorWorkspace({
         status: completeness.missingRequiredFields.length
           ? "draft"
           : "confirmed",
-        detection: { runId: null, kind: "manual", confidence: null },
+        detection: autoShotDetectionRef.current[shot.id] ?? { source: "manual" },
         primaryScreenshotId: primaryShotScreenshotIds[shot.id] ?? null,
         screenshotIds: shotScreenshotIds[shot.id] ?? [],
         firstFrameScreenshotId: boundaryScreenshots.first,
@@ -1261,39 +1288,65 @@ export default function EditorWorkspace({
     await autoShotTask.start({ resume: shouldResume, restart })
   }
 
-  const applyAutoShotCuts = () => {
+  const previewAutoShotCuts = () => {
     if (!autoShotRun || autoShotRun.status !== "completed") return
     const frameRate = media.metadata?.frameRate ?? FPS
     const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
-    const boundaries = [0, ...autoShotRun.candidates.map((candidate) => candidate.endFrame).filter((frame) => frame > 0 && frame < totalFrames), totalFrames]
-    const nextShots = boundaries
-      .slice(0, -1)
-      .map((startFrame, index) => ({
-        id: crypto.randomUUID(),
-        start: startFrame / frameRate,
-        duration: (boundaries[index + 1] - startFrame) / frameRate,
-        type: "未分析",
-        motion: "未分析",
-        color: "未分析",
-      }))
+    let applied
+    try {
+      applied = applyAutoShotCandidates({ candidates: autoShotRun.candidates, excludedCandidateIds: excludedAutoShotCandidateIds, totalFrames, frameRate, currentShots: shots, currentShotFrames: shotFrames, currentGroups: shotGroups })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "自动分镜候选无效，未应用结果。")
+      return
+    }
+    setPendingAutoShotApply({ taskId: autoShotRun.id, output: applied })
+  }
+
+  const applyAutoShotCuts = async () => {
+    if (!pendingAutoShotApply || !autoShotRun || autoShotRun.status !== "completed" || pendingAutoShotApply.taskId !== autoShotRun.id) {
+      setPendingAutoShotApply(null)
+      toast.error("自动分镜结果已更新，请重新打开应用确认。")
+      return
+    }
+    const { output: applied } = pendingAutoShotApply
+    let recoverySnapshot
+    try {
+      recoverySnapshot = await createProjectRecoverySnapshot(projectId)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法创建应用前恢复快照，未应用自动分镜结果。")
+      return
+    }
+    if (!recoverySnapshot) {
+      toast.error("无法创建应用前恢复快照，未应用自动分镜结果。")
+      return
+    }
+    try {
+      await projectRepository.saveAutoShotTask({ ...autoShotRun, review: { excludedCandidateIds: excludedAutoShotCandidateIds, appliedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法保存自动分镜审阅状态，未应用结果。")
+      return
+    }
     editorHistory.commit()
-    setShots(nextShots)
-    setShotFrames(
-      Object.fromEntries(
-        nextShots.map((shot, index) => [
-          shot.id,
-          { first: boundaries[index], last: boundaries[index + 1] - 1 },
-        ]),
-      ),
-    )
-    setShotNotes({})
-    setShotDims({})
-    setShotScreenshotIds({})
-    setPrimaryShotScreenshotIds({})
-    setShotBoundaryScreenshotIds({})
+    setShots(applied.shots)
+    setShotFrames(applied.shotFrames)
+    setShotGroups(applied.groups)
+    const retainedShotIds = new Set(applied.shots.map((shot) => shot.id))
+    const provenance: Record<string, ShotDetectionMeta> = {}
+    for (const candidate of autoShotRun.candidates) {
+      if (excludedAutoShotCandidateIds.includes(candidate.id)) continue
+      const shot = applied.shots.find((item) => applied.shotFrames[item.id]?.first === candidate.startFrame && applied.shotFrames[item.id]?.last === candidate.endFrame - 1)
+      if (shot) provenance[shot.id] = { source: "auto-shot", taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: "legacy-auto-shot", presetVersion: 1, engineVersion: candidate.engineVersion, configHash: candidate.configHash }
+    }
+    autoShotDetectionRef.current = provenance
+    setShotNotes((current) => retainShotMap(current, retainedShotIds))
+    setShotDims((current) => retainShotMap(current, retainedShotIds))
+    setShotScreenshotIds((current) => retainShotMap(current, retainedShotIds))
+    setPrimaryShotScreenshotIds((current) => retainShotMap(current, retainedShotIds))
+    setShotBoundaryScreenshotIds((current) => retainShotMap(current, retainedShotIds))
     setSelectedShotIds([])
     setSelectedGroupId(null)
     setActiveShot(0)
+    setPendingAutoShotApply(null)
   }
 
   const playShot = (index: number) => {
@@ -1799,6 +1852,7 @@ export default function EditorWorkspace({
 
     editorHistory.commit()
     setShots([wholeVideoShot])
+    autoShotDetectionRef.current = {}
     setShotFrames({
       [wholeVideoShot.id]: { first: 0, last: totalFrames - 1 },
     })
@@ -2894,9 +2948,31 @@ export default function EditorWorkspace({
                         <div className="mb-2 rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
                           检测到{" "}
                           <span className="font-mono text-green-300">
+                            {autoShotRun.candidates.filter((candidate) => candidate.kind !== "tail").length}
+                          </span>{" "}
+                          个分镜边界，生成 {" "}
+                          <span className="font-mono text-green-300">
                             {autoShotRun.candidates.length}
                           </span>{" "}
-                          个候选切点；应用后会替换当前分镜。
+                          段候选分镜；应用后会替换当前分镜。
+                          <div className="mt-2 max-h-28 space-y-1 overflow-auto border-t border-green-400/10 pt-2">
+                            {autoShotRun.candidates.map((candidate, index) => {
+                              const excluded = excludedAutoShotCandidateIds.includes(candidate.id)
+                              return (
+                                <label key={candidate.id} className="flex cursor-pointer items-center gap-2 text-text-muted">
+                                  <Checkbox
+                                    checked={!excluded}
+                                    onCheckedChange={(checked) => {
+                                      const next = checked ? excludedAutoShotCandidateIds.filter((id) => id !== candidate.id) : [...excludedAutoShotCandidateIds, candidate.id]
+                                      setExcludedAutoShotCandidateIds(next)
+                                      void projectRepository.saveAutoShotTask({ ...autoShotRun, review: { ...autoShotRun.review, excludedCandidateIds: next, updatedAt: new Date().toISOString() } })
+                                    }}
+                                  />
+                                  <span>片段 {index + 1} · {candidate.kind === "tail" ? "尾段" : candidate.kind === "fade" ? "淡入淡出" : "硬切"}</span>
+                                </label>
+                              )
+                            })}
+                          </div>
                         </div>
                       )}
                       {(autoShotTask.error || autoShotRun?.status === "failed") && (
@@ -2933,7 +3009,7 @@ export default function EditorWorkspace({
                         <Button
                           type="button"
                           size="sm"
-                          onClick={applyAutoShotCuts}
+                          onClick={previewAutoShotCuts}
                           className="mt-1 h-7 w-full editor-body font-normal"
                         >
                           应用候选分镜
@@ -3614,6 +3690,26 @@ export default function EditorWorkspace({
           onCancel={cancelAnalysisVideoExport}
         />
       )}
+      <Dialog open={pendingAutoShotApply !== null} onOpenChange={(open) => { if (!open) setPendingAutoShotApply(null) }}>
+        <DialogContent className="border border-border bg-bg-card text-text-base sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">确认应用自动分镜</DialogTitle>
+            <DialogDescription className="text-text-muted">应用后会一次性替换当前镜头边界，并清理受影响镜头的分析资料与截图。应用前会自动创建恢复快照。</DialogDescription>
+          </DialogHeader>
+          {pendingAutoShotApply && (
+            <div className="space-y-2 rounded-lg border border-border bg-bg-input p-3 editor-body text-text-dim">
+              <p>将生成 {pendingAutoShotApply.output.shots.length} 个镜头，其中 {pendingAutoShotApply.output.summary.preservedCount} 个保持原有范围和资料。</p>
+              <p>将新建或改变 {pendingAutoShotApply.output.summary.changedCount} 个镜头，移除 {pendingAutoShotApply.output.summary.removedCount} 个旧镜头引用。</p>
+              {pendingAutoShotApply.output.summary.removedGroupCount > 0 && <p className="text-amber-300">将移除 {pendingAutoShotApply.output.summary.removedGroupCount} 个失效分组引用。</p>}
+              {pendingAutoShotApply.output.summary.changedGroupCount > 0 && <p>将协调 {pendingAutoShotApply.output.summary.changedGroupCount} 个分组范围。</p>}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingAutoShotApply(null)}>取消</Button>
+            <Button type="button" onClick={() => void applyAutoShotCuts()}>创建快照并应用</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

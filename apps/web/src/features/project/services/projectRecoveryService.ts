@@ -15,12 +15,7 @@ export async function restoreProjectRecoverySnapshot(snapshotId: string, project
   const snapshots = await projectRepository.listProjectRecoverySnapshots(projectId);
   const snapshot = snapshots.find((item) => item.id === snapshotId);
   if (!snapshot) throw new Error("恢复快照不存在或已被清理。");
-  await projectRepository.updateProject({ ...snapshot.project, id: projectId });
-  await projectRepository.replaceProjectShots(projectId, snapshot.shots.map((shot) => ({ ...shot, projectId })));
-  await projectRepository.replaceProjectShotGroups(projectId, snapshot.groups.map((group) => ({ ...group, projectId })));
-  await projectRepository.replaceProjectAnnotationMarkers(projectId, snapshot.markers.map((marker) => ({ ...marker, projectId })));
-  if (snapshot.template) await projectRepository.saveProjectTemplate({ ...snapshot.template, projectId });
-  else await projectRepository.deleteProjectTemplate(projectId);
+  await projectRepository.restoreProjectRecoverySnapshot({ ...snapshot, projectId });
 }
 
 export async function getStorageUsage() {

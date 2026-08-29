@@ -16,6 +16,18 @@
 获取后仍须遵守根 `AGENTS.md` 的模块研究顺序，并将实际查阅的文件与确认结论
 更新到本索引。
 
+## 2026-08-28 自动分镜内容预设与前端控制
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 自动分镜产品设置、内容预设与候选应用 | OpenReel `packages/core/src/ai/cloud-job-types.ts`、`apps/web/src/components/editor/ai-panel/ai-kinds.config.ts`、`apps/web/src/components/editor/ai-panel/AIPanel.tsx`；OpenCut `apps/web/src/components/editor/scenes-view.tsx`、`apps/web/src/core/managers/scenes-manager.ts`；PySceneDetect `scenedetect/detectors/{content_detector,adaptive_detector,threshold_detector}.py`、`scenedetect/_cli/config.py`、`docs/cli/config_file.rst`、`benchmark/{README,SWEEP_REPORT}.md`；PySceneDetect 0.7.1 官方 detector/config/benchmark 文档；Adobe Premiere Scene Edit Detection 官方说明 | OpenReel 将 scene detection 作为独立分析任务及 `scenes` 输出，但没有成熟参数面板；OpenCut 没有自动镜头检测，其场景选择 UI 与命令式写入分离。PySceneDetect 明确区分 Content 固定阈值、Adaptive 邻域比率/最低内容差异、Threshold/Fade 亮度状态机、最短场景与过滤策略；公开 sweep 显示 BBC 长内容、AutoShot/ClipShots 短 Web 内容的最佳参数显著不同，证明单一灵敏度不足。Premiere 将检测结果的应用方式与检测过程分开。 | 建立 Web 产品配置层：普通用户选择内容预设、检出程度、转场和最短镜头，高级模式再提供完整 detector 分支覆盖；唯一解析器生成严格 EngineConfig，preset version 只由 registry 注入，任务冻结控制快照与 resolved config。首版不设 `custom` preset，不自动猜内容类型。参数只能在 AisenLens C++/WASM 像素路径上用互斥 search/holdout 标定，通过冻结门槛后才晋升生产 registry；候选 review 与应用领域命令分离，正式镜头保存独立 provenance。详见 `docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md`。 |
+
+## 2026-08-29 自动分镜人工标定与数据导出
+
+| 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 场景边界人工标注、候选复核与标定数据导出 | OpenReel `apps/web/src/stores/project/marker-slice.ts`、`apps/web/src/components/editor/timeline/MarkerIndicator.tsx`、`apps/web/src/services/keyboard-shortcuts.ts`；OpenCut `apps/web/src/core/managers/scenes-manager.ts`、`apps/web/src/components/editor/scenes-view.tsx`、`apps/web/src/timeline/snapping/resolve.ts`；W3C WebVTT 1.0；MDN `HTMLVideoElement.requestVideoFrameCallback()`；Label Studio Timeline Labels / video annotation documentation | OpenReel 将标记写入独立 action，并在时间线上支持定位、编辑和删除；OpenCut 将场景视图与时间线定位/吸附逻辑分开。WebVTT 使用有序时间区间，适合作为交换格式参照，但场景切点还需要 detector 配置、媒体身份和边界证据。`requestVideoFrameCallback()` 可在实际呈现帧时提供 media time，但不保证逐帧精确 seek；专业标注产品普遍使用“模型预标注 + 人工确认/新增/删除”以提高效率。 | 新建独立 `features/scene-calibration`，不得复用创作型 `annotation` 标记或直接改正式 `ShotRecord`。标定以微秒时间为权威、项目帧号为辅助；首版只支持 hard-cut 点标注、候选接受/拒绝/新增和一个显式不确定状态，fade 区间在第二步加入。标定记录绑定版本化媒体身份、标注 schema、人工来源和生成时的 Engine/config；默认导出 JSON（不含视频），可选另选视频文件交给外部 AI。评分与 preset 晋升仅使用固定 search/holdout 划分，AI 只能基于 search 提出候选配置，不能直接修改 production registry。 |
+
 ## 2026-08-25 AisenShot Scene Engine
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |

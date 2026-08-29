@@ -39,7 +39,7 @@ function source(frames: readonly typeof frame[], gate?: { wait: Promise<void> })
 }
 
 function startMessage(jobId: string): StartMessage {
-  return { type: "START", jobId, source: new Blob(), mediaFingerprint: "sha256:test", config: DEFAULT_SCENE_DETECTION_CONFIG };
+  return { type: "START", jobId, source: new Blob(), mediaIdentityDigest: "sha256:test", config: DEFAULT_SCENE_DETECTION_CONFIG };
 }
 
 async function readyController(emitted: WorkerToMainMessage[], createFrameSource: (message: StartMessage) => WorkerFrameSource) {

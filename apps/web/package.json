@@ -14,6 +14,8 @@
     "test:auto-shot-adapter": "node --experimental-strip-types --test test/auto-shot-scene-result-adapter.test.ts",
     "test:auto-shot-media-fingerprint": "node --experimental-strip-types --test test/auto-shot-media-fingerprint.test.ts",
     "test:auto-shot-task-service": "node --experimental-strip-types --test test/auto-shot-task-service.test.ts",
+    "test:editor-history": "node --experimental-strip-types --test test/editor-history-state.test.ts",
+    "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
     "test:video-export": "node --test test/video-export.browser.test.js"
   },

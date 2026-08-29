@@ -16,19 +16,19 @@ async function run(mode: Mode) {
     const jobId = `media-lifecycle-${mode}`
     let resumed = false
     const finish = (status: string) => { worker.terminate(); resolve({ mode, status, messages }) }
-    const timer = setTimeout(() => finish("timeout"), 120_000)
+    const timer = setTimeout(() => finish("timeout"), 300_000)
     worker.onmessage = (event) => {
       const message = event.data
       messages.push(message)
       if (message.type === "READY") {
-        worker.postMessage({ type: "START", jobId, source, mediaFingerprint: `sha256:${mode}`, config })
+        worker.postMessage({ type: "START", jobId, source, mediaIdentityDigest: `sha256:${mode}`, config })
       } else if (message.type === "STARTED" && mode === "cancel") {
         worker.postMessage({ type: "CANCEL", jobId })
       } else if (message.type === "PROGRESS" && mode === "pause" && message.progress.decodedFrames >= 2) {
         worker.postMessage({ type: "PAUSE", jobId })
       } else if (message.type === "CHECKPOINT" && mode === "pause" && !resumed) {
         resumed = true
-        worker.postMessage({ type: "START", jobId: `${jobId}-resume`, source, mediaFingerprint: `sha256:${mode}`, config, checkpoint: message.checkpoint })
+        worker.postMessage({ type: "START", jobId: `${jobId}-resume`, source, mediaIdentityDigest: `sha256:${mode}`, config, checkpoint: message.checkpoint })
       } else if (["CHECKPOINT", "CANCELLED", "ERROR", "COMPLETED"].includes(message.type)) {
         clearTimeout(timer)
         finish(message.type === "COMPLETED" && resumed ? "RESUMED_COMPLETED" : message.type)

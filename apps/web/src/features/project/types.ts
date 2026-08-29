@@ -1,4 +1,5 @@
 import type { AnalysisFieldValue } from "../template/types";
+import type { ShotDetectionMeta } from "../shot/types";
 import type { AnnotationMarker } from "../annotation/types";
 import type { ShotGroupRecord } from "../group/types";
 import type { ShotRecord } from "../shot/types";
@@ -123,11 +124,7 @@ export interface StoredShotRecord {
   startFrame: number;
   endFrame: number;
   status: "draft" | "confirmed";
-  detection: {
-    runId: string | null;
-    kind: "hard-cut" | "gradual-transition" | "manual";
-    confidence: number | null;
-  } | null;
+  detection: ShotDetectionMeta | null;
   primaryScreenshotId: string | null;
   screenshotIds: string[];
   firstFrameScreenshotId: string | null;
@@ -224,7 +221,7 @@ export interface ProjectRepository {
   getProjectAutoShotRun: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<AutoShotRunRecord | null>;
   saveProjectAutoShotRun: (run: AutoShotRunRecord) => Promise<void>;
   deleteProjectAutoShotRun: (projectId: string) => Promise<void>;
-  getAutoShotTask: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<AutoShotTaskRecord | null>;
+  getAutoShotTask: (projectId: string, mediaIdentity: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<AutoShotTaskRecord | null>;
   saveAutoShotTask: (task: AutoShotTaskRecord) => Promise<void>;
   deleteAutoShotTask: (projectId: string) => Promise<void>;
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
@@ -240,6 +237,7 @@ export interface ProjectRepository {
   deleteProjectTemplate: (projectId: string) => Promise<void>;
   listProjectRecoverySnapshots: (projectId: string) => Promise<ProjectRecoverySnapshot[]>;
   saveProjectRecoverySnapshot: (snapshot: ProjectRecoverySnapshot) => Promise<void>;
+  restoreProjectRecoverySnapshot: (snapshot: ProjectRecoverySnapshot) => Promise<void>;
   deleteProjectRecoverySnapshot: (snapshotId: string) => Promise<void>;
   clearDerivedCaches: () => Promise<void>;
 }

@@ -39,11 +39,8 @@ const controller = installSceneEngineWorker(self, {
       codedWidth: source.codedWidth,
       codedHeight: source.codedHeight,
       async *frames(target) {
-        let count = 0
         for await (const frame of source.frames(target)) {
           yield frame
-          count += 1
-          if (count >= 12) break
         }
       },
       dispose: () => source.dispose(),

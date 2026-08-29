@@ -1,6 +1,6 @@
 # AisenShot Scene Engine 开发实施计划
 
-> 状态：Phase 0–5 native 核心与 C ABI、Phase 6.1–6.5、Phase 7.1–7.5、Phase 8.1–8.5、Phase 9、Phase 10 已完成；Phase 11 已接入并等待真实视频产品矩阵收口，Phase 12 删除前基线已建立，后续删除/标定待真实素材
+> 状态：Phase 0–10 已完成；Phase 11 已完成最小代码接线，11.7 的 canonical config hash、强媒体身份服务、interrupted 生命周期和候选应用领域命令已进入代码与契约测试；仍需完成 task/checkpoint 的强身份持久化替换、review/provenance、真实产品矩阵后才能关闭验收门。Phase 12 仅有准备性基线/文档记录，正式标定、控制面板、旧路径删除与最终验收须在 Phase 11 关闭后执行
 >
 > 初版日期：2026-08-25
 >
@@ -8,9 +8,9 @@
 >
 > 依据：已审核通过的 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`
 >
-> 范围：分镜算法核心、C ABI、WASM/Worker 运行时、WebCodecs 解码适配及 AisenLens 自动分镜接入
+> 范围：分镜算法核心、C ABI、WASM/Worker 运行时、WebCodecs 解码适配、AisenLens 自动分镜接入及产品控制层
 >
-> 不包含：关键帧提取、Histogram Detector、Hash Detector、UI 改版及其他视频分析能力
+> 不包含：关键帧提取、Histogram Detector、Hash Detector、内容自动分类及其他视频分析能力
 
 本文把既定架构拆成可独立开发、测试和验收的执行阶段。文中的阶段细分只用于降低单次改动范围，不改变以下已确定路线：先完成 Web 可行性与基准验证，再建立单一 `@aisenlens/scene-engine` workspace 包、C++ 核心、稳定 C ABI、Emscripten/WASM、专用 Worker、Mediabunny + WebCodecs 顺序解码、微秒时间权威、baseline/SIMD 双产物，以及由 Web 适配层完成项目帧映射。像素预处理后端必须由 Phase 0 的真实浏览器基准决定，不预先锁死为 I420 全分辨率复制。
 
@@ -31,7 +31,10 @@
   -> WASM SIMD
   -> AisenLens 业务适配与持久化
   -> React 最小接入
-  -> 整体验收、旧实现删除、参数标定
+  -> 强媒体身份、规范哈希、任务生命周期与候选应用收口
+  -> 配置基础与内容预设标定
+  -> Zustand 设置草稿与新控制面板
+  -> 整体验收、旧实现删除
 ```
 
 实施原则是“先测量并冻结契约，再做算法和原生测试，再跨 ABI，再浏览器运行时，最后业务与 React”。每个 Phase 必须单独通过本阶段验证，失败时不得以进入下一阶段来掩盖问题。
@@ -42,7 +45,8 @@
 - **工程最小可运行版本（Phase 1）**：原生 C++ 引擎可以创建、顺序接收合成帧、flush、reset 和销毁；尚不检测切点，稳定输出零事件。
 - **算法最小可用版本（Phase 3）**：Content 与 Adaptive Detector 在原生测试中可稳定运行，尚不接 WASM 或 UI。
 - **浏览器最小可用版本（Phase 8）**：真实短视频可在 Worker 中经 WebCodecs 解码并由 baseline WASM 输出镜头边界，主线程不接收像素帧。
-- **产品最小可用版本（Phase 11）**：现有自动分镜入口使用新引擎完成运行、暂停/继续、结果审阅和显式应用。
+- **产品最小可用版本（Phase 11）**：现有自动分镜入口使用新引擎完成运行、显式暂停/继续、中断重扫、结果审阅和可撤销应用，并通过强媒体身份、规范哈希、来源追踪和数据保护验收。
+- **最终产品控制版本（Phase 12）**：用户通过内容预设、检出程度、转场、最短镜头和高级设置生成可追溯配置，完成标定、审阅、应用和生产回归。
 
 ### 1.3 当前结构冲突与影响
 
@@ -75,7 +79,7 @@
 2. 对当前 Canvas/seek 算法记录 Precision、Recall、F1、边界偏移、总耗时、主线程长任务和峰值内存；明确它只用于迁移基线，不作为新架构兼容目标。
 3. 在目标 Web 浏览器用短视频 spike 比较：原生 I420/NV12 平面复制、RGBX/RGBA 标准化复制、Worker OffscreenCanvas 低分辨率预处理，以及逐帧/低成本预筛选策略。
 4. 记录 `VideoSample.format === null`、10/12-bit/HDR、rotation/visible rect、full/limited range、VFR、重复 PTS 和无 duration 的能力结果。
-5. 冻结 FrameView 色彩字段、规范化像素策略、VFR 到项目帧舍入、强媒体指纹、config hash、checkpoint envelope、完整边界前缀与 task outcome。
+5. 冻结 FrameView 色彩字段、规范化像素策略、VFR 到项目帧舍入、恢复级媒体身份要求、canonical config/hash、checkpoint envelope、完整边界前缀与 task outcome。
 6. 固定实际可用的 CMake、编译器和 Emscripten 精确版本计划；Phase 0 只记录缺项，不以安装工具代替浏览器可行性验证。
 
 **涉及文件/目录**
@@ -696,7 +700,7 @@ git diff --check
 
 1. 定义仅属于 AisenLens 的任务、候选镜头和状态类型；Engine 类型仍从包 public API 导入。
 2. 实现 `sceneResultAdapter`，集中完成 timestampUs 到项目整数帧、排序、去重及 `[startFrame, endFrame)` 构造。
-3. 实现 `autoShotTaskService`，负责媒体指纹、配置冻结、engine version/config hash、进度、暂停/继续和结果状态。
+3. 实现 `autoShotTaskService`，负责媒体身份、配置冻结、engine version/config hash、进度、暂停/继续和结果状态。
 4. 通过窄接口注入 run repository；本阶段用内存 fake 测试，不并行写入现有旧 `auto-shot-runs` 记录。
 5. 将 `@aisenlens/scene-engine` 声明为 Web workspace 依赖并验证 production build。
 
@@ -758,10 +762,10 @@ git diff --check
 
 1. 实现 `useAutoShotTask`，管理订阅、AbortSignal、组件卸载和 task service 生命周期。
 2. 用 hook 返回的状态和命令替换 `EditorWorkspace` 当前直接调用 `runAutoShotDetection`、AbortController、暂停/继续和应用逻辑。
-3. 替换 `AutoShotRunRecord` 为新 engine 任务记录：微秒进度、结果/evidence、engine version、config hash、checkpoint 和错误码。
+3. 替换 `AutoShotRunRecord` 为新 engine 任务记录：强媒体身份、微秒进度、结果/evidence、engine version、canonical config/hash、checkpoint 和错误码。
 4. 修改 project repository 只读写新结构；升级 IndexedDB schema 时清空并重建或显式清空旧 `auto-shot-runs` 派生记录，不能尝试恢复旧 checkpoint。
-5. 保留现有用户流程和视觉表现：开始、进度、暂停/继续、失败、重扫、审阅、显式应用。
-6. 应用候选仍通过现有 shot/editor 领域命令一次性执行，不允许 Worker 直接写项目数据。
+5. 保留现有用户流程和视觉表现：开始、进度、显式暂停/继续、中断后重扫、失败、审阅、显式应用与撤销。
+6. 应用候选必须通过独立、可测试、可撤销的 shot/editor 领域命令一次性执行；Worker 与 React 组件都不得直接拼装或写入正式镜头。
 
 **涉及文件/目录**
 
@@ -788,15 +792,16 @@ git diff --check
 **完成标准**
 
 - React 只调用 hook，不导入 Worker、WASM、Mediabunny 或 C ABI。
-- 页面卸载、切换项目和重启任务不会遗留 Worker 或旧任务消息。
+- 页面卸载、切换项目和重启任务不会遗留 Worker 或旧任务消息；只有完整 checkpoint 可进入 `paused`，刷新遗留 `running` 明确转为 `interrupted`。
 - 旧 run 记录被确定性清除，不能被识别为可恢复的新任务。
-- 现有自动分镜 UI 行为不改版；新结果仍需用户显式应用。
+- 已应用镜头保存独立 provenance，不因项目唯一 task 被重扫覆盖而失去来源。
+- 本阶段只保持旧自动分镜 UI 行为，以验证新引擎最小接入；Phase 12 按新的控制系统设计替换该临时界面，新结果仍需用户显式应用。
 - Web 使用单一接入路径，不出现隐藏 fallback 或新旧双写；Desktop/Mobile 兼容性作为后续平台专项验证。
 
 **测试/验证方式**
 
 - Web build + 现有项目生命周期/browser 测试。
-- 浏览器端覆盖开始、暂停、刷新、继续、取消、重扫、失败、完成、应用和撤销。
+- 浏览器端覆盖开始、暂停、刷新、继续、中断后重扫、取消、失败、完成、候选排除、应用、撤销和恢复快照。
 - 使用预置旧 DB 版本升级，确认只清理旧 auto-shot run，项目、镜头、截图和注释保持不变。
 - 检查主线程 performance trace，确认无像素处理和长任务回归。
 
@@ -809,7 +814,7 @@ git diff --check
 
 **目标**
 
-完成新链路验收后删除旧 Canvas/seek 算法和旧字段，建立持续回归与性能/准确率基线；不保留长期双轨或静默降级。
+完成内容预设标定与新控制面板后验收新链路，删除旧 Canvas/seek 算法和旧字段，建立持续回归与性能/准确率基线；不保留长期双轨或静默降级。
 
 **具体任务**
 
@@ -818,8 +823,9 @@ git diff --check
 3. 删除旧 `confidence`、`cursorFrame`、`durationFrames`、旧 `cuts` 等已无引用字段与测试 fixture。
 4. 在 Phase 0 固定标注小集上记录 Content/Adaptive/Threshold 相对当前 JS 基线的 Precision、Recall、F1、边界误差和 fade 命中变化。
 5. 分离记录 decode/copy/preprocess/detect 耗时与峰值内存，建立可重复基线。
-6. 更新根 README/架构文档状态和许可证 NOTICE；只记录实际采用或引用的算法来源。
-7. 把 Engine 必要检查纳入 CI/总体验收脚本，但保持 Web 日常脚本职责清楚。
+6. 按 `AISENSHOT_CONTROL_SYSTEM_DESIGN.md` 先完成配置基础、隔离的 search/holdout 标定与生产晋升，再实施 feature 设置状态与新控制面板。
+7. 更新根 README/架构文档状态和许可证 NOTICE；只记录实际采用或引用的算法来源。
+8. 把 Engine 必要检查纳入 CI/总体验收脚本，但保持 Web 日常脚本职责清楚。
 
 **涉及文件/目录**
 
@@ -829,6 +835,8 @@ git diff --check
 - `packages/scene-engine/test/evaluation/README.md`
 - `packages/scene-engine/test/evaluation/` 下的本地数据输入约定、评分脚本和非数据集本体配置。
 - 必要的 CI workflow 或现有 CI 配置中的 Scene Engine job。
+- `apps/web/src/features/auto-shot/config/` 下的产品配置类型、预设 registry、解析器与摘要器。
+- `apps/web/src/features/auto-shot/components/` 下的新自动分镜控制与结果审阅组件。
 
 修改：
 
@@ -836,7 +844,7 @@ git diff --check
 - `packages/scene-engine/package.json`
 - `packages/scene-engine/README.md`
 - `README.md`
-- `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`：只更新实施状态和已验证参数，不重写架构。
+- `docs/AISENSHOT_SCENE_ENGINE_PLAN.md` 与 `docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md`：同步实施状态、预设版本和已验证参数。
 - 受旧类型删除影响的 Web 测试与 import。
 
 删除：
@@ -855,6 +863,7 @@ git diff --check
 - 仓库只有一个生产自动分镜检测路径。
 - native、WASM baseline/SIMD 与浏览器结果在规定容差内一致。
 - 准确率、边界误差、耗时和内存都有注明机器/浏览器/配置的基线。
+- 内容预设通过唯一解析器生成配置，新 UI 不再使用旧 sensitivity 线性映射。
 - 无 Histogram、Hash、关键帧提取占位实现、配置或 UI。
 - 所有许可证和参考来源记录完整。
 
@@ -865,7 +874,6 @@ corepack pnpm scene-engine:test:native
 corepack pnpm scene-engine:test:wasm
 corepack pnpm --filter @aisenlens/scene-engine test
 corepack pnpm build
-corepack pnpm run build:desktop
 git diff --check
 ```
 
@@ -894,8 +902,8 @@ git diff --check
 | 8 | Phase 8 | WebCodecs 真实视频链路 | 真实视频 Worker 检测与内存门槛通过 |
 | 9 | Phase 9 | SIMD 产物与探测 | baseline/SIMD 一致性通过 |
 | 10 | Phase 10 | Web 业务 service/adapter | 无 React 的业务单测和 Web build 通过 |
-| 11 | Phase 11 | React 接入、持久化切换 | 产品全流程和 DB 升级回归通过 |
-| 12 | Phase 12 | 单路径收敛、标定、持续回归 | 全矩阵验收通过 |
+| 11 | Phase 11 | React 接入、强媒体身份、规范哈希、生命周期、候选应用与持久化切换 | 产品全流程、数据保护和 DB 升级回归通过 |
+| 12 | Phase 12 | 配置基础、隔离标定、生产预设、新控制面板、单路径收敛与持续回归 | 全矩阵验收通过 |
 
 与已批准架构文档的阶段映射如下，便于追踪而不改变原方案：
 
@@ -1033,14 +1041,14 @@ Web 基线与像素路径验证
 **操作**：
 
 1. 冻结 FrameView 的 pixel format、visible rect、bit depth、matrix、primaries、transfer、full range 和时间字段。
-2. 冻结规范化 config hash、强媒体指纹及成本、精确 engine state version、checkpoint envelope 和完整 committed boundaries。
+2. 冻结 canonical config/hash、恢复级媒体身份及成本、精确 engine state version、checkpoint envelope 和完整 committed boundaries。
 3. 冻结 task 的 `completed/paused/cancelled/failed` outcome；pause 终结当前 job，resume 创建新 job。
 4. 冻结跨后端确定性：边界/类型/顺序/决策精确一致，诊断浮点值按容差比较；决策指标采用明确量化。
 5. 更新 Phase 0 报告和参考索引，运行 Web 测试、Web build 与 `git diff --check`。
 
 **最终交付物**：可复现当前基线、Web 能力矩阵、像素路径决定、评分工具和冻结公共契约。
 
-**完成记录（2026-08-27）**：已将 FrameView 色彩/几何字段、微秒时间、强媒体指纹、规范化 config hash、engine state version、checkpoint core/envelope 边界、task outcome 和跨后端确定性规则同步到架构方案与 Phase 0 报告；已更新参考索引。`corepack pnpm test:auto-shot-contract`、`corepack pnpm build`、`corepack pnpm evaluate:auto-shot` 与 `git diff --check` 均通过；Task 0.4 的路径级 Recall 门槛也已通过，因此 Phase 0 验收完成，可进入 Phase 1。
+**完成记录（2026-08-27）**：已将 FrameView 色彩/几何字段、微秒时间、初版媒体 fingerprint/config hash、engine state version、checkpoint core/envelope 边界、task outcome 和跨后端确定性规则同步到架构方案与 Phase 0 报告；已更新参考索引。`corepack pnpm test:auto-shot-contract`、`corepack pnpm build`、`corepack pnpm evaluate:auto-shot` 与 `git diff --check` 均通过；Task 0.4 的路径级 Recall 门槛也已通过，因此 Phase 0 验收完成，可进入 Phase 1。第二轮审计后来确认初版 fingerprint/hash 不能满足恢复级契约，修订工作明确归入 Task 11.7–11.8，不改写当时测试事实。
 
 **Phase 0 验收门**：Task 0.1-0.5 全部完成且 Web 验证通过，才能开始 Phase 1。
 
@@ -1486,7 +1494,7 @@ Web 基线与像素路径验证
 
 ### 4.8 Phase 6 任务单：Emscripten baseline WASM 与 TypeScript 低层封装
 
-**阶段状态**：`[-] 进行中`
+**阶段状态**：`[x] 已完成（6.1–6.5）`
 
 #### [x] Task 6.1：预检并固定 Emscripten 工具链
 
@@ -1614,7 +1622,7 @@ Web 基线与像素路径验证
 
 1. 创建 `scene-engine.worker.ts`，按 `idle -> initializing -> decoding -> flushing -> terminal` 实现状态机。
 2. 当前仅接测试帧源，不接真实 Blob/Mediabunny。
-3. pause 只在完成当前帧并 drain 安全事件后导出 core state，再封装完整 committed boundaries、`timestampUs + timestampOrdinal`、下一 presentation index 和强媒体指纹，并以 paused outcome 结束当前 job；cancel 不导出 checkpoint。
+3. pause 只在完成当前帧并 drain 安全事件后导出 core state，再封装完整 committed boundaries、`timestampUs + timestampOrdinal`、下一 presentation index 和媒体身份 digest，并以 paused outcome 结束当前 job；cancel 不导出 checkpoint。
 4. 在 completed/cancelled/error/dispose 都释放 runtime 句柄、帧源和消息状态。
 5. 对错误 runtime、process 异常、flush 异常和 Worker dispose 编写测试。
 
@@ -1692,7 +1700,7 @@ Web 基线与像素路径验证
 
 **禁止**：逐时间点 `getSample()` 随机 seek、把 VideoSample 发给主线程、在 decoder 中判定场景。
 
-**完成记录（2026-08-27）**：新增 `packages/scene-engine/src/worker/mediaDecoder.ts`，使用 `VideoSampleSink.samples()` 顺序读取 Blob，映射 timestamp/duration、尺寸、rotation、format、8-bit 限制、色彩元数据和实际 plane layout；每个 sample 在 `finally` 中 close，并提供 opened/closed/submitted/skipped 统计。Chrome 152 浏览器 smoke 对 H.264 素材验证 timestamp 单调、12 帧提交和 openedSamples=closedSamples=12；`scene-engine` strict typecheck、17 项 contract/parity tests、Web build 均通过。为保证重复 PTS ordinal 绝对确定性，当前 checkpoint 重放从流首部开始，关键帧 warm-up 优化留给 Task 8.4。
+**完成记录（2026-08-27；2026-08-29 更正）**：新增 `packages/scene-engine/src/worker/mediaDecoder.ts`，使用 `VideoSampleSink.samples()` 顺序读取 Blob，映射 timestamp/duration、尺寸、rotation、format、8-bit 限制、色彩元数据和实际 plane layout；每个 sample 在 `finally` 中 close，并提供 opened/closed/submitted/skipped 统计。2026-08-27 的 Chrome 152 记录只验证了 H.264 前 12 帧提交和 `openedSamples=closedSamples=12`，不能作为完整媒体覆盖证明。2026-08-29 已移除测试 Worker 的 12 帧截断，解码 smoke 现要求完整顺序迭代、`submittedFrames === frameCount`、时间戳单调且末帧 ordinal 为 `frameCount - 1`；必须在 Phase 11 产品矩阵中重跑并保存完整媒体结果。`scene-engine` strict typecheck、17 项 contract/parity tests、Web build 均通过。为保证重复 PTS ordinal 绝对确定性，当前 checkpoint 重放从流首部开始，关键帧 warm-up 优化留给 Task 8.4。
 
 #### [x] Task 8.3：实现直接写入 WASM frame buffer
 
@@ -1715,7 +1723,7 @@ Web 基线与像素路径验证
 **操作**：
 
 1. 用真实 `mediaDecoder` 替换生产 Worker 中的测试帧源；测试帧源仍只留在 test support。
-2. START 接受批准的 Blob/config/checkpoint，冻结媒体指纹相关输入但不写项目存储。
+2. START 接受批准的 Blob/config/checkpoint，冻结媒体身份相关输入但不写项目存储。
 3. progress 使用 processedUs/durationUs/decodedFrames/新增边界并节流。
 4. pause 在安全帧边界返回完整 Worker checkpoint envelope；恢复时从关键帧预热并按 timestamp ordinal 跳过已提交 sample；cancel 关闭 iterator/sample/runtime 且不保存 checkpoint。
 5. 映射 `UNSUPPORTED_CODEC/WASM_INIT_FAILED/DECODE_FAILED/INVALID_CHECKPOINT/CANCELLED` 等稳定错误。
@@ -1724,7 +1732,7 @@ Web 基线与像素路径验证
 
 **禁止**：Worker 访问 IndexedDB 业务模型、直接创建 ShotRecord、错误时调用旧 detector。
 
-**完成记录（2026-08-27）**：新增 `apps/web/test/scene-engine-media-module.worker.ts`，Chrome 152 已将 `test.mov` 的真实 Mediabunny source 接入 baseline WASM Worker，限制前 12 帧完成 `READY → STARTED → PROGRESS → COMPLETED`；生命周期 smoke 又验证了真实媒体 `pause → CHECKPOINT → resume → COMPLETED`、`cancel → CANCELLED` 和损坏 Blob → `ERROR`。直接 decoder smoke 对 opened/closed sample 做了对账，Worker 在所有终态释放 source/runtime；本 Task 验收完成。
+**完成记录（2026-08-27；2026-08-29 更正）**：新增 `apps/web/test/scene-engine-media-module.worker.ts`，Chrome 152 曾将 `test.mov` 的真实 Mediabunny source 接入 baseline WASM Worker，但当时测试源在 12 帧后主动结束；该记录仅证明 `READY → STARTED → PROGRESS → COMPLETED` 的生命周期，不能证明完整视频检测质量。2026-08-29 已移除该截断，并把全媒体 smoke 时限调整为 300 秒；生命周期 smoke 仍覆盖真实媒体 `pause → CHECKPOINT → resume → COMPLETED`、`cancel → CANCELLED` 和损坏 Blob → `ERROR`。直接 decoder smoke 现对完整媒体的 opened/closed/submitted 对账，Worker 在所有终态释放 source/runtime；完整回归报告是 Phase 11 关闭前的必需证据。
 
 #### [x] Task 8.5：浏览器、内存与打包资源验收
 
@@ -1740,7 +1748,7 @@ Web 基线与像素路径验证
 
 **Phase 8 验收门**：真实视频检测、一次必要复制、无主线程像素、sample 全释放、内存有界和打包资源 smoke 全部通过。
 
-**完成记录（2026-08-27）**：新增 `scripts/verify-scene-engine-web-build.mjs`，在独立输出目录执行 Vite production build，确认生成 Worker chunk 与 hashed WASM asset；新增 `scripts/verify-scene-engine-web-preview.mjs`，以 `/aisenlens/` 非根路径静态部署 production 输出并由 Chrome 152 实际加载 Worker/WASM，完成真实 H.264 前 12 帧的 `READY → STARTED → PROGRESS → CHECKPOINT` smoke。真实媒体生命周期 smoke 已覆盖 pause/resume/cancel/error。合成 fixture 与 H.264 fixture 各运行两次，边界/帧序列一致；合成内存 smoke 在真实 baseline WASM Worker 中连续处理 200 帧，确认单次 reserve、WASM 内存 `67108864 → 67108864` 字节且无增长；浏览器 baseline 记录 JS heap 峰值约 22.8–24.1 MB，sample opened/closed 对账通过。Phase 8 验收门通过。
+**完成记录（2026-08-27；2026-08-29 更正）**：新增 `scripts/verify-scene-engine-web-build.mjs`，在独立输出目录执行 Vite production build，确认生成 Worker chunk 与 hashed WASM asset；新增 `scripts/verify-scene-engine-web-preview.mjs`，以 `/aisenlens/` 非根路径静态部署 production 输出并由 Chrome 152 实际加载 Worker/WASM。历史 preview 仅做到真实 H.264 前 12 帧的 `READY → STARTED → PROGRESS → CHECKPOINT`，因此不能把该记录当成全媒体回归。2026-08-29 已将独立媒体 Worker、WASM baseline/SIMD Worker、production preview 及其报告断言改为完整媒体迭代；`corepack pnpm scene-engine:verify:web-preview` 已通过，SIMD production preview 完成 `COMPLETED`，处理 `2497` 帧并输出 `27` 个边界。真实媒体生命周期 smoke 覆盖 pause/resume/cancel/error；合成内存 smoke 在真实 baseline WASM Worker 中连续处理 200 帧，确认单次 reserve、WASM 内存 `67108864 → 67108864` 字节且无增长；浏览器 baseline 记录 JS heap 峰值约 22.8–24.1 MB，sample opened/closed 对账通过。
 
 ### 4.11 Phase 9 任务单：WASM SIMD 构建、探测与一致性
 
@@ -1808,7 +1816,7 @@ Web 基线与像素路径验证
 
 **完成检查**：parity 全通过，性能报告可复现且明确实际提升/退化。
 
-**完成记录（2026-08-28）**：`simd-parity.test.ts` 已覆盖 RGBX、I420、NV12 合成帧的 ABI/事件 parity；浏览器 backend parity smoke 使用同一 `test.mov` 分别运行 baseline 与 SIMD，Chrome 152 报告两者均解码 12 帧、duration `99880000` 微秒且 boundaries 完全一致。`scene-engine:benchmark:simd` 输出固定 96×54、400 个热帧、3 轮中位数，pairwise SIMD 优化后连续三次 profile 均观察到约 6.6%–7.6% 加速，满足当前性能门槛；生产恢复 SIMD 默认，仍保留初始化失败回退和 backend 固定策略。
+**完成记录（2026-08-28；2026-08-29 更正）**：`simd-parity.test.ts` 已覆盖 RGBX、I420、NV12 合成帧的 ABI/事件 parity；浏览器 backend parity smoke 使用同一 `test.mov` 分别运行 baseline 与 SIMD，历史记录只比较了各自前 12 帧，不能作为长视频边界一致性证据。2026-08-29 已移除 parity Worker 的 12 帧截断并完成完整媒体复验：baseline 与 SIMD 均处理 `2497` 帧、各输出 `5` 个边界，`decodedFrames`、边界序列和时长完全一致。`scene-engine:benchmark:simd` 输出固定 96×54、400 个热帧、3 轮中位数，pairwise SIMD 优化后连续三次 profile 均观察到约 6.6%–7.6% 加速，满足当前性能门槛；生产恢复 SIMD 默认，仍保留初始化失败回退和 backend 固定策略。
 
 #### [x] Task 9.5：全量回归与交接
 
@@ -1867,9 +1875,9 @@ Web 基线与像素路径验证
 
 **操作**：
 
-1. 定义可注入 `SceneEngineClient` factory、run repository、强媒体指纹服务和 clock/id 依赖，便于无浏览器业务测试。
+1. 定义可注入 `SceneEngineClient` factory、run repository、媒体身份服务和 clock/id 依赖，便于无浏览器业务测试。
 2. 先用 fake client/repository 写 running、progress、pause、resume、cancel、failed、completed 和 restart 测试。
-3. 实现 `autoShotTaskService.ts`，冻结强媒体指纹、规范化 config、精确 engine state version 和 config hash。
+3. 实现 `autoShotTaskService.ts`，冻结媒体身份、规范化 config、精确 engine state version 和 config hash。
 4. 把 Worker checkpoint/result 转成业务 task record，但不在本阶段连接现有 IndexedDB store。
 5. 保证旧 job progress 被拒绝、所有终态不可继续写入、cancel 不保存 checkpoint、pause 只保存包含完整边界前缀的 checkpoint envelope。
 
@@ -1877,7 +1885,7 @@ Web 基线与像素路径验证
 
 **禁止**：导入 `EditorWorkspace`、直接访问 window/indexedDB、并行写旧/new auto-shot record。
 
-**完成记录（2026-08-28）**：新增 `features/auto-shot/autoShotTaskService.ts`，注入 Engine client factory、窄 repository、config resolver、clock 和 id 生成器；服务冻结 normalized config 与媒体指纹 key，处理 progress、pause/resume、cancel、failed、completed 和 restart，并在终态拒绝旧任务 progress、取消不保存 checkpoint。新增 3 组 fake client/repository 测试覆盖运行中更新、结果适配、checkpoint resume、取消、失败和 restart，全部通过；未连接 IndexedDB、React 生命周期或现有 UI。
+**完成记录（2026-08-28）**：新增 `features/auto-shot/autoShotTaskService.ts`，注入 Engine client factory、窄 repository、config resolver、clock 和 id 生成器；服务冻结 normalized config 与当时的媒体 fingerprint key，处理 progress、pause/resume、cancel、failed、completed 和 restart，并在终态拒绝旧任务 progress、取消不保存 checkpoint。新增 3 组 fake client/repository 测试覆盖运行中更新、结果适配、checkpoint resume、取消、失败和 restart，全部通过；未连接 IndexedDB、React 生命周期或现有 UI。该历史实现的 fingerprint/hash 强度由 Task 11.7–11.8 替换。
 
 #### [x] Task 10.4：连接 workspace 依赖和测试脚本
 
@@ -1912,7 +1920,7 @@ Web 基线与像素路径验证
 
 ### 4.13 Phase 11 任务单：React 最小接入与持久化原子切换
 
-**阶段状态**：`[-] 进行中（11.1 已完成；11.2–11.5 已接入，待全流程回归）`
+**阶段状态**：`[-] 进行中（11.1 与历史接线工作已完成；11.2–11.5 保持未关闭，新增 11.7–11.11 用于修复第二轮架构审计发现的正确性缺口；Phase 11 验收门通过前禁止正式执行 Phase 12）`
 
 #### [x] Task 11.1：建立持久化升级回归夹具
 
@@ -1924,7 +1932,7 @@ Web 基线与像素路径验证
 2. 创建旧数据库 fixture：至少包含项目、媒体、镜头、截图/注释及旧 AutoShotRunRecord。
 3. 先写升级测试：升级后旧 auto-shot run 不可恢复，非 auto-shot 数据逐项保持。
 4. 设计新 task record 的单一 store 读写 schema；若复用 store，则升级事务只清理/重建该派生数据，不创建长期第二 store。
-5. 明确强媒体指纹、精确 engine state version、checkpoint schema 和 config hash 任一不匹配时的失效行为。
+5. 明确强媒体身份、精确 engine state version、checkpoint schema、canonical config 和 config hash 任一不匹配时的失效行为。
 
 **完成检查**：测试在 repository 尚未修改时准确暴露旧记录问题，且能检测误删其他 store 数据。
 
@@ -1932,29 +1940,29 @@ Web 基线与像素路径验证
 
 **完成记录（2026-08-28）**：读取并核对了 `projectRepository.ts` 的实际 IndexedDB upgrade 逻辑，新增 `apps/web/test/project-repository-migration.verification.ts` 及浏览器 smoke 入口。夹具包含项目、媒体字段、镜头、截图、注释和旧 `AutoShotRunRecord`；数据库从版本 12 升级到版本 13 时只清理 `auto-shot-runs`，项目、镜头、截图和注释逐项保留。未读取旧 cuts，也未清空其他 store。
 
-#### [-] Task 11.2：原子切换 project 类型与 repository
+#### [x] Task 11.2：原子切换 project 类型与 repository
 
 **操作**：
 
 1. 用 Phase 10 新 task record 替换 `project/types.ts` 中旧 `AutoShotRunRecord` 字段。
 2. 修改 repository 的 get/save/delete 签名与校验，只接受新 engine task record。
 3. 提升 DB version 并实现精确 upgrade：旧 `auto-shot-runs` 派生记录失效/清除，新结构从空状态开始。
-4. 增加新 record round-trip、projectId 唯一、媒体指纹/config/engine 失效和删除测试。
+4. 增加新 record round-trip、projectId 唯一、媒体身份/canonical config/hash/engine 失效和删除测试。
 5. 保证 upgrade 事务失败时数据库不会处于部分迁移状态。
 
 **完成检查**：旧 fixture 升级、新 record CRUD、非 auto-shot 数据保留测试全部通过。
 
 **禁止**：保留旧字段 optional 兼容、通过 `as` 绕过 schema、删除用户镜头/项目/注释数据。
 
-**完成记录（2026-08-28，进行中）**：数据库版本已提升至 13，升级事务原子清理旧派生记录；`ProjectRepository` 新增 `getAutoShotTask/saveAutoShotTask/deleteAutoShotTask`，使用同一 `auto-shot-runs` store，写入前校验强媒体指纹、进度和 checkpoint 的 `schemaVersion/engineVersion/configHash`，按 `projectId` 原子替换保证唯一。浏览器 smoke 已覆盖 round-trip、项目唯一性、媒体指纹不匹配失效和删除。旧 service/type 仍保留至 Phase 12 删除前审计，当前不再被 `EditorWorkspace` 生产调用，后续需完成旧 schema 符号清理。
+**完成记录（2026-08-28；2026-08-29 更新）**：数据库版本已提升至 13，升级事务原子清理旧派生记录；`ProjectRepository` 新增 `getAutoShotTask/saveAutoShotTask/deleteAutoShotTask`，使用同一 `auto-shot-runs` store，写入前校验强媒体身份、进度和 checkpoint 的 `schemaVersion/engineVersion/configHash`，按 `projectId` 原子替换保证唯一。浏览器 smoke 已覆盖 round-trip、项目唯一性、身份不匹配失效、删除和非自动分镜数据保留；11.7–11.8 已替换早期四字段 fingerprint/hash。旧 service/type 仅保留至 Phase 12 删除前审计，当前不再被 `EditorWorkspace` 生产调用。
 
-#### [-] Task 11.3：实现 useAutoShotTask
+#### [x] Task 11.3：实现 useAutoShotTask
 
 **操作**：
 
 1. 创建 `useAutoShotTask.ts`，组合 task service 与 repository，暴露现有 UI 需要的状态和命令。
 2. 管理挂载/卸载、项目切换、媒体切换、订阅清理、AbortSignal、Worker dispose 和 stale job 防护。
-3. pause 持久化完整 checkpoint envelope，resume 先校验强媒体指纹/config/精确 engine state version 并创建新 job；restart 删除旧 task 后启动新任务。
+3. pause 持久化完整 checkpoint envelope，resume 先校验强媒体身份/canonical config/hash/精确 engine state version 并创建新 job；restart 删除旧 task 后启动新任务。
 4. completed 只产生可审阅候选，apply 是单独命令；hook 不直接修改 shot 数据。
 5. 用 hook 测试覆盖卸载、快速切项目、重复开始、暂停刷新、恢复、取消、失败和完成。
 
@@ -1962,9 +1970,9 @@ Web 基线与像素路径验证
 
 **禁止**：让组件直接访问 Worker、把大结果存入 Zustand、在 hook 中做像素处理。
 
-**完成记录（2026-08-28，进行中）**：新增 `useAutoShotTask.ts`，组合 task service、repository 和生产 Worker client，处理项目/媒体切换、running 任务转 paused、卸载取消、stale revision、pause/cancel/resume/restart 和候选状态；hook 不读取像素、不直接写 shot 数据。task service 现会在 resume 前校验 checkpoint 的媒体指纹、配置快照、schemaVersion、engineVersion 和 configHash，失配时删除任务并要求重新扫描。仍需补齐 React hook 专项测试和真实浏览器生命周期矩阵。
+**历史完成记录（2026-08-28；2026-08-29 更新）**：新增 `useAutoShotTask.ts`，组合 task service、repository 和生产 Worker client，处理项目/媒体切换、卸载取消、stale revision、pause/cancel/resume/restart 和候选状态；hook 不读取像素、不直接写 shot 数据。早期实现曾把遗留 `running` 转为 `paused`，第二轮审计后已改为 `interrupted`，并补充媒体身份异步加载与快速重复启动的竞态保护。task service 的 checkpoint 媒体/配置/schema/engine/hash 失配校验已由 11.7–11.8 替换；React hook 挂载/卸载、暂停恢复、取消、快速项目切换和 stale job smoke 已通过，真实浏览器产品生命周期矩阵由 Task 11.5 继续覆盖。
 
-#### [-] Task 11.4：局部替换 EditorWorkspace 自动分镜控制
+#### [x] Task 11.4：局部替换 EditorWorkspace 自动分镜控制
 
 **操作**：
 
@@ -1978,9 +1986,9 @@ Web 基线与像素路径验证
 
 **禁止**：顺手拆分整个 3640 行组件、修改设计、让 Worker 直接写 project/shot repository。
 
-**完成记录（2026-08-28，进行中）**：`EditorWorkspace.tsx` 已移除旧自动分镜 service、旧 AbortController、旧 record 字段和旧 repository 调用，改由 `useAutoShotTask` 提供状态/命令；保留原有按钮、灵敏度/最短时长控件、候选审阅和一次性应用分镜流程。Web strict TypeScript 与 production build 已通过，待真实浏览器产品流程回归。
+**完成记录（2026-08-28；2026-08-29 更新）**：`EditorWorkspace.tsx` 已移除旧自动分镜 service、旧 AbortController、旧 record 字段和旧 repository 调用，改由 `useAutoShotTask` 提供状态/命令；保留候选审阅和一次性应用分镜流程。Web strict TypeScript、production build、Edge 真实扫描/暂停/继续/审阅/应用/刷新/快照恢复均已通过；旧灵敏度控件仅作为 Phase 11 临时映射，Phase 12 将由新控制面板替换。
 
-#### [-] Task 11.5：Web 产品全流程回归
+#### [~] Task 11.5：Web 产品全流程回归
 
 **操作**：
 
@@ -1992,7 +2000,12 @@ Web 基线与像素路径验证
 
 **完成检查**：产品路径全部使用新 Engine，旧 service 文件虽尚存在但无生产调用。
 
-**阶段记录（2026-08-28，进行中）**：已通过数据库升级浏览器 smoke、Worker 层 H.264 生命周期 smoke（暂停恢复完成、取消、错误）、本地首页/项目库/空项目编辑器启动检查、Web strict TypeScript、production build、Engine contract 25/25、task-state/adapter/task-service tests 及 `git diff --check`。尚未宣称开始/暂停/刷新/继续/取消/应用/撤销的完整产品 UI 浏览器矩阵已全部通过，待补充真实视频上传后的专项交互回归后再关闭本任务。
+**阶段记录（2026-08-28；2026-08-29 更新，进行中）**：已通过数据库升级浏览器 smoke、Worker 层 H.264 生命周期 smoke（暂停恢复完成、取消、错误）、本地首页/项目库/空项目编辑器启动检查、Web strict TypeScript、production build、Engine contract 29/29、task-state/adapter/task-service/identity/apply tests 及 `git diff --check`。2026-08-29 拆分重跑完整媒体矩阵：顺序解码覆盖 2497 帧且末帧 ordinal 为 2496；两次重复解码一致；WASM threshold 1800 完成并输出 27 个边界；baseline/SIMD parity 在 threshold 2700 下均处理 2497 帧并输出 5 个边界，结果完全一致；暂停恢复、取消、错误分别通过；production preview `/aisenlens/` 完成 `COMPLETED`，SIMD 处理 2497 帧并输出 27 个边界。Edge 产品 UI 重跑确认旧灵敏度 `100` → 临时 threshold `1800` 后显示 27 个边界/28 段候选，重新加载后保留 28 个镜头。随后同一真实项目完成显式暂停→继续、候选排除、应用前影响确认、创建快照并应用、保存/刷新恢复和恢复应用前快照：应用后为 26 个镜头，恢复最早快照后回到 28 个镜头；页面错误日志为空。暂停期间出现的 `PROGRESS is invalid in pausing` 竞态已修复，协议测试新增“暂停后允许在途 PROGRESS”覆盖。新增 React Hook 浏览器 smoke 覆盖暂停→卸载→重新挂载→继续、取消、快速项目切换和 stale job 隔离；Hook 竞态保护及 service 资源清理已补齐。组合启用所有长视频 smoke 超过旧 360 秒总时限，已改为独立命令，不能据此判定功能失败。项目/媒体切换的真实文件入口、完整失败 UI 分支和持久化撤销仍需补齐后再关闭本任务。
+
+**补充验证（2026-08-29）**：`scripts/verify-scene-engine-web-preview.mjs` 支持通过
+`AISENLENS_SCENE_FIXTURE` 选择仓库内本地素材（默认仍为 `test.mov`）。本轮使用相同 SIMD 配置
+完成 `test03.mov`（完整解码 359 帧、3 个边界）和 `test02.mov`（完整解码 1429 帧、9 个边界），
+均到达 `COMPLETED`；素材本体仍不纳入 Git。
 
 #### [x] Task 11.6：阶段审计与切换交接
 
@@ -2003,17 +2016,206 @@ Web 基线与像素路径验证
 3. 确认没有 feature flag、fallback、双写或旧 checkpoint 兼容读取。
 4. 输出 Phase 11 交接报告，给出 Phase 12 可删除文件/符号的证据清单。
 
-**最终交付物**：新 task persistence、DB 升级、React hook、EditorWorkspace 最小接入和产品回归证据。
+**完成记录（2026-08-28；2026-08-29 更新）**：完成生产引用审计并新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_11_HANDOFF.md`。确认旧 service/type/repository 符号仅剩测试和待删除路径，`EditorWorkspace` 已无旧生产调用；React hook 专项 smoke 已通过，真实产品浏览器矩阵仍待完成，Desktop/Mobile 维持范围外。
 
-**完成记录（2026-08-28）**：完成生产引用审计并新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_11_HANDOFF.md`。确认旧 service/type/repository 符号仅剩测试和待删除路径，`EditorWorkspace` 已无旧生产调用；同时记录 Phase 11.5 的真实产品浏览器矩阵和 React hook 专项测试仍待完成，Desktop/Mobile 维持范围外。
+#### [x] Task 11.7：冻结强媒体身份、规范配置哈希与中断状态契约
+
+**输入**：当前 `MediaSourceFingerprint`、`SceneDetectionConfig`、Worker config hash、
+`AutoShotTaskRecord`、checkpoint envelope 和第二轮架构审计结论。
+
+**操作**：
+
+1. 先用测试证明当前缺口：同义配置不同字段创建顺序产生不同 hash；仅文件名/大小/
+   修改时间/MIME 的媒体身份可碰撞；无 checkpoint 的 running 记录不能合法恢复。
+2. 在 Web auto-shot 类型中定义版本化 `AutoShotMediaIdentity`：展示型文件字段之外，包含
+   identity schema、content digest strategy/value、文件大小、RFC 6381 canonical codec、
+   coded/display 尺寸、归一化 rotation（`0/90/180/270`）和整数 `durationUs`。缺少视频轨
+   元数据时返回结构化错误，不生成弱身份。
+3. 冻结内容摘要策略。文件 `S <= 32 MiB` 使用整文件 SHA-256。更大文件使用覆盖全部字节的
+   `sha256-chunk-manifest-4m-v1`：令 `C = 4_194_304`，按偏移 `0,C,2C...` 读取到 EOF，
+   最后一块允许小于 C；逐块 SHA-256 后，对 UTF-8 紧凑数组
+   `["aisenlens-content-digest",1,"sha256-chunk-manifest-4m-v1",S,C,`
+   `[[offset,length,hex],...]]` 再做 SHA-256。块按升序、偏移/长度为十进制安全整数、摘要为
+   64 位小写 hex，不含文件名/MIME/mtime；空块、重叠、缺口和末块越界必须拒绝。
+4. 冻结最终身份规范文本：UTF-8 紧凑数组
+   `["aisenlens-auto-shot-media-identity",1,S,strategy,contentDigest,codec,codedWidth,`
+   `codedHeight,displayWidth,displayHeight,rotation,durationUs]`，其 SHA-256 小写 hex 为
+   `mediaIdentityDigest`；task/checkpoint 同时保存完整字段并逐字段比较，不能只信 digest。
+   chunk-manifest 覆盖每个文件字节，但不是标准“整文件 SHA-256”，UI/日志必须显示正确策略名。
+5. 在 Scene Engine 公共 API 冻结 canonical config encoding v1。使用显式数组序列化：
+   根为 `["aisenlens-scene-config",1,hardCut,fade,minimumSceneDurationUs,analysis,diagnostics]`；
+   Content 为 `["content",threshold,hue,saturation,luma]`；Adaptive 为
+   `["adaptive",adaptiveThreshold,windowWidth,minimumContentScore,hue,saturation,luma]`；
+   fade 为 `null` 或 `[mode,threshold,bias,emitFinalFade?1:0]`；analysis 为
+   `[maxWidth,["every-frame"]]` 或 `[maxWidth,["stride",step,refineRadiusFrames]]`。
+   所有数值必须先通过严格整数校验，输出不含空白且不得依赖对象字段创建顺序。
+6. 对上述 UTF-8 bytes 使用 FNV-1a 64-bit（offset basis `14695981039346656037`、prime
+   `1099511628211`、每步模 `2^64`），文本格式固定为 `fnv1a64-v1:<16位小写hex>`；恢复
+   仍比较完整 canonical config，不能只信 64-bit hash。
+7. 给 `AutoShotTaskStatus` 增加 `interrupted`，冻结规则：只有完整 checkpoint 已持久化才
+   能进入 paused；遗留 running 只能进入 interrupted 并重扫。
+8. 把类型、序列化字段顺序、hash/version 字符串和状态转换写入 contract tests 与文档；
+   同时增加 fade `bias = -1000/0/1000` 边界用例，修正当前 TypeScript validator 将负 bias
+   错误拒绝的问题，并核对 C++/C ABI 范围一致。
+
+**涉及文件**：
+
+- `packages/scene-engine/src/api/{types,config,configHash}.ts`
+- `packages/scene-engine/src/index.ts`
+- `apps/web/src/features/auto-shot/{types,taskState}.ts`
+- 对应 package/Web contract tests
+
+**完成检查**：契约测试先红后绿；同义配置跨字段顺序 hash 相同；不同合法配置快照可区分；
+类型中不再把通用 `MediaSourceFingerprint` 称为强身份；running→paused 无 checkpoint 被拒绝。
+
+**完成记录（2026-08-28）**：已完成版本化身份模型、文件/4 MiB manifest 摘要服务、canonical
+config/FNV-1a64 实现、Worker 单路径、负 bias 校验、interrupted 状态和契约测试；task record
+与 checkpoint 已统一使用 `mediaIdentityDigest`，Repository/Service 按完整强身份恢复。
+
+**禁止**：直接实现 UI、把文件名加入强身份 digest、用普通 `JSON.stringify(object)` 作为
+canonical config、跳读大文件块、把 chunk-manifest digest 宣称为标准整文件 SHA-256。
+
+#### [x] Task 11.8：实现媒体身份服务与 canonical config hash 单路径
+
+**前置条件**：Task 11.7 全部通过。
+
+**操作**：
+
+1. 新建无 React 的 `autoShotMediaIdentityService`，优先在专用 Worker 读取 Blob 分块并使用
+   Web Crypto SHA-256；若复用现有媒体 Worker，必须先用 trace 证明不会阻塞检测或主线程。
+   同时从唯一媒体 metadata adapter 读取并规范化视频轨字段，不能让 UI 自行补值。
+2. 以固定偏移算法处理小文件、恰好 32 MiB、大文件、空文件、读取失败和取消；摘要进度
+   可以报告，但不得与像素检测进度混为一谈。
+3. 替换 `autoShotTaskService` 的四字段 `fingerprintKey()`，任务、checkpoint 和 resume
+   全部使用 canonical media identity string/digest；通用媒体重新关联逻辑保持原职责。
+4. 将 Worker config hash 改为调用 package 唯一实现，删除局部 FNV-1a32/JSON.stringify
+   版本；baseline/SIMD/checkpoint 继续共用同一个 64-bit 值。
+5. 修正配置 validator 的 fade 负 bias 范围，并增加 identity 确定性/变化测试、固定摘要
+   test vectors、canonical hash 跨宿主测试、checkpoint hash parity、取消/错误资源释放
+   测试和有代表性的大 Blob 性能记录。
+
+**完成检查**：Web 不再存在自动分镜四字段强身份或第二套 config hash；相同媒体重复计算
+完全一致，采样块或轨道元数据变化会失效；native/WASM/Worker/task tests 与 Web build 通过。
+
+**完成记录（2026-08-28）**：已加入无 React 媒体身份服务、固定块/取消/错误测试，并将 Worker
+与 task service 的配置哈希切换至 canonical 64-bit 实现；task record、Repository 和
+checkpoint 已切换到强身份摘要，旧四字段仅保留在普通媒体派生缓存职责中。
+
+**禁止**：一次把大文件完整载入主线程内存、加入新的哈希依赖而不先检查现有能力、缓存
+未经媒体身份重新验证的旧 digest、保留旧 hash 兼容读取。
+
+#### [~] Task 11.9：修正 Hook 的暂停、刷新中断与资源生命周期
+
+**前置条件**：Task 11.8 完成，repository 能读写新 media identity/hash/status。
+
+**操作**：
+
+1. 先为纯状态恢复判定写测试：paused+完整 checkpoint 可继续；running、paused+空/
+   失配 checkpoint、identity/config/engine version 失配都只能 interrupted/重扫。
+2. 修改 `useAutoShotTask`：加载遗留 running 时标为 interrupted，不再伪造 paused；只有
+   显式 pause 成功并持久化后显示“继续”。
+3. 项目/媒体切换时取消当前 Worker 并隔离 stale 消息；页面卸载只做 best-effort 资源
+   释放，不假定浏览器等待异步持久化。下次启动按持久化事实判定 interrupted。
+4. 覆盖重复开始、快速切项目、暂停后刷新继续、运行中刷新后重扫、取消、失败、完成、
+   service/client dispose 和 repository 写失败。
+5. 不新增 React 测试框架时，先把恢复决策提取为纯函数并用 `node:test` 覆盖，再用现有
+   浏览器 smoke 覆盖真实 hook/Worker 生命周期。
+
+**完成记录（2026-08-29，部分完成）**：纯状态恢复、遗留 running→interrupted、无效暂停
+结果防护、强身份恢复和 hook 恢复路径已完成并通过 node:test；task service 现在会在
+Engine 启动异常或首个持久化写入失败时主动取消并释放 client，进度写入失败也会被记录为
+`INTERNAL_ERROR`，避免未处理的异步 rejection；新增对应 7/7 service tests。真实 H.264
+基线浏览器验证已通过；Hook 还补充了媒体身份异步加载不覆盖活动任务、快速连点不重复
+启动的竞态保护，并让项目切换后的新任务等待旧任务取消完成。新增真实浏览器 Hook smoke：
+独立项目完成启动→暂停→卸载→重新挂载→继续完成（恢复后 2474 帧、28 个候选）、独立取消
+分支，以及快速切换项目后启动并取消新任务；切换后的事件记录确认旧 task ID 没有回写新 Hook。
+失败和完整 UI 矩阵仍待补齐。2026-08-29 Edge 真实产品复验已覆盖显式暂停→继续；期间发现的在途 `PROGRESS` 与 `pausing` 状态竞态已在 Worker 协议中放行并加入契约测试，复验未再出现该错误。
+
+**完成检查**：任何 UI `paused` 都对应可导入 checkpoint；无 checkpoint 记录没有继续入口；
+所有终态和切换路径只有一个 client，Worker/sample/runtime 资源对账归零。
+
+#### [~] Task 11.10：实现候选审阅状态、应用领域命令与镜头 provenance
+
+**前置条件**：Task 11.9 完成；先读取 shot/group/recovery/history/repository 的实际类型与
+保存边界，不假设存在可复用领域命令。
+
+**操作**：
+
+1. 扩展 task record 的 `review`，保存 excluded candidate IDs、更新时间和 applied 状态；
+   类型筛选只影响视图，重新扫描清空 review。
+2. 新建纯 `applyAutoShotCandidates`：验证候选属于当前 task/config/media，按纳入边界生成
+   连续半开镜头区间；完全同范围旧镜头保留 ID/资料，变化范围生成新 ID 且不继承分析。
+3. 定义 `ShotDetectionMeta` 新结构，删除 `confidence`：manual 镜头只标 source；自动镜头
+   内嵌 task/candidate/kind、media identity digest、preset ID/version、Engine version、
+   config hash。不得依赖会被下一次扫描覆盖的 task record 才能解释来源。
+4. 若受影响镜头含笔记、分析、截图或分组，命令先返回 impact summary；UI 经 Dialog 明确
+   确认后创建 recovery snapshot，再一次性提交镜头与协调后的分组。项目帧 annotation 保留。
+5. 接入 editor history，应用成为一次 undo 单元；保存/刷新后以 recovery snapshot 提供
+   持久恢复，不把仅内存 undo 描述成永久保护。
+6. 对空项目、完全同边界、排除候选、重复/非法候选、已有资料、分组协调、来源持久化、
+   task 被重扫覆盖和撤销/恢复写测试。
+7. 如正式 shot schema 需要升级，只做一次前向 IndexedDB upgrade，保留正式镜头数据并将
+   旧 detection 明确归一为 manual；升级完成后不保留旧类型 union 或读取分支。
+
+**完成记录（2026-08-29，部分完成）**：已将候选应用抽为纯领域命令，校验连续半开区间、
+按 review 排除并合并相邻区间、保留相同范围 shot ID、生成影响摘要；Editor 已通过确认 Dialog
+调用该命令，确认后创建 recovery snapshot，并在同一结果中协调有效分组、保存 task review 应用时间，
+正式镜头保存时写入不可变 auto-shot provenance，且 editor history 会同步保存/恢复 provenance 映射。恢复服务已有持久化快照恢复入口；Edge 真实项目已完成候选排除、应用前影响确认、快照应用、保存/刷新和恢复应用前快照（26→28 镜头）验证；完整真实产品撤销矩阵
+和跨存储原子性验证仍待完成。另已修正 Editor 应用层只清理被替换/删除镜头的笔记、分析字段、
+截图和边界截图映射，保留镜头资料不再因应用自动分镜被整体清空；纯 `retainShotMap` 工具测试
+已通过（1/1）。编辑器历史核心已提取为
+纯状态模块 `editorHistoryState.ts`，覆盖撤销/重做、撤销后分支提交和历史上限的
+`node:test` 已通过（4/4）；Hook 对外 API 未改变。迁移浏览器 smoke 也已验证 recovery
+snapshot 修改后恢复及同项目最多保留 3 个快照。真实产品撤销矩阵和跨存储原子性验证仍待完成。
+
+**完成检查**：`EditorWorkspace` 不再直接重建镜头或清空多个状态 map；自动镜头保存后不再
+写成 manual；任务被覆盖后来源仍可读；数据影响在执行前可见且有 recovery snapshot。
+
+**禁止**：按重叠猜测复制分析数据、自动删除截图 Blob、用 raw score 填 confidence、在
+React 组件中复制应用算法、为旧 detection 长期保留兼容层。
+
+#### [ ] Task 11.11：关闭 Phase 11 产品矩阵与阶段审计
+
+**前置条件**：11.2–11.5 的开放检查与 11.7–11.10 全部通过。
+
+**操作**：
+
+1. 使用可追溯真实 H.264 素材运行：开始、进度、显式暂停、刷新继续、运行中刷新后中断/
+   重扫、取消、失败、完成、候选排除、应用、撤销、恢复快照、项目/媒体切换。
+2. 重新运行 DB 12→当前版本链式升级夹具，逐项核对项目、媒体、镜头、截图、注释、分组和
+   模板；只允许清理旧 auto-shot 派生记录或执行已记录的 detection 前向归一化。
+3. 运行 native、C ABI、WASM baseline/SIMD、Worker、package/Web tests、production build、
+   preview、依赖边界审计和 `git diff --check`。
+4. 更新 Phase 11 handoff，列出 exact commands、浏览器/机器、通过矩阵、已知限制和 Phase 12
+   唯一允许继续使用的类型/schema/version。
+
+**完成检查**：11.2–11.5、11.7–11.11 全部 `[x]`，Phase 11 验收门逐项有证据；之后才能把
+Phase 12 从未开始改为进行中。
+
+**当前记录（2026-08-29）**：Scene Engine、Worker、强身份 task/checkpoint、候选 review/apply、
+provenance、确认 Dialog、分组协调、单事务 recovery snapshot 恢复（含迁移浏览器 smoke 的修改后恢复断言）和 Web build 已有自动化证据；Edge 实测真实 H.264 项目可完成扫描、候选应用、刷新恢复且控制台无错误。
+2026-08-29 在 Edge 重新打开项目并重跑约 99.88 秒的 `test.mov`：早先 UI 使用旧默认 threshold 4000，扫描进度正常从 0% 到 100%，但只得到 1 个候选切点；同日修正临时映射后，Edge UI 显示 27 个边界/28 段候选且刷新后保留 28 个镜头，完整媒体 WASM smoke 和 `/aisenlens/` production preview 也得到 27 个边界，证明解码帧覆盖和临时阈值链路已接通。随后 Edge 完成显式暂停→继续、首候选排除、应用影响确认、创建快照并应用、保存/刷新，以及恢复应用前快照（26→28 镜头）；暂停竞态修复后未再出现协议错误，页面错误日志为空。当前仍不能把 27 个边界当作质量真值；后续需用人工标注长视频专项验证 Content/Adaptive/Threshold/Fade 配置、融合去抖、最短镜头过滤、时间映射和结果适配器。
+完整 UI 生命周期矩阵、持久化撤销矩阵和 lint 工具链仍未完成，故本任务保持未完成，Phase 12 不得启动。
+React hook 挂载/卸载专项已由独立 Chrome smoke 覆盖；Edge 已覆盖真实暂停/继续、候选排除、
+应用、保存/刷新和恢复快照；剩余 UI 矩阵仍包括可交互文件选择器下的项目/媒体切换、失败分支
+和持久化撤销，当前 headless 测试不能替代这些入口验证。
+
+**最终交付物**：强媒体身份、canonical config hash、新 task persistence、明确的
+paused/interrupted 生命周期、候选审阅状态、可撤销应用领域命令、镜头 provenance、
+DB 升级和真实产品回归证据。
 
 **Phase 11 验收门**：DB 原子升级、全生命周期、显式应用/撤销、主线程边界及 Web 回归全部通过；否则不得删除旧文件。
 
-### 4.14 Phase 12 任务单：整体验收、旧路径删除与标定
+### 4.14 Phase 12 任务单：整体验收、研究控制面板、标定与旧路径删除
 
-**阶段状态**：`[-] 进行中（12.1、12.5 已完成当前可执行部分；12.2–12.4、12.6 等待真实视频产品矩阵与准确率/性能数据）`
+**阶段状态**：`[ ] 未开始正式执行（12.1、12.5 仅有准备性记录；必须先完成 Phase 11 的 11.2–11.5、11.7–11.11 并关闭验收门。后续 Agent 不得因已有准备记录跳过 Phase 11）`
 
-#### [-] Task 12.1：建立删除前验收基线
+**本阶段强制执行顺序**：`12.1 → 12.2 → 12.3A → 12.6A → 12.6B → 12.6C → 12.6D → 12.3B → 12.3C → 12.4 → 12.5 → 12.7`。
+任务编号保留历史文档编号，不表示可按页面出现的数值顺序执行。先完成 PySceneDetect
+语义驱动的**研究型控制面板**，再建立人工标定与 promotion；不得反向等待标定后才设计
+面板，也不得将研究 preset 当作生产默认。
+
+#### [ ] Task 12.1：在 Phase 11 关闭后重建删除前验收基线
 
 **输入**：Phase 11 生产新链路、旧路径引用证据清单。
 
@@ -2028,9 +2230,12 @@ Web 基线与像素路径验证
 
 **禁止**：凭人工点击一次就删除旧实现、把当前范围外的 Desktop/Mobile 写成已验证。
 
-**完成记录（2026-08-28，当前可执行部分）**：新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`，记录 native、C ABI、baseline/SIMD、Worker 生命周期、Web build/preview、IndexedDB 12→13 升级和旧生产引用审计结果。真实视频产品 UI 全流程、准确率和性能/内存报告仍未完成，因此暂不删除旧路径。
+**准备性记录（2026-08-28，不代表 Task 完成）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`，记录当时的 native、C ABI、baseline/SIMD、Worker 生命周期、Web build/preview、IndexedDB 12→13 升级和旧生产引用审计。Phase 11 后续会改变 identity/hash/task/shot schema，故 Agent 必须在新版本上完整重跑并更新该基线，不能复用旧结果勾选完成。
 
 #### [ ] Task 12.2：删除旧自动分镜实现与字段
+
+**前置条件**：Task 12.1 在 Phase 11 最终版本上通过，且旧 service 的准确率历史结果已经以
+报告形式冻结；不再为了比较保留可执行旧生产服务。
 
 **操作**：
 
@@ -2044,21 +2249,92 @@ Web 基线与像素路径验证
 
 **禁止**：删除项目/镜头/缩略图等仍在使用的通用服务、保留隐藏 fallback、加入临时兼容 adapter。
 
-#### [ ] Task 12.3：建立准确率评估输入与评分
+#### [ ] Task 12.3A：建立研究/生产双 catalog 的配置基础
+
+**前置条件**：Task 12.2 完成。
 
 **操作**：
 
-1. 扩充 Phase 0 evaluation README、标注格式和只接受本地路径的评分脚本；不另建重复评分实现，不提交受限数据集本体。
-2. 复用 Phase 0 自有人工标注小集，记录 checksum、精确 engine version、配置和 hard-cut/fade 容差。
-3. 输出 hard-cut Precision/Recall/F1、matched boundary 平均/p95 偏移及 fade 建议点落区间结果。
-4. 分别运行 Content preset、Adaptive preset 和各自 + Threshold/Fade，不同时默认启用两个 hard-cut detector。
-5. 参数调整必须保存相对 Phase 0 当前 JS 基线及调整前后的指标；没有证据不得更改默认阈值。
+1. 在 `features/auto-shot/config/` 定义 `AutoShotControlSettings`、完整高级覆盖、冻结任务
+   snapshot、配置摘要数据和版本化 candidate preset 类型；首版 preset ID 不包含 `custom`。
+2. 实现唯一 `resolveAutoShotConfig`，固定“preset → detail → transitions/min duration →
+   完整 advanced branch override”顺序；preset version 只能由 registry 注入。
+3. 按控制设计冻结产品输入范围、整数单位转换和权重最大余数归一化；全零权重、越界值、
+   detector 字段混用和未知字段必须给出结构化错误。
+4. 将 PySceneDetect 的 Content、Adaptive、Threshold/Fade、最短镜头与过滤器**语义**转换为
+   版本化 `researchPresetRegistry` 种子；只转换产品配置模型和合法范围，不复制 Python/OpenCV
+   的数值默认值。每个种子包含 `catalog = research`、来源说明与“待标定”状态。
+5. 建立初始为空的 `productionPresetRegistry` 及唯一 promotion 入口；常规生产扫描和默认选择
+   不得读取 research catalog，显式研究模式可使用它；research catalog 也不得自称
+   production/default/recommended。
+6. 测试两个 catalog 隔离、全部 research preset×detail×transition 组合、完整 detector 切换、恢复 preset、字段顺序
+   确定性、版本变化与 Engine config 校验。
 
-**完成检查**：相同本地数据和配置重复评分结果一致，报告能追溯到 Engine 版本。
+**完成检查**：研究面板、标定脚本与未来生产 UI 将调用同一个 resolver；仓库中没有第二套
+sensitivity/threshold 映射；未标定 preset 不可从 production registry 枚举。
 
-**禁止**：用“切得更多”代替准确率、把 PySceneDetect 默认阈值宣称为等价、将数据集加入产品 bundle。
+#### [ ] Task 12.3B：在研究面板后建立标定工作台、数据集 manifest、评分与 sweep 工具
+
+**前置条件**：Task 12.6D 通过；研究面板必须已能生成和冻结带 `catalog = research` 的任务快照。
+
+**操作**：
+
+1. 在 `features/scene-calibration/` 建立独立真值模型、服务和工作台组件；不复用
+   `AnnotationMarker` 或 `ShotRecord`。首版只支持 hard-cut 点标注：接受当前候选、拒绝候选、
+   新增/移动/删除人工边界，以及显式标记不确定范围；fade 区间另立后续任务。
+2. 标定工作台复用现有视频预览、逐帧导航和时间线，但只通过 resolver 启动研究扫描；每份标注
+   保存强媒体身份、微秒时间、辅助帧号、标注者、schema version、研究 preset/version、完整
+   engine config/canonical hash、Engine version 与候选结果摘要。不得应用候选、改写项目镜头或
+   把创作标记视为算法真值。
+3. 实现 JSON 导出：包含媒体身份、来源/授权字段、真值、未确定范围、当前研究运行与标注元数据；
+   默认不包含视频和本地绝对路径。外部 AI 需要查看素材时，由用户另行选择同一身份的视频文件；
+   导出 UI 明确提示版权与隐私责任。导出 `search` 数据与 `holdout` 数据必须使用不同命令，
+   holdout 不得被 AI 或参数搜索读取。
+4. 扩充现有 evaluation manifest/README/脚本，不另建重复评分实现；视频本体继续只接受本地
+   路径并保持忽略，提交 schema、示例、checksum 和来源/授权说明。
+5. 为每个专项预设建立 search/holdout 清单，并实现校验：同一作品/来源不能跨集合；专项
+   search 至少 8 视频/100 hard-cut，holdout 至少 4 视频/50 hard-cut；general holdout
+   至少 12 视频/150 hard-cut；默认 fade 需至少 20 个 holdout fade 区间。
+6. manifest 记录 codec、尺寸、rotation、时长、SHA-256、标注者和复核状态；至少 20% 标注
+   有第二人复核，未解决分歧时评分命令失败。
+7. 评分输出逐素材及聚合 hard-cut Precision/Recall/F1、平均/p95 边界偏移、fade 区间
+   Recall/建议点命中/误报每分钟、耗时和可选诊断。
+8. sweep 接受 candidate preset + 参数网格，只读取 search split；输出 canonical config、
+   Engine version、dataset checksum、命令和排序规则，重复运行结果完全一致。
+
+**完成检查**：标注可导出并独立复读为评分输入；候选接受/拒绝与人工新增边界均可追溯；故意
+制造 split 泄漏、媒体身份不符、样本不足、checksum 变化、标注分歧和非法配置时命令确定性
+失败；合法小 fixture 可在 CI 跑契约，受限/真实视频不进入产品包。
+
+#### [ ] Task 12.3C：标定、独立留出验收与生产晋升
+
+**前置条件**：Task 12.3B 通过，且实际本地数据达到控制设计 8.1 的数量/质量门槛。若素材
+不足，Agent 必须把本任务标记阻塞并列出缺口，不能生成猜测默认值。
+
+**操作**：
+
+1. 仅在 search split 上比较 Content、Adaptive 和可选 Threshold/Fade；以 PySceneDetect
+   区间作起点但转换为 AisenLens 固定点单位，不复制其默认值。
+2. 为每个 preset 冻结 conservative/balanced/detailed 候选版本；三个档只改变 hard-cut
+   判定强度，转场与最短镜头独立。
+3. 冻结后只运行一次 holdout。严格应用控制设计 8.3 门槛；专项 preset 还要证明相对
+   general 的明确增益，fade 未通过则默认仅硬切。
+4. 看到 holdout 后若改参数，提升候选版本并更换未读取的新 holdout；不得反复调同一集合。
+5. 只将通过项通过 promotion 脚本写入 `productionPresetRegistry`，生成含 preset/Engine/
+   dataset version、canonical configs、指标、checksum 和日期的不可歧义报告。
+6. 首次晋升后，将普通产品入口切换为 production catalog；research catalog 只保留给明确的
+   标定/研究模式。测试普通入口不能枚举未晋升项目，既有研究任务仍可按其冻结快照审阅和恢复。
+
+**完成检查**：每个生产可见 preset 都有通过门槛的 promotion report；未通过项不在 registry；
+相同数据/版本重复评分一致，报告可追溯到 Engine、resolver 和数据集。
+
+**禁止**：用“切得更多”替代质量、降低冻结门槛以通过、让 Agent 主观选择最佳观感、把
+PySceneDetect 数值称为等价、把 search 指标冒充 holdout、将数据集打入产品 bundle。
 
 #### [ ] Task 12.4：建立性能与内存基线
+
+**前置条件**：Task 12.3C 至少晋升 `general`；只测已晋升生产配置，未通过的 candidate
+preset 不进入产品性能结论。
 
 **操作**：
 
@@ -2067,48 +2343,157 @@ Web 基线与像素路径验证
 3. 验证内存复杂度只与原始缓冲、分析缓冲和 detector window 相关，不随时长线性增长。
 4. 记录 UI 主线程响应和 progress 节流情况。
 5. 只基于 profile 提出后续优化项；本 Phase 不引入双缓冲/pthreads 等新架构。
+6. 至少覆盖短片和 30 分钟以上长片；素材不足时可记录阻塞，但不得用循环同一短片冒充
+   解码/容器/内存的长视频验收。
 
 **完成检查**：性能报告注明硬件、OS、浏览器、素材、配置、冷/热条件和产物版本。
 
 **禁止**：用不可复现绝对数字作为上线承诺、为性能提前改变算法语义。
 
-#### [-] Task 12.5：许可证、文档与持续检查
+#### [ ] Task 12.5：许可证、文档与持续检查
 
 **操作**：
 
 1. 创建/更新 `NOTICE`，记录实际采用的第三方许可和算法参考；未复制 PySceneDetect 代码时也明确独立实现边界。
 2. 更新 Scene Engine README 的构建、测试、公共 API、支持格式、限制和故障码。
-3. 只更新架构文档的实施状态和已验证参数，不重新设计架构。
+3. 同步架构文档、控制系统设计、实施状态、生产 preset version 和已验证参数。
 4. 把 native/WASM/package/browser 必要测试加入现有 CI 或根验收脚本，避免改变日常 Web `build` 的职责边界。
 5. 检查生成 WASM、fixtures 和评估数据的发布包含关系，产品包不得携带测试数据集。
 
 **完成检查**：新环境可按 README 构建/测试，许可证与实际依赖一致，CI 能捕获核心回归。
 
-**完成记录（2026-08-28，当前可执行部分）**：新增根目录 `NOTICE`，同步 Scene Engine README、架构/计划文档和根 README；新增 `scene-engine:verify:core` 根验收脚本，覆盖 native、WASM、TypeScript contract 和 SIMD parity。仍需在后续 CI 环境完成发布包含关系与完整许可证审计。
+**准备性记录（2026-08-28，不代表 Task 完成）**：已新增根目录 `NOTICE`，同步当时的 Scene Engine README、架构/计划文档和根 README；新增 `scene-engine:verify:core` 根验收脚本，覆盖 native、WASM、TypeScript contract 和 SIMD parity。Phase 11/12 最终 schema、preset 和依赖确定后仍须重新审计发布包含关系、许可证、CI 和文档状态。
 
-#### [ ] Task 12.6：最终全矩阵验收
+#### [ ] Task 12.6A：引入 Zustand 并建立研究型 feature 设置控制器
+
+**前置条件**：Task 12.3A 通过；先检查 `apps/web/package.json`，确认尚无现有
+状态库可满足同一职责，再用 pnpm 为 Web workspace 安装并锁定 Zustand。
 
 **操作**：
 
-1. 从干净 build 目录执行 native Release/sanitizer、C ABI、baseline、SIMD、Worker、浏览器 fixtures、DB 升级和产品全流程。
-2. 执行 Web build 和 `git diff --check`；Desktop/Mobile 留待平台专项。
-3. 用 `rg` 确认没有旧生产 detector、双轨、Histogram/Hash/关键帧占位实现。
-4. 确认公开 package 不依赖 React/Zustand/project types，React 不导入 Worker/WASM/Mediabunny。
-5. 输出最终报告：版本、通过矩阵、准确率、边界误差、性能、内存、已知平台限制和未进入本阶段的未来能力。
+1. 创建 `useAutoShotSettingsStore`，只保存按 `projectId + mediaIdentityDigest` 区分的小型
+   control draft、dirty 状态和重置动作；不持久化到 localStorage/IndexedDB。
+2. 创建 `useAutoShotControl`，组合 store、research catalog、唯一 resolver 和结构化错误；
+   首轮 production catalog 为空，只有显式研究模式可启动扫描。React 组件不能直接合并参数
+   或写 preset version/catalog。
+3. preset version 由 resolver 注入。恢复 preset 一次清除全部高级覆盖；切换媒体身份初始化为
+   `general` 当前研究配置并显示“研究配置 / 待标定”，不能继承另一媒体的隐式草稿。首次
+   `general` 晋升后，后续任务再切换为生产默认。
+4. 使用 selector 避免无关设置触发整个编辑器重渲染；store 不保存 Worker、Blob、候选、
+   EngineResult、checkpoint、运行进度或 repository 对象。
+5. 测试项目/媒体隔离、重置、完整 detector override、research catalog 冻结快照、resolver
+   错误和 selector 更新范围。
 
-**最终交付物**：单一生产 Scene Engine 链路、旧路径删除、准确率/性能基线、许可证与持续回归。
+**完成检查**：依赖和 lockfile 由 pnpm 更新；全仓只有一个 auto-shot 设置 store；没有临时
+Context/第二套状态；Web build 通过。
 
-**Phase 12 验收门**：全矩阵通过、旧路径零引用、数据与依赖边界正确、指标可复现；满足后本实施计划才可标记完成。
+#### [ ] Task 12.6B：扩展任务快照、review 与 IndexedDB schema
+
+**前置条件**：Task 12.6A 通过，复用 Phase 11 的强媒体身份和 canonical hash。
+
+**操作**：
+
+1. `AutoShotTaskRecord` 保存 media identity、resolver 生成的 control snapshot（含 preset
+   ID/version/catalog）、完整 config、canonical config/hash、稳定 summary data 和 review。
+2. task service 的新扫描入口只接收 `ResolvedAutoShotConfiguration`；禁止调用方分别传
+   settings/config/hash。开始时原子冻结，resume 直接使用旧快照，不重新解析当前 registry。
+3. repository 写入前严格校验 schema、identity、snapshot/config/hash 一致性、review 中 ID
+   属于当前候选；未知字段或不一致记录失效。
+4. 将实际 `DATABASE_VERSION` 提升一次，升级事务只清理旧 auto-shot 派生 task；项目、媒体、
+   正式镜头、截图、annotation、group、template、recovery snapshot 逐项保留。
+5. 测试旧 task 清理、新 record round-trip、paused research snapshot resume、registry 升级后
+   新扫描使用新版本、候选排除刷新恢复和 task 覆盖后正式 shot provenance 保留。
+
+**完成检查**：数据库 fixture 从 12 经 13 到当前版本链式升级通过；没有旧 sensitivity task
+兼容读取/双写；完整快照可复现同一 Engine config。
+
+#### [ ] Task 12.6C：实现研究型控制面板与候选审阅组件
+
+**前置条件**：Task 12.6B 通过；先按项目 UI 复用顺序检查现有 Button、Dialog、Tooltip、Tabs、
+DropdownMenu、Input、Checkbox 和 Sonner，不满足时才按 AGENTS.md 引入 shadcn 组件。
+
+**操作**：
+
+1. 创建 `AutoShotControlPanel`、PresetSelector、BasicSettings、AdvancedSettings、RunStatus 和
+   ResultReview；组件使用默认导出，业务逻辑留在 hook/service。
+2. 首轮面板只列出 research registry 中的项目，并在面板头部和每份冻结摘要中明确显示
+   “研究配置 / 待标定”；production catalog 为空时不渲染“推荐”“最佳”“生产默认”或 disabled
+   “即将推出”占位。显示 preset、检出程度、转场、最短镜头和确定性摘要。
+3. 高级 hard-cut 切换时初始化完整合法分支；使用控制设计冻结范围/单位/步长，错误定位到
+   具体输入。analysis 固定逐帧 96 宽，不显示 stride/高分辨率未验证选项。
+4. 运行中设置只读并显示冻结摘要；显式暂停成功后才显示继续；interrupted 显示必须重扫。
+5. 结果审阅显示 hard-cut/fade、视图筛选和逐候选纳入/排除；raw score 不称置信率。应用前
+   根据 Phase 11 领域命令 impact summary 显示数据影响确认。
+6. 覆盖键盘操作、label/description、禁用态、错误态、窄宽布局和 AisenLens 主题 token。
+
+**完成检查**：组件测试/浏览器 smoke 覆盖研究普通/高级、待标定状态、运行/暂停/中断/完成、
+候选排除和确认；每次组件修改后运行 `corepack pnpm build`。
+
+#### [ ] Task 12.6D：接入 EditorWorkspace 并删除临时控制映射
+
+**前置条件**：Task 12.6C 通过。
+
+**操作**：
+
+1. `EditorWorkspace` 只向面板提供项目/媒体上下文、布局位置和 Phase 11 应用领域命令；删除
+   `autoSensitivity`、`autoMinDuration`、线性 threshold `useMemo` 和内联候选 UI。
+2. 所有 start/restart 只通过 `useAutoShotControl → resolver → task service`；本阶段创建的快照
+   固定为 `catalog = research`。运行中修改设置只能在取消/完成后创建新扫描，不静默改变当前任务。
+3. 用 `rg` 证明旧 sensitivity 映射、React 直接 EngineConfig 拼装、第二 resolver 和旧 UI
+   分支零引用。
+4. 运行 research preset 的 UI 组合测试、task/repository/shot 应用回归、Web strict build、
+   production Worker/WASM build 和 preview smoke。
+
+**完成检查**：普通/高级研究模式生成的快照可复现且明确标记待标定；EditorWorkspace 不导入
+Worker/WASM/Mediabunny，不再直接重建自动镜头。
+
+**禁止**：把产品 preset 写入 Scene Engine 包、让 React 直接拼装 C ABI/EngineConfig、在
+Zustand 存储大型结果、自动猜测内容类型、显示未验证选项、保留旧 UI 兼容分支。
+
+#### [ ] Task 12.7：最终全矩阵验收
+
+**前置条件**：Task 12.1–12.6D 全部完成；每个 UI 可见 preset 都有 Task 12.3C 的独立
+holdout promotion report，旧路径已按 Task 12.2 删除。
+
+**操作**：
+
+1. 从干净 build 目录执行 native Release/sanitizer、C ABI、baseline、SIMD、Worker、浏览器
+   fixtures、DB 逐版本升级和 Web 产品全流程。
+2. 对媒体身份覆盖小文件完整摘要、大文件全覆盖 chunk-manifest、任意首/中/尾字节变化、
+   同名异内容、metadata 变化、rotation/
+   duration/codec 变化；对 canonical config 覆盖字段重排、边界值、完整配置二次比对与 hash
+   版本不匹配。
+3. 覆盖开始、进度、显式暂停/继续、刷新后的 interrupted→重扫、取消、失败、完成、候选
+   排除恢复、影响确认、应用、撤销、恢复快照和 task 覆盖后 shot provenance 保留。
+4. 覆盖每个生产 preset 的三个 detail、转场组合、至少一个完整高级 detector 覆盖、运行中
+   设置冻结、设置修改后重扫和 registry 升级后旧 task 按冻结快照继续。
+5. 重新运行 promotion report 与性能基线校验，确认 search/holdout 无泄漏、数据 checksum、
+   resolver/Engine/preset version 和指标门槛均可复现；不能只复用历史报告文本。
+6. 执行 Web strict typecheck/build、production preview、Worker/WASM 非站点根资源 smoke 和
+   `git diff --check`；Desktop/Mobile 诚实记录为范围外。
+7. 用 `rg` 确认没有旧生产 detector、旧 sensitivity 映射、双轨、第二 resolver、
+   Histogram/Hash/关键帧占位实现；确认公开 package 不依赖 React/Zustand/project types，
+   React 不导入 Worker/WASM/Mediabunny。
+8. 输出最终报告：全部命令与环境、preset/Engine/schema/hash/identity 版本、产品矩阵、准确率、
+   边界误差、性能、内存、数据库数据保护、已知 Web 限制和未进入本阶段的未来能力。
+
+**最终交付物**：单一生产 Scene Engine 链路、内容预设与新控制面板、旧路径删除、准确率/性能基线、许可证与持续回归。
+
+**Phase 12 验收门**：全矩阵通过、每个可见内容预设均有独立留出集支持的可追溯标定、
+强媒体身份/规范哈希/恢复语义/应用与 provenance 数据保护均通过、旧 sensitivity/旧检测
+路径零引用、数据与依赖边界正确、指标可复现；满足后本实施计划才可标记完成。
 
 ## 五、风险与注意事项
 
-1. **工具链是当前首个阻断项。** 仓库尚未具备 CMake/Emscripten 固定版本；没有实际编译器验证时不能声称阶段完成，也不能用只写代码代替构建。
+1. **当前首个阻断项是 Phase 11 正确性收口。** 工具链和核心构建已有历史通过记录，但强媒体身份、canonical config hash、刷新中断语义、候选应用领域命令与 provenance 未通过前，不得进入正式 Phase 12；任何环境仍须按任务单重新验证实际编译器，而不能只引用旧报告。
 2. **时间权威不得回退到帧号。** C++/WASM 全程使用微秒；只有 `sceneResultAdapter` 能转为 AisenLens 项目帧，VFR 尤其不能用平均帧率参与 detector 决策。
 3. **WebCodecs 到 WASM 不是物理零复制。** 可实现的目标是 `copyTo()` 一次必要复制直接进入预分配 WASM memory，禁止再经 Canvas、ImageData 或 JS 中间数组。
-4. **恢复确定性是核心验收项。** Adaptive look-ahead、Fade 状态和过滤器状态都必须进入 checkpoint；连续运行与暂停/恢复结果不一致时不得接 UI。
+4. **恢复确定性是核心验收项。** Adaptive look-ahead、Fade 状态和过滤器状态都必须进入 checkpoint；连续运行与暂停/恢复结果不一致时不得接 UI，刷新遗留的无 checkpoint `running` 记录不得伪装为 `paused`。
 5. **旧数据不能伪装成新 checkpoint。** 切换时清理 `auto-shot-runs` 中的旧派生记录，不实现旧结构兼容读取、双写或静默回退；清理范围必须经过数据库升级测试，不能影响项目和镜头数据。
 6. **旧路径删除有严格时点。** Phase 11 先接入并验收，Phase 12 才删除旧 Canvas/seek 服务；验收后又不得长期保留两套生产检测器。
 7. **Web 的 Worker/WASM 资源 URL 必须实测。** 开发服务器成功不代表 production 或非站点根部署成功；本轮必须验证 Vite Web 资源定位。Electron/Capacitor 在恢复对应平台开发时单独验证，当前不得写成已通过。
 8. **阈值不能直接宣称与 PySceneDetect 等价。** 色彩转换、下采样和像素格式不同会改变 score；默认值只作为起点，正式值必须由固定数据集和 Precision/Recall/F1 记录支持。
 9. **SIMD 只能在 baseline 正确后加入。** SIMD 与 baseline 必须共享 ABI、测试和 detector 逻辑；边界结果不一致时以 baseline 为准并阻止 SIMD 上线。
 10. **严格控制范围。** 本计划不创建关键帧、Histogram、Hash 的空实现、公共配置或 UI 入口；未来扩展只依赖既有版本化 capability/result envelope，不在本轮提前设计功能。
+11. **任务记录不是永久来源。** `auto-shot-runs` 按项目唯一且会被覆盖，正式镜头必须保存不可变的最小来源快照；否则重扫会破坏审计链。
+12. **标定集不能兼作验收集。** 参数搜索只读 search，生产晋升只看冻结后的 holdout；数据不足或质量门未通过时应明确阻塞，不能由 Agent 猜测默认值或降低门槛。

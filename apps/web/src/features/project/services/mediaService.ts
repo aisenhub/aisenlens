@@ -168,18 +168,22 @@ export function needsMediaMetadataRefresh(metadata: MediaAssetMetadata | null) {
 export async function selectLocalVideo(): Promise<SelectedVideo> {
   const picker = (window as WindowWithFilePicker).showOpenFilePicker;
   if (picker) {
-    const [handle] = await picker({
-      multiple: false,
-      types: [{ description: "视频文件", accept: {
-        "video/mp4": [".mp4"],
-        "video/quicktime": [".mov"],
-        "video/x-m4v": [".m4v"],
-        "video/webm": [".webm"],
-        "video/x-matroska": [".mkv"],
-      } }],
-    });
-    if (!handle) throw new Error("未选择视频文件。" );
-    return { file: await handle.getFile(), handle };
+    try {
+      const [handle] = await picker({
+        multiple: false,
+        types: [{ description: "视频文件", accept: {
+          "video/mp4": [".mp4"],
+          "video/quicktime": [".mov"],
+          "video/x-m4v": [".m4v"],
+          "video/webm": [".webm"],
+          "video/x-matroska": [".mkv"],
+        } }],
+      });
+      if (!handle) throw new Error("未选择视频文件。" );
+      return { file: await handle.getFile(), handle };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+    }
   }
 
   return new Promise((resolve, reject) => {
@@ -198,20 +202,24 @@ export async function selectLocalVideo(): Promise<SelectedVideo> {
 export async function selectLocalAudio(): Promise<SelectedAudio> {
   const picker = (window as WindowWithFilePicker).showOpenFilePicker;
   if (picker) {
-    const [handle] = await picker({
-      multiple: false,
-      types: [{ description: "音频文件", accept: {
-        "audio/aac": [".aac"],
-        "audio/flac": [".flac"],
-        "audio/mp4": [".m4a"],
-        "audio/mpeg": [".mp3"],
-        "audio/ogg": [".ogg", ".opus"],
-        "audio/wav": [".wav"],
-        "audio/webm": [".webm"],
-      } }],
-    });
-    if (!handle) throw new Error("未选择音频文件。");
-    return { file: await handle.getFile(), handle };
+    try {
+      const [handle] = await picker({
+        multiple: false,
+        types: [{ description: "音频文件", accept: {
+          "audio/aac": [".aac"],
+          "audio/flac": [".flac"],
+          "audio/mp4": [".m4a"],
+          "audio/mpeg": [".mp3"],
+          "audio/ogg": [".ogg", ".opus"],
+          "audio/wav": [".wav"],
+          "audio/webm": [".webm"],
+        } }],
+      });
+      if (!handle) throw new Error("未选择音频文件。");
+      return { file: await handle.getFile(), handle };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+    }
   }
 
   return new Promise((resolve, reject) => {

@@ -1,7 +1,8 @@
-import type { AutoShotRunRecord, CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { AutoShotRunRecord, CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
+import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
@@ -181,16 +182,46 @@ function normalizeProject(project: ProjectRecord): ProjectRecord {
   return { ...project, compositionOverlay: normalizeCompositionOverlaySettings(project.compositionOverlay), contentOverlay: normalizeContentOverlaySettings(project.contentOverlay) };
 }
 
+function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
+    request.onerror = () => reject(request.error ?? new Error("无法清理项目数据。"));
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) {
+        resolve();
+        return;
+      }
+      const deleteRequest = cursor.delete();
+      deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("无法清理项目数据。"));
+      deleteRequest.onsuccess = () => cursor.continue();
+    };
+  });
+}
+
 function sameMediaFingerprint(left: MediaSourceFingerprint, right: MediaSourceFingerprint): boolean {
   return left.name === right.name && left.size === right.size && left.lastModified === right.lastModified && left.mimeType === right.mimeType;
 }
 
+function sameAutoShotMediaIdentity(left: AutoShotMediaIdentity, right: AutoShotMediaIdentity): boolean {
+  return left.identitySchema === right.identitySchema && left.schemaVersion === right.schemaVersion
+    && left.contentDigestStrategy === right.contentDigestStrategy && left.contentDigest === right.contentDigest
+    && left.size === right.size && left.codec === right.codec
+    && left.codedWidth === right.codedWidth && left.codedHeight === right.codedHeight
+    && left.displayWidth === right.displayWidth && left.displayHeight === right.displayHeight
+    && left.rotation === right.rotation && left.durationUs === right.durationUs
+    && left.mediaIdentityDigest === right.mediaIdentityDigest;
+}
+
 function assertAutoShotTaskRecord(task: AutoShotTaskRecord): void {
   if (!task.id || !task.projectId) throw new Error("自动分镜任务缺少标识。");
-  if (!task.mediaFingerprint || !task.mediaFingerprint.name || !Number.isSafeInteger(task.mediaFingerprint.size) || task.mediaFingerprint.size < 0 || !Number.isSafeInteger(task.mediaFingerprint.lastModified) || task.mediaFingerprint.lastModified < 0 || typeof task.mediaFingerprint.mimeType !== "string") {
-    throw new Error("自动分镜任务缺少有效媒体指纹。");
+  if (!task.mediaIdentity || (task.mediaIdentity.identitySchema !== "aisenlens-auto-shot-media-identity" || task.mediaIdentity.schemaVersion !== 1 || !/^[0-9a-f]{64}$/.test(task.mediaIdentity.contentDigest) || !/^[0-9a-f]{64}$/.test(task.mediaIdentity.mediaIdentityDigest))) {
+    throw new Error("自动分镜任务缺少有效强媒体身份。");
   }
   if (!task.config || !task.progress || !Array.isArray(task.candidates)) throw new Error("自动分镜任务结构无效。");
+  if (!task.review || !Array.isArray(task.review.excludedCandidateIds) || (task.review.updatedAt !== null && typeof task.review.updatedAt !== "string") || (task.review.appliedAt !== null && typeof task.review.appliedAt !== "string")) {
+    throw new Error("自动分镜任务审阅状态无效。");
+  }
   if (!Number.isSafeInteger(task.progress.processedUs) || task.progress.processedUs < 0 || !Number.isSafeInteger(task.progress.durationUs) || task.progress.durationUs < 0 || !Number.isSafeInteger(task.progress.decodedFrames) || task.progress.decodedFrames < 0 || !Number.isSafeInteger(task.progress.candidateCount) || task.progress.candidateCount < 0) {
     throw new Error("自动分镜任务进度无效。");
   }
@@ -548,7 +579,7 @@ export function createProjectRepository(): ProjectRepository {
       await transactionResult(transaction);
     },
 
-    async getAutoShotTask(projectId: string, mediaFingerprint: MediaSourceFingerprint) {
+    async getAutoShotTask(projectId: string, mediaIdentity: AutoShotMediaIdentity) {
       const database = await openDatabase();
       const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readonly");
       const task = await requestResult(transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").get(projectId)) as AutoShotTaskRecord | undefined;
@@ -558,7 +589,7 @@ export function createProjectRepository(): ProjectRepository {
       } catch {
         return null;
       }
-      return sameMediaFingerprint(task.mediaFingerprint, mediaFingerprint) ? task : null;
+      return sameAutoShotMediaIdentity(task.mediaIdentity, mediaIdentity) ? task : null;
     },
 
     async saveAutoShotTask(task: AutoShotTaskRecord) {
@@ -707,6 +738,24 @@ export function createProjectRepository(): ProjectRepository {
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
         .slice(3)
         .forEach((item) => store.delete(item.id));
+      await transactionResult(transaction);
+    },
+
+    async restoreProjectRecoverySnapshot(snapshot: ProjectRecoverySnapshot) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readwrite");
+      const projectId = snapshot.projectId;
+      transaction.objectStore(PROJECTS_STORE).put({ ...snapshot.project, id: projectId });
+      await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), projectId);
+      await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), projectId);
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), projectId);
+      const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
+      const existingTemplate = await requestResult(templateStore.index("projectId").get(projectId)) as ProjectTemplateSnapshotRecord | undefined;
+      if (existingTemplate) templateStore.delete(existingTemplate.id);
+      if (snapshot.template) templateStore.put({ ...snapshot.template, projectId });
+      snapshot.shots.forEach((shot) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId }));
+      snapshot.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId }));
+      snapshot.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId }));
       await transactionResult(transaction);
     },
 

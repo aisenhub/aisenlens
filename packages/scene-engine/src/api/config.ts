@@ -81,7 +81,7 @@ export function validateSceneDetectionConfig(value: unknown): SceneDetectionConf
     const fade = config.fade as Record<string, unknown>;
     oneOf(fade.mode, ["floor", "ceiling"], "config.fade.mode");
     integer(fade.threshold, "config.fade.threshold", 0);
-    integer(fade.bias, "config.fade.bias");
+    integer(fade.bias, "config.fade.bias", -1_000);
     if ((fade.threshold as number) > 255 || (fade.bias as number) > 1_000 || (fade.bias as number) < -1_000) throw sceneEngineError("INVALID_CONFIG", "fade threshold must be <= 255 and bias must be within [-1000, 1000]");
     if (typeof fade.emitFinalFade !== "boolean") throw sceneEngineError("INVALID_CONFIG", "config.fade.emitFinalFade must be boolean");
   }

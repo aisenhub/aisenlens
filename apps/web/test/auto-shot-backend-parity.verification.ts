@@ -12,12 +12,14 @@ function runBackend(backend: Backend, source: Blob) {
   return new Promise<any>((resolve, reject) => {
     const worker = new Worker(`/test/scene-engine-media-backend.worker.ts?backend=${backend}`, { type: "module" })
     const messages: any[] = []
-    const timer = setTimeout(() => { worker.terminate(); reject(new Error(`${backend} backend parity smoke timeout`)) }, 120_000)
+    // Full-media parity intentionally processes every decoded frame. Keep the
+    // per-backend timeout independent from the shorter synthetic/browser probes.
+    const timer = setTimeout(() => { worker.terminate(); reject(new Error(`${backend} backend parity smoke timeout`)) }, 300_000)
     worker.onerror = (event) => { clearTimeout(timer); worker.terminate(); reject(new Error(event.message)) }
     worker.onmessage = (event) => {
       messages.push(event.data)
       if (event.data.type === "READY") {
-        worker.postMessage({ type: "START", jobId: `backend-parity-${backend}`, source, mediaFingerprint: `sha256:backend-parity-${backend}`, config: CONFIG })
+        worker.postMessage({ type: "START", jobId: `backend-parity-${backend}`, source, mediaIdentityDigest: `sha256:backend-parity-${backend}`, config: CONFIG })
       }
       if (event.data.type === "COMPLETED" || event.data.type === "ERROR") {
         clearTimeout(timer)

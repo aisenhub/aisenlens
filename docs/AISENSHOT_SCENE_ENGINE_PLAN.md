@@ -1,12 +1,12 @@
 # AisenShot Scene Engine 架构规划
 
-> 状态：架构已审核，Phase 1–9 引擎实现与 Phase 10–11 Web 接入已落地；Phase 11.5 产品视频回归与 Phase 12 最终清理待完成
+> 状态：架构已审核，Phase 0–10 已完成；Phase 11.7–11.8（强媒体身份、canonical hash、checkpoint 字段）已完成，11.9–11.10 已完成主要代码接线，应用确认、分组协调和 recovery snapshot 已接入，但 React 生命周期矩阵、持久化撤销验收仍待完成；Phase 12 先完成基于 PySceneDetect 语义的研究型控制面板，再进行人工标定、生产 preset 晋升、产品视频回归与最终清理
 >
 > 初版日期：2026-08-25
 >
 > 最后修订：2026-08-28
 > 范围：分镜检测核心、浏览器运行时与前端集成边界  
-> 不包含：现有业务代码修改、UI 改版、关键帧提取及其他视频分析能力
+> 不包含：关键帧提取、Histogram/Hash、内容自动分类及其他视频分析能力
 
 ## 1. 结论摘要
 
@@ -254,7 +254,7 @@ apps/web/src/features/auto-shot/
 | `mediaDecoder` | Blob 解封装、顺序解码、时间戳、像素格式协商 | 场景判定 |
 | Worker | 同线程连接 decoder 与 WASM、进度、暂停/取消 | React 状态、IndexedDB 业务模型 |
 | `SceneEngineClient` | 类型安全任务 API、Worker 协议封装 | 结果应用 |
-| `autoShotTaskService` | 媒体指纹、任务记录、checkpoint 持久化 | 像素算法 |
+| `autoShotTaskService` | 强媒体身份、任务记录、checkpoint 持久化 | 像素算法 |
 | `sceneResultAdapter` | 时间投影、候选分镜、用户应用 | 改写引擎原始证据 |
 
 ## 7. C++ 核心设计
@@ -462,7 +462,7 @@ export interface SceneEngineResult {
 }
 ```
 
-`id` 应由 schema、事件类型、检测器、时间点/区间和 config hash 确定性生成，便于暂停恢复和重复运行去重，不使用随机 UUID。`configHash` 必须基于版本化、字段顺序固定的规范化配置生成，不能直接 hash 普通对象的偶然序列化结果。
+`id` 应由 schema、事件类型、检测器、时间点/区间和 config hash 确定性生成，便于暂停恢复和重复运行去重，不使用随机 UUID。`configHash` 必须基于版本化、字段顺序固定的规范化配置生成，不能直接 hash 普通对象的偶然序列化结果。公共包必须提供唯一 canonical serializer/hash 实现：按显式 schema 顺序逐字段编码整数、布尔值、枚举和 discriminated union，不依赖对象插入顺序；等价配置即使字段创建顺序不同也必须生成相同 canonical bytes 与 hash。哈希碰撞不能作为恢复正确性的唯一保护，Web 业务层恢复前仍须逐字段比较持久化的完整规范配置。
 
 ## 9. TypeScript 公共 API
 
@@ -503,7 +503,7 @@ export interface SceneDetectionConfig {
 
 export interface StartSceneDetectionRequest {
   source: Blob;
-  mediaFingerprint: string;
+  mediaIdentityDigest: string;
   config: SceneDetectionConfig;
   checkpoint?: SceneEngineCheckpoint;
 }
@@ -512,7 +512,7 @@ export interface SceneEngineCheckpoint {
   schemaVersion: 1;
   engineVersion: string;
   configHash: string;
-  mediaFingerprint: string;
+  mediaIdentityDigest: string;
   resumeAfter: {
     timestampUs: number;
     timestampOrdinal: number;
@@ -584,7 +584,7 @@ idle -> initializing -> decoding -> flushing -> completed
                          +------> failed
 ```
 
-Worker 一次只执行一个重型检测任务；项目级并发由 `autoShotTaskService` 控制。任务开始时冻结媒体指纹、配置和引擎版本，运行中 UI 设置变化不改变当前结果。
+Worker 一次只执行一个重型检测任务；项目级并发由 `autoShotTaskService` 控制。任务开始时冻结自动分镜专用媒体身份、规范配置和引擎版本，运行中 UI 设置变化不改变当前结果。
 
 ### 10.3 暂停恢复
 
@@ -596,9 +596,11 @@ checkpoint 分为两层。C++ 核心只导出不透明算法状态 `coreState`�
 - Adaptive 分数窗口、Fade 状态机、最短镜头过滤状态；
 - 已输出边界的确定性摘要，用于校验而不是替代完整结果。
 
-Worker/TypeScript 层再封装 `SceneEngineCheckpoint`，保存完整已提交边界、`timestampUs + timestampOrdinal`、下一 `presentationIndex`、媒体指纹、配置 hash 和 coreState。恢复前必须校验媒体指纹、配置 hash、checkpoint schema 和精确 engine state version；没有显式迁移器时不得只比较主版本后猜测恢复。浏览器解码器从 checkpoint 时间点重新建立顺序解码；若从更早关键帧启动，必须按 timestamp 与同时间戳序号跳过预热帧，且不得二次提交给引擎。checkpoint 由 Web 应用存入 IndexedDB，C++ 核心不直接持久化。
+Worker/TypeScript 层再封装 `SceneEngineCheckpoint`，保存完整已提交边界、`timestampUs + timestampOrdinal`、下一 `presentationIndex`、`mediaIdentityDigest`、canonical config/hash 和 coreState。Web task record 另存完整 `AutoShotMediaIdentity`，恢复前逐字段校验身份、完整 canonical config、hash、checkpoint schema 和精确 engine state version；没有显式迁移器时不得只比较 digest、hash 或主版本后猜测恢复。浏览器解码器从 checkpoint 时间点重新建立顺序解码；若从更早关键帧启动，必须按 timestamp 与同时间戳序号跳过预热帧，且不得二次提交给引擎。checkpoint 由 Web 应用存入 IndexedDB，C++ 核心不直接持久化。
 
-媒体指纹不能只依赖文件名、大小、修改时间和 MIME。产品恢复校验至少还应包含内容摘要（完整 SHA-256 或经过评审的首尾分块摘要）以及视频轨 codec、尺寸和时长；计算策略需在 Phase 0 记录成本与碰撞风险。
+通用 `MediaSourceFingerprint` 只适合文件重新关联提示，不能作为自动分镜 checkpoint 的强身份。Web 业务层必须建立版本化 `AutoShotMediaIdentity`，至少包含：identity schema、文件大小、内容摘要策略及摘要、视频轨 codec、coded/display 尺寸、rotation 和整数微秒时长。文件不大于 32 MiB 时计算标准整文件 SHA-256；更大文件使用固定 4 MiB 块、覆盖每个字节的版本化 SHA-256 chunk-manifest，再对规范清单计算 SHA-256。不得使用仅抽样部分区域的摘要；块布局、内存/耗时与 test vectors 必须记录。任务记录、checkpoint envelope 和恢复比较统一使用该身份，文件名、修改时间和 MIME 只作为展示信息，不参与“同一媒体”的最终判定。
+
+恢复状态具有严格含义：只有成功导出并持久化完整 checkpoint envelope 的任务才能标记为 `paused`。页面崩溃、刷新或进程终止后遗留的 `running` 记录只能转为 `interrupted`/失效并要求重新扫描，不能伪装成可继续的暂停任务；除非后续明确实现并验证周期性安全 checkpoint。页面卸载不得依赖浏览器等待异步 `pause()`/`cancel()` 完成。
 
 ## 11. WebCodecs 与 WASM 内存策略
 
@@ -704,10 +706,14 @@ AutoShotPanel / EditorWorkspace
 
 - 用 feature hook/service 收拢当前 `EditorWorkspace.tsx` 中的运行状态和控制器；
 - 新建引擎结果记录，而不是继续把差异分数命名为 `confidence`；
-- 保留媒体指纹、暂停/继续、重新扫描和显式应用；
+- 保留强媒体身份、显式暂停/继续、中断后重扫和显式应用；
 - 结果适配器统一完成 timestamp -> project frame、排序、边界去重和半开区间构造；
-- 应用结果继续是单一可撤销领域操作，不允许 Worker 直接写项目仓储；
+- 应用结果必须收敛为单一可撤销领域命令，不允许 Worker 或 React 组件直接拼装正式镜头；
 - 新链路验收后删除 `autoShotService.ts` 的 Canvas/seek 算法，不保留长期双轨或静默降级。
+
+候选应用领域命令必须同时处理镜头边界、用户筛选和数据保护。输入至少包含当前项目镜头快照、被纳入的候选 ID、任务 ID、媒体身份、preset ID/version、Engine version、config hash 和候选 evidence；输出是确定性的镜头/分组变更与来源快照。与新边界完全相同的旧镜头可保留稳定 ID 和已有资料；范围发生变化的镜头不得静默继承可能错误的分析数据。若当前镜头存在笔记、分析字段、截图或分组，执行前必须显示明确影响并创建可恢复快照。项目帧标注继续保留，失效的分组引用必须原子协调。
+
+`auto-shot-runs` 是每项目唯一、可覆盖的派生任务记录，因此正式镜头的检测来源不能只保存一个可能失效的 `runId`。新建镜头必须内嵌最小不可变 provenance：任务 ID、候选 ID/类型、媒体 identity digest、preset ID/version、Engine version 和 config hash；raw evidence 可保留在任务记录中，但镜头来源在任务被重扫覆盖后仍必须可解释。旧 `confidence` 字段不得继续承载 raw score。
 
 ## 14. 测试与评估方案
 
@@ -746,6 +752,44 @@ AutoShotPanel / EditorWorkspace
 - 验证主线程不接收帧像素；Worker 每帧释放 `VideoSample`；长视频内存不随帧数线性增长。
 - 同一素材/配置连续运行两次，结果顺序、时间点、config hash 必须一致。
 
+### 14.5 AisenLens 产品控制层
+
+Scene Engine 只接受严格、与 UI 无关的 `SceneDetectionConfig`，不得理解“电影/剧集”
+或“短视频”等产品概念。Web `auto-shot` feature 在 React 与 task service 之间建立唯一
+产品配置层：版本化内容预设、检出程度、转场选择、最短镜头和高级覆盖先解析为引擎
+配置，任务开始时同时冻结用户设置快照、预设版本和引擎配置。
+
+Phase 11 为验证新运行链路而保留的旧“灵敏度 + 最短时长”界面不是最终控制模型。
+最终 UI、状态所有权、预设边界和实施门槛以
+[AisenShot 自动分镜控制系统设计](AISENSHOT_CONTROL_SYSTEM_DESIGN.md) 为准。正式预设
+必须在 AisenLens 自有分类标注集上标定，不能直接复制 PySceneDetect 默认值，也不能
+根据横竖屏、文件名或时长静默猜测内容类型。
+
+Phase 12 的实现顺序不是“先标定再画面板”，而是先按 PySceneDetect 的 Content、Adaptive、
+Threshold/Fade、最短镜头与过滤器语义完成研究型控制面板。该面板让用户以内容预设、检出
+程度、转场和最短镜头驱动唯一 resolver，并明确显示“研究配置 / 待标定”。其研究 catalog
+可以运行扫描和候选审阅，但不得被称为生产默认或自动推荐。标定工作台随后复用相同 resolver
+和任务快照，人工确认 hard-cut 真值、导出数据并据此优化；只有独立 holdout 通过的版本才
+进入 production catalog，届时同一面板切换为生产 preset。
+
+产品设置草稿与已冻结任务快照是不同类型。草稿只保存 preset ID、catalog、检出程度、转场、
+最短镜头和高级覆盖；preset version 由 registry/解析器注入，不能由 React 或用户输入。
+已冻结任务快照保存 preset ID/version、完整规范 EngineConfig、canonical config hash 和
+稳定摘要字段。暂停恢复直接使用持久化快照，不用当前 registry 重新解析旧任务；新扫描
+才使用当前生产 registry。registry 升级不会静默改变已运行任务，也不得要求长期保留旧
+UI 映射。
+
+预设标定必须分离参数搜索集与按作品/来源隔离的留出验收集，同一视频或同一作品的片段
+不能跨集合。未达到预先冻结的样本量、Precision/Recall/F1、边界偏移和 fade 误报门槛的
+预设不得进入生产 registry 或出现在 UI；不能在看到留出集结果后继续调参并仍把它称为
+留出验收。
+
+人工标定不得把创作型时间线标记或正式镜头当作真值来源。应使用独立的
+`features/scene-calibration` 模块和 schema，记录强媒体身份、微秒 hard-cut、标注者、
+不确定区域、当前 Engine/config/candidate 结果与导出版本；默认导出结构化 JSON，不打包
+视频。外部 AI 只可基于明确提供的 search 数据提出候选配置或补丁，正式评分和 promotion
+仍必须在本地、可复现的评分工具与未泄露 holdout 上完成。
+
 ## 15. 性能与质量门槛
 
 实施前先记录基准机型，避免只写无上下文的绝对数字。第一阶段验收至少满足：
@@ -764,7 +808,7 @@ AutoShotPanel / EditorWorkspace
 - 固化本文 API、时间语义、事件语义和像素格式。
 - 建立合成帧 fixture、最小人工标注真实视频集、评分脚本和当前 JS 算法准确率/性能基线。
 - 在目标 Web 浏览器比较原生 YUV、RGBX/RGBA、Worker OffscreenCanvas 低分辨率预处理，以及逐帧/预筛选策略的 decode、copy、preprocess、detect、总耗时和内存。
-- 冻结 VFR 到项目帧的舍入规则、颜色空间规范、媒体指纹、checkpoint envelope、任务 outcome 和 config hash 规范。
+- 冻结 VFR 到项目帧的舍入规则、颜色空间规范、强媒体身份要求、checkpoint envelope、任务 outcome 和 canonical config/hash 规范。
 - 确认 Emscripten 版本、构建产物和许可证 NOTICE。
 
 退出条件：配置/结果/checkpoint schema 经评审；至少一种 Web 像素路径通过真实 smoke；基线报告可复现；不再用 `confidence` 表示原始差异分。Phase 0 未通过不得开始 C++ Phase 1。
@@ -797,7 +841,7 @@ AutoShotPanel / EditorWorkspace
 ### Phase 4：AisenLens 业务接入
 
 - 新建 `autoShotTaskService`、hook 和结果适配器。
-- 接入项目任务记录、媒体指纹和候选确认。
+- 接入项目任务记录、强媒体身份和候选确认。
 - 将应用候选收敛为领域命令。
 - 验收后删除现有 Canvas/seek 检测服务和相关旧字段。
 
@@ -805,7 +849,11 @@ AutoShotPanel / EditorWorkspace
 
 ### Phase 5：标定与优化
 
-- 在标注集上做 Content/Adaptive 参数 sweep。
+- 先以 PySceneDetect 的 detector/参数语义完成研究型控制面板与唯一 resolver，删除旧线性
+  灵敏度映射；研究 preset 只作为待验证种子。
+- 建立独立人工标定工作台，以同一 resolver 的运行结果辅助标注 hard-cut 真值并导出 search
+  数据；不得修改正式镜头或创作标记。
+- 在标注集上做 Content/Adaptive 参数 sweep，随后冻结候选并以 holdout 验收。
 - 分离 decode/copy/preprocess/detect 耗时，再决定优化重点。
 - 启用和验证 SIMD；只有证据表明需要时才评估双缓冲或线程。
 
@@ -846,10 +894,17 @@ AutoShotPanel / EditorWorkspace
 12. 生产像素路径由 Web 端到端基准决定，不把全分辨率 YUV->WASM 复制预先写死为唯一正确实现。
 13. checkpoint 由 Worker envelope 与 C++ core state 组成；恢复要求精确版本、强媒体身份和完整结果前缀。
 14. 先融合跨检测器事件，再对最终边界执行 minimum scene duration。
+15. 产品预设属于 Web feature；唯一解析器生成并校验 EngineConfig，任务冻结产品设置与引擎配置，React 和 WASM 不各自维护映射。
 
 ## 19. 当前实施后的下一项工作
 
-Phase 0–10 的引擎与运行时工作、Phase 11 的 Web 任务接入和 Phase 12 删除前基线已经完成可执行部分。下一步只推进
-`docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md` 中仍开放的验收项：使用真实 H.264 视频完成产品 UI 全流程回归，补齐
-准确率、性能和内存标定；在这些证据通过前，不删除旧 Canvas/seek 基线服务，也不宣称 Phase 12 完成。Zustand/App 会话与业务
-状态迁移属于独立待办，不作为当前 Web 自动分镜验收的隐式前置条件。
+Phase 0–10 的引擎与运行时工作以及 Phase 11 的 Web 最小任务接入已有可执行结果，现存
+Phase 12 删除前基线只是准备性历史快照。下一步必须先按实施计划 Task 11.7–11.11 完成
+强媒体身份、canonical config hash、`paused/interrupted` 生命周期、React hook 资源测试、
+候选审阅、可撤销应用领域命令、正式镜头 provenance 与真实 H.264 产品矩阵，并关闭
+Phase 11 验收门。
+
+之后再按 `docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md` 建立唯一 resolver、隔离的 search/
+holdout 标定、production preset registry、feature 级 Zustand 设置 store 与新控制面板，
+最后完成性能/内存回归和旧路径删除。在这些证据通过前，不删除旧 Canvas/seek 基线服务，
+也不宣称 Phase 12 完成。App 会话与其他业务状态迁移仍是独立待办。

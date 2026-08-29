@@ -36,7 +36,7 @@ class FakeWorker implements WorkerLike {
 }
 
 function request() {
-  return { source: new Blob(), mediaFingerprint: "sha256:test", config: DEFAULT_SCENE_DETECTION_CONFIG };
+  return { source: new Blob(), mediaIdentityDigest: "sha256:test", config: DEFAULT_SCENE_DETECTION_CONFIG };
 }
 
 test("client resolves pause as a terminal outcome and allows resume with a new job", async () => {

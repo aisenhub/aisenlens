@@ -1,4 +1,5 @@
 import { sceneEngineError, toSceneEngineError } from "../api/errors.js";
+import { hashSceneDetectionConfig } from "../api/configHash.js";
 import { normalizeSceneResult } from "../result/normalizeResult.js";
 import type { SceneEngineCheckpoint, SceneEngineProgress, SceneEvent, SceneTaskOutcome } from "../api/types.js";
 import type { WasmFrameBuffer, WasmFrameInput, WasmRuntime } from "./wasmRuntime.js";
@@ -45,20 +46,12 @@ interface ActiveJob {
   frameTarget?: WasmFrameBuffer;
 }
 
-function configHash(config: StartMessage["config"]): { text: string; value: bigint } {
-  const text = JSON.stringify(config);
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193);
-  const value = BigInt(hash >>> 0);
-  return { text: `fnv1a32-${(hash >>> 0).toString(16).padStart(8, "0")}`, value };
-}
-
 function checkpointFor(job: ActiveJob, frame: WasmFrameInput): SceneEngineCheckpoint {
   return {
     schemaVersion: 1,
     engineVersion: job.engineVersion,
     configHash: job.configHash.text,
-    mediaFingerprint: job.message.mediaFingerprint,
+    mediaIdentityDigest: job.message.mediaIdentityDigest,
     resumeAfter: {
       timestampUs: frame.timestampUs,
       timestampOrdinal: frame.presentationIndex,
@@ -134,7 +127,7 @@ export class SceneEngineWorkerController {
         runtime,
         source,
         engineVersion: this.version,
-        configHash: configHash(message.config),
+        configHash: hashSceneDetectionConfig(message.config),
         boundaries: [],
         processedUs: 0,
         decodedFrames: 0,
