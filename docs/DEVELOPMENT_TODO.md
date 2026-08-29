@@ -38,8 +38,8 @@
 
 强制执行顺序：
 
-1. 先完成 Phase 11.7–11.11，并收口 11.2–11.5：已完成 canonical config hash、强媒体身份及 task/checkpoint 持久化、`paused/interrupted` 生命周期、候选 review、应用前确认、分组协调、recovery snapshot 和正式镜头 provenance；task service 的启动/首写失败清理、异步进度写入错误，以及 Hook 的异步身份加载/快速重复启动竞态、真实暂停恢复/取消、快速项目切换和 stale job smoke 也已覆盖；编辑器历史纯状态撤销/重做测试已补齐，Edge 已验证真实暂停→继续、候选排除、应用、保存/刷新和快照恢复，仍需完成项目/媒体切换、失败 UI、持久化撤销与 Web 产品矩阵收口。
-2. 当前仓库未配置 ESLint/lint script；在不引入额外依赖的前提下，先以 TypeScript、契约测试、生产构建和 `git diff --check` 作为静态门，后续统一补充 lint 工具链。
+1. 先完成 Phase 11.7–11.11，并收口 11.2–11.5：已完成 canonical config hash、强媒体身份及 task/checkpoint 持久化、`paused/interrupted` 生命周期、候选 review、应用前确认、分组协调、recovery snapshot 和正式镜头 provenance；task service 的启动/首写失败清理、异步进度写入错误，以及 Hook 的异步身份加载/快速重复启动竞态、真实暂停恢复/取消、快速项目切换和 stale job smoke 也已覆盖；编辑器历史纯状态撤销/重做测试已补齐，Edge 已验证真实暂停→继续、候选排除、应用、保存/刷新、快照恢复、不同项目/媒体切换和无活动项目失败页。
+2. 已加入 `apps/web/eslint.config.mjs` 与根目录/Web `lint` 脚本，当前 lint 以 ESLint flat config、TypeScript 推荐规则、React Hooks 基础规则和 `--max-warnings=0` 作为静态门；`react-hooks/exhaustive-deps` 暂不阻断构建，待逐个审计现有媒体/编辑器生命周期 effect 后再提升为 error。
 3. Phase 11 门关闭后重建删除前基线，再删除无生产引用的旧 Canvas/seek 自动分镜路径和旧字段。
 4. 建立唯一 resolver 与 research/production 双 catalog；先按 PySceneDetect 的 Content、Adaptive、Threshold/Fade、最短镜头和过滤器**语义**完成研究型控制面板、feature 级 Zustand 设置 store、任务控制 hook 和候选审阅。研究面板必须显式显示“待标定”，其数值不得称为生产默认。
 5. **临时可运行兜底（2026-08-29，已验证）**：在研究面板取代旧 UI 前，旧“灵敏度”默认映射固定在阈值 `1800`；Edge UI 重跑约 99.88 秒 H.264 `test.mov` 已显示 27 个边界/28 段候选并在刷新后保留 28 个镜头，避免原默认阈值 `4000` 只形成尾部候选。该映射只是 Phase 11 临时修复，Task 12.6D 必须删除，不能作为未来 production preset 的证据。

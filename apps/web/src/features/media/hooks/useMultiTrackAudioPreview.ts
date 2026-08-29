@@ -50,7 +50,11 @@ export default function useMultiTrackAudioPreview({ mediaAssets, audioTracks, fr
 
   const stopScheduledAudio = () => {
     scheduledRef.current.forEach(({ source, gain }) => {
-      try { source.stop(); } catch { }
+      try {
+        source.stop();
+      } catch {
+        // An already-stopped source is safe to discard during cleanup.
+      }
       source.disconnect();
       gain.disconnect();
     });

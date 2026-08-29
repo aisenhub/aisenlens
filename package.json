@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @aisenlens/web dev",
     "build": "pnpm --filter @aisenlens/web build",
+    "lint": "pnpm --filter @aisenlens/web lint",
     "preview": "pnpm --filter @aisenlens/web preview",
     "format": "pnpm --filter @aisenlens/web format",
     "test:auto-shot-contract": "pnpm --filter @aisenlens/web test:auto-shot-contract",

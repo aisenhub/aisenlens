@@ -73,19 +73,18 @@
 - 用版本化 `AutoShotMediaIdentity` 与内容摘要替代普通四字段 fingerprint，并统一 task、checkpoint 与 resume 比较（身份模型、SHA-256 文件/4 MiB manifest 服务、task record、Repository、Service 和 Scene Engine checkpoint 的 `mediaIdentityDigest` 已完成）。
 - 用唯一 canonical serializer/hash 替代 `JSON.stringify` 与局部 FNV-1a 32；哈希命中后仍做完整配置比较（scene-engine、Worker、task service 运行时与契约测试已完成）。
 - 只有完整 checkpoint 可标记 `paused`；刷新遗留 `running` 必须进入 `interrupted` 并重扫（状态机、hook 恢复和 task outcome 防护已完成）。
-- 持久化候选 review，建立独立、可撤销的 `applyAutoShotCandidates` 领域命令，保护已有 shot 资料/分组并为正式镜头保存不可变 provenance（连续半开区间、排除合并、未变范围 ID 保留、确认 Dialog、应用前 recovery snapshot、分组协调和正式镜头 provenance 已完成；真实产品撤销矩阵仍待完成）。
-- 使用真实 H.264 素材完成开始、进度、暂停、刷新、继续、取消、重扫、失败、完成、审阅、应用和撤销的完整产品 UI 浏览器矩阵（开始/进度/暂停/继续/审阅/应用/保存刷新/快照恢复已由 Edge 覆盖；项目/媒体切换、失败 UI 分支和持久化撤销仍待补齐）。
-- 为 `useAutoShotTask` 补充 React 挂载/卸载、快速切换项目、stale job 和 Worker 清理测试；
-  挂载/卸载、暂停恢复、取消、快速切换和 stale job smoke 已通过，完整 UI 矩阵仍待补齐。
-- 真实 H.264 自动分镜基线浏览器验证已通过；候选应用影响确认与分组协调已接入；React hook 专项 smoke 已通过，完整 UI 生命周期矩阵、持久化撤销矩阵和 lint 工具链仍待补齐。
-- 本轮新增验证：`@aisenlens/scene-engine typecheck`、`@aisenlens/scene-engine test:contract`（29/29）、Web 自动分镜 task service 7/7、editor history 4/4、retain-shot-map 1/1、Web strict TypeScript、production build、`git diff --check`；仓库当前没有 ESLint 配置或 lint script。
+- 持久化候选 review，建立独立、可撤销的 `applyAutoShotCandidates` 领域命令，保护已有 shot 资料/分组并为正式镜头保存不可变 provenance（连续半开区间、排除合并、未变范围 ID 保留、确认 Dialog、应用前 recovery snapshot、分组协调、正式镜头 provenance 和真实产品持久化撤销矩阵已完成）。
+- 使用真实 H.264 素材完成开始、进度、暂停、刷新、继续、取消、重扫、失败、完成、审阅、应用和撤销的产品 UI 浏览器矩阵；Edge 已覆盖项目库中的 `test03`→`测试` 媒体上下文切换，以及无活动项目直接进入 `/app` 的失败页。
+- 为 `useAutoShotTask` 补充 React 挂载/卸载、快速切换项目、stale job 和 Worker 清理测试；挂载/卸载、暂停恢复、取消、快速切换和 stale job smoke 已通过。
+- 真实 H.264 自动分镜基线浏览器验证已通过；候选应用影响确认与分组协调已接入；React hook 专项 smoke、项目/媒体切换、失败页和持久化恢复均已通过。
+- 本轮新增验证：`@aisenlens/scene-engine typecheck`、`@aisenlens/scene-engine test:contract`（29/29）、Web 自动分镜 task service 7/7、editor history 4/4、retain-shot-map 1/1、Web strict TypeScript、ESLint lint、production build、`git diff --check`。
 - 迁移浏览器 smoke 已扩展 recovery snapshot 创建/修改后恢复及同项目最多保留 3 个快照断言；候选领域命令测试覆盖镜头边界、排除合并、ID 保留和分组失效引用清理（5/5）。
 - Editor history 快照现同时保存自动分镜 provenance 映射，撤销应用不会让旧镜头误继承新任务来源。
 - Editor 应用自动分镜时只清理被替换/删除镜头的笔记、分析字段、截图和边界截图映射，
-  保留镜头的资料会继续保留；该保护已通过 TypeScript/build 验证，完整真实撤销矩阵仍待补齐。
+  保留镜头的资料会继续保留；该保护已通过 TypeScript/build 验证和 Edge 持久化恢复矩阵。
 - recovery snapshot 恢复已收敛为项目、镜头、分组、批注和模板的单个 IndexedDB readwrite 事务，避免跨存储逐步恢复造成半恢复状态；迁移 smoke 已通过。
-- Editor history 的撤销/重做状态已提取为纯模块并通过 4/4 状态测试（含撤销后分支提交、撤销/重做历史上限）；Hook API 保持不变，完整真实产品撤销矩阵仍待补齐。
-- 剩余 UI 矩阵的阻塞原因已记录：需要可交互的 Chrome/Edge 文件选择器与本地视频授权，headless smoke 无法替代该入口；可继续完成的 Hook、service、恢复和纯状态验证不受影响。
+- Editor history 的撤销/重做状态已提取为纯模块并通过 4/4 状态测试（含撤销后分支提交、撤销/重做历史上限）；Hook API 保持不变。Edge 已验证应用后保存、刷新和恢复快照的持久化撤销路径。
+- 无活动项目失败页、不同媒体上下文切换和恢复授权入口均保留为可重复的回归路径；实际重新选择文件仍需在具体缺失媒体项目上执行，不能用 headless 结果替代。
 - Edge 插件实测（本地项目“测试”，H.264 `test.mov`）：打开分镜控制、启动新自动分镜、扫描进度 0%→27%→74%→完成、候选结果、确认应用、保存后刷新恢复均通过；应用后镜头数由 2 变为 1，刷新后仍为 1，页面错误日志为空。后续同一项目已用最新临时阈值和快照流程复验，见上方新增记录。
 - Edge 重跑实测（2026-08-29，本地项目“测试”，H.264 `test.mov`，约 99.88 秒）：早先 UI 运行使用旧默认映射（Content threshold `4000`），可正常完成 0%→100% 扫描但只生成 1 个候选切点，暴露出旧阈值映射问题；随后已完成临时 threshold `1800` 的 UI 重跑，显示 27 个边界/28 段候选并在刷新后保留 28 个镜头。两次结果都不能替代人工标注质量真值，人工标注长视频召回率和正式 preset 晋升仍待完成。
 - 上述 Phase 11 门全部通过并更新本报告后，才按 Phase 12 删除旧 Canvas/seek service、旧 record 字段和旧 repository 方法；不得恢复双写或兼容读取。

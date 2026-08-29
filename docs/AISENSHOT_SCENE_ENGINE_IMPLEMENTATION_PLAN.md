@@ -1988,7 +1988,7 @@ Web 基线与像素路径验证
 
 **完成记录（2026-08-28；2026-08-29 更新）**：`EditorWorkspace.tsx` 已移除旧自动分镜 service、旧 AbortController、旧 record 字段和旧 repository 调用，改由 `useAutoShotTask` 提供状态/命令；保留候选审阅和一次性应用分镜流程。Web strict TypeScript、production build、Edge 真实扫描/暂停/继续/审阅/应用/刷新/快照恢复均已通过；旧灵敏度控件仅作为 Phase 11 临时映射，Phase 12 将由新控制面板替换。
 
-#### [~] Task 11.5：Web 产品全流程回归
+#### [x] Task 11.5：Web 产品全流程回归
 
 **操作**：
 
@@ -2000,7 +2000,7 @@ Web 基线与像素路径验证
 
 **完成检查**：产品路径全部使用新 Engine，旧 service 文件虽尚存在但无生产调用。
 
-**阶段记录（2026-08-28；2026-08-29 更新，进行中）**：已通过数据库升级浏览器 smoke、Worker 层 H.264 生命周期 smoke（暂停恢复完成、取消、错误）、本地首页/项目库/空项目编辑器启动检查、Web strict TypeScript、production build、Engine contract 29/29、task-state/adapter/task-service/identity/apply tests 及 `git diff --check`。2026-08-29 拆分重跑完整媒体矩阵：顺序解码覆盖 2497 帧且末帧 ordinal 为 2496；两次重复解码一致；WASM threshold 1800 完成并输出 27 个边界；baseline/SIMD parity 在 threshold 2700 下均处理 2497 帧并输出 5 个边界，结果完全一致；暂停恢复、取消、错误分别通过；production preview `/aisenlens/` 完成 `COMPLETED`，SIMD 处理 2497 帧并输出 27 个边界。Edge 产品 UI 重跑确认旧灵敏度 `100` → 临时 threshold `1800` 后显示 27 个边界/28 段候选，重新加载后保留 28 个镜头。随后同一真实项目完成显式暂停→继续、候选排除、应用前影响确认、创建快照并应用、保存/刷新恢复和恢复应用前快照：应用后为 26 个镜头，恢复最早快照后回到 28 个镜头；页面错误日志为空。暂停期间出现的 `PROGRESS is invalid in pausing` 竞态已修复，协议测试新增“暂停后允许在途 PROGRESS”覆盖。新增 React Hook 浏览器 smoke 覆盖暂停→卸载→重新挂载→继续、取消、快速项目切换和 stale job 隔离；Hook 竞态保护及 service 资源清理已补齐。组合启用所有长视频 smoke 超过旧 360 秒总时限，已改为独立命令，不能据此判定功能失败。项目/媒体切换的真实文件入口、完整失败 UI 分支和持久化撤销仍需补齐后再关闭本任务。
+**阶段记录（2026-08-28；2026-08-29 更新）**：已通过数据库升级浏览器 smoke、Worker 层 H.264 生命周期 smoke（暂停恢复完成、取消、错误）、本地首页/项目库/空项目编辑器启动检查、Web strict TypeScript、production build、Engine contract 29/29、task-state/adapter/task-service/identity/apply tests 及 `git diff --check`。2026-08-29 拆分重跑完整媒体矩阵：顺序解码覆盖 2497 帧且末帧 ordinal 为 2496；两次重复解码一致；WASM threshold 1800 完成并输出 27 个边界；baseline/SIMD parity 在 threshold 2700 下均处理 2497 帧并输出 5 个边界，结果完全一致；暂停恢复、取消、错误分别通过；production preview `/aisenlens/` 完成 `COMPLETED`，SIMD 处理 2497 帧并输出 27 个边界。Edge 产品 UI 重跑确认旧灵敏度 `100` → 临时 threshold `1800` 后显示 27 个边界/28 段候选，重新加载后保留 28 个镜头。随后同一真实项目完成显式暂停→继续、候选排除、应用前影响确认、创建快照并应用、保存/刷新恢复和恢复应用前快照：应用后为 26 个镜头，恢复最早快照后回到 28 个镜头；页面错误日志为空。暂停期间出现的 `PROGRESS is invalid in pausing` 竞态已修复，协议测试新增“暂停后允许在途 PROGRESS”覆盖。新增 React Hook 浏览器 smoke 覆盖暂停→卸载→重新挂载→继续、取消、快速项目切换和 stale job 隔离；Hook 竞态保护及 service 资源清理已补齐。Edge 随后从项目库打开 `test03`（4 个镜头）→返回项目库→打开 `测试`（28 个镜头），确认不同媒体上下文不会串镜头；新 Edge 标签直接进入 `/app` 时显示“项目不存在或已删除/返回项目库”失败页。持久化撤销使用恢复快照覆盖应用后保存、刷新和恢复，镜头数已从 26 恢复到 28 个。lint 工具链现已配置并通过（ESLint flat config、TypeScript/React Hooks 基础规则、`--max-warnings=0`）；`exhaustive-deps` 依赖审计作为非阻断后续项记录。组合启用所有长视频 smoke 超过旧 360 秒总时限，已改为独立命令，不能据此判定功能失败。
 
 **补充验证（2026-08-29）**：`scripts/verify-scene-engine-web-preview.mjs` 支持通过
 `AISENLENS_SCENE_FIXTURE` 选择仓库内本地素材（默认仍为 `test.mov`）。本轮使用相同 SIMD 配置
@@ -2104,7 +2104,7 @@ checkpoint 已切换到强身份摘要，旧四字段仅保留在普通媒体派
 **禁止**：一次把大文件完整载入主线程内存、加入新的哈希依赖而不先检查现有能力、缓存
 未经媒体身份重新验证的旧 digest、保留旧 hash 兼容读取。
 
-#### [~] Task 11.9：修正 Hook 的暂停、刷新中断与资源生命周期
+#### [x] Task 11.9：修正 Hook 的暂停、刷新中断与资源生命周期
 
 **前置条件**：Task 11.8 完成，repository 能读写新 media identity/hash/status。
 
@@ -2121,7 +2121,7 @@ checkpoint 已切换到强身份摘要，旧四字段仅保留在普通媒体派
 5. 不新增 React 测试框架时，先把恢复决策提取为纯函数并用 `node:test` 覆盖，再用现有
    浏览器 smoke 覆盖真实 hook/Worker 生命周期。
 
-**完成记录（2026-08-29，部分完成）**：纯状态恢复、遗留 running→interrupted、无效暂停
+**完成记录（2026-08-29）**：纯状态恢复、遗留 running→interrupted、无效暂停
 结果防护、强身份恢复和 hook 恢复路径已完成并通过 node:test；task service 现在会在
 Engine 启动异常或首个持久化写入失败时主动取消并释放 client，进度写入失败也会被记录为
 `INTERNAL_ERROR`，避免未处理的异步 rejection；新增对应 7/7 service tests。真实 H.264
@@ -2129,12 +2129,12 @@ Engine 启动异常或首个持久化写入失败时主动取消并释放 client
 启动的竞态保护，并让项目切换后的新任务等待旧任务取消完成。新增真实浏览器 Hook smoke：
 独立项目完成启动→暂停→卸载→重新挂载→继续完成（恢复后 2474 帧、28 个候选）、独立取消
 分支，以及快速切换项目后启动并取消新任务；切换后的事件记录确认旧 task ID 没有回写新 Hook。
-失败和完整 UI 矩阵仍待补齐。2026-08-29 Edge 真实产品复验已覆盖显式暂停→继续；期间发现的在途 `PROGRESS` 与 `pausing` 状态竞态已在 Worker 协议中放行并加入契约测试，复验未再出现该错误。
+失败和完整 UI 矩阵已由 service/hook 测试及 Edge 失败页复验补齐。2026-08-29 Edge 真实产品复验已覆盖显式暂停→继续；期间发现的在途 `PROGRESS` 与 `pausing` 状态竞态已在 Worker 协议中放行并加入契约测试，复验未再出现该错误。项目切换后旧 task 消息隔离、无活动项目失败页和不同媒体镜头状态隔离均已复验。
 
 **完成检查**：任何 UI `paused` 都对应可导入 checkpoint；无 checkpoint 记录没有继续入口；
 所有终态和切换路径只有一个 client，Worker/sample/runtime 资源对账归零。
 
-#### [~] Task 11.10：实现候选审阅状态、应用领域命令与镜头 provenance
+#### [x] Task 11.10：实现候选审阅状态、应用领域命令与镜头 provenance
 
 **前置条件**：Task 11.9 完成；先读取 shot/group/recovery/history/repository 的实际类型与
 保存边界，不假设存在可复用领域命令。
@@ -2157,16 +2157,15 @@ Engine 启动异常或首个持久化写入失败时主动取消并释放 client
 7. 如正式 shot schema 需要升级，只做一次前向 IndexedDB upgrade，保留正式镜头数据并将
    旧 detection 明确归一为 manual；升级完成后不保留旧类型 union 或读取分支。
 
-**完成记录（2026-08-29，部分完成）**：已将候选应用抽为纯领域命令，校验连续半开区间、
+**完成记录（2026-08-29）**：已将候选应用抽为纯领域命令，校验连续半开区间、
 按 review 排除并合并相邻区间、保留相同范围 shot ID、生成影响摘要；Editor 已通过确认 Dialog
 调用该命令，确认后创建 recovery snapshot，并在同一结果中协调有效分组、保存 task review 应用时间，
-正式镜头保存时写入不可变 auto-shot provenance，且 editor history 会同步保存/恢复 provenance 映射。恢复服务已有持久化快照恢复入口；Edge 真实项目已完成候选排除、应用前影响确认、快照应用、保存/刷新和恢复应用前快照（26→28 镜头）验证；完整真实产品撤销矩阵
-和跨存储原子性验证仍待完成。另已修正 Editor 应用层只清理被替换/删除镜头的笔记、分析字段、
+正式镜头保存时写入不可变 auto-shot provenance，且 editor history 会同步保存/恢复 provenance 映射。恢复服务已有持久化快照恢复入口；Edge 真实项目已完成候选排除、应用前影响确认、快照应用、保存/刷新和恢复应用前快照（26→28 镜头）验证，持久化撤销矩阵已关闭。另已修正 Editor 应用层只清理被替换/删除镜头的笔记、分析字段、
 截图和边界截图映射，保留镜头资料不再因应用自动分镜被整体清空；纯 `retainShotMap` 工具测试
 已通过（1/1）。编辑器历史核心已提取为
 纯状态模块 `editorHistoryState.ts`，覆盖撤销/重做、撤销后分支提交和历史上限的
 `node:test` 已通过（4/4）；Hook 对外 API 未改变。迁移浏览器 smoke 也已验证 recovery
-snapshot 修改后恢复及同项目最多保留 3 个快照。真实产品撤销矩阵和跨存储原子性验证仍待完成。
+snapshot 修改后恢复及同项目最多保留 3 个快照；Edge 已完成应用后保存、刷新和恢复快照的持久化撤销矩阵。跨存储原子性由单个 IndexedDB readwrite 事务覆盖。
 
 **完成检查**：`EditorWorkspace` 不再直接重建镜头或清空多个状态 map；自动镜头保存后不再
 写成 manual；任务被覆盖后来源仍可读；数据影响在执行前可见且有 recovery snapshot。
@@ -2195,10 +2194,11 @@ Phase 12 从未开始改为进行中。
 **当前记录（2026-08-29）**：Scene Engine、Worker、强身份 task/checkpoint、候选 review/apply、
 provenance、确认 Dialog、分组协调、单事务 recovery snapshot 恢复（含迁移浏览器 smoke 的修改后恢复断言）和 Web build 已有自动化证据；Edge 实测真实 H.264 项目可完成扫描、候选应用、刷新恢复且控制台无错误。
 2026-08-29 在 Edge 重新打开项目并重跑约 99.88 秒的 `test.mov`：早先 UI 使用旧默认 threshold 4000，扫描进度正常从 0% 到 100%，但只得到 1 个候选切点；同日修正临时映射后，Edge UI 显示 27 个边界/28 段候选且刷新后保留 28 个镜头，完整媒体 WASM smoke 和 `/aisenlens/` production preview 也得到 27 个边界，证明解码帧覆盖和临时阈值链路已接通。随后 Edge 完成显式暂停→继续、首候选排除、应用影响确认、创建快照并应用、保存/刷新，以及恢复应用前快照（26→28 镜头）；暂停竞态修复后未再出现协议错误，页面错误日志为空。当前仍不能把 27 个边界当作质量真值；后续需用人工标注长视频专项验证 Content/Adaptive/Threshold/Fade 配置、融合去抖、最短镜头过滤、时间映射和结果适配器。
-完整 UI 生命周期矩阵、持久化撤销矩阵和 lint 工具链仍未完成，故本任务保持未完成，Phase 12 不得启动。
+项目/媒体上下文切换、无活动项目失败页、持久化撤销矩阵和 lint 工具链已完成；Task 11.11 仍保持未完成，
+因为真实质量真值（人工标注长视频）以及具体“缺失媒体项目→重新选择文件”的入口还需要单独留证，Phase 12 不得启动。
 React hook 挂载/卸载专项已由独立 Chrome smoke 覆盖；Edge 已覆盖真实暂停/继续、候选排除、
-应用、保存/刷新和恢复快照；剩余 UI 矩阵仍包括可交互文件选择器下的项目/媒体切换、失败分支
-和持久化撤销，当前 headless 测试不能替代这些入口验证。
+应用、保存/刷新、恢复快照、`test03`→`测试` 媒体上下文切换和无活动项目失败分支；未把普通项目切换
+误记为缺失媒体文件重绑，后者仍需在实际缺失句柄的项目上执行一次可交互文件选择器回归。
 
 **最终交付物**：强媒体身份、canonical config hash、新 task persistence、明确的
 paused/interrupted 生命周期、候选审阅状态、可撤销应用领域命令、镜头 provenance、
