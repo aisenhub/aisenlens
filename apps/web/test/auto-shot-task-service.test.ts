@@ -37,6 +37,32 @@ const config = {
   },
   diagnostics: "off" as const,
 }
+const resolved = {
+  schemaVersion: 1 as const,
+  settings: {
+    schemaVersion: 1 as const,
+    detail: "balanced" as const,
+    transitions: "hard-cuts" as const,
+    minimumSceneDuration: { mode: "custom" as const, seconds: 1 },
+    overrides: {},
+    preset: { id: "general" as const, version: 1, catalog: "research" as const },
+  },
+  engineConfig: config,
+  canonicalConfig: JSON.stringify(["aisenlens-scene-config", 1, ["content", 2700, 3333, 3333, 3334], null, 1_000_000, [96, ["every-frame"]], "off"]),
+  configHash: "fnv1a64-v1:dabf02d3cce72112",
+  summary: {
+    presetId: "general" as const,
+    presetName: "通用视频",
+    catalog: "research" as const,
+    catalogStatus: "uncalibrated" as const,
+    detail: "balanced" as const,
+    transitions: "hard-cuts" as const,
+    minimumSceneDurationSeconds: 1,
+    detector: "content" as const,
+    analysisLabel: "逐帧 / 96 宽" as const,
+    calibrationLabel: "待标定" as const,
+  },
+}
 
 function fakeClient() {
   let progressObserver: ((progress: any) => void) | null = null
@@ -101,7 +127,7 @@ test("service persists progress and adapts completed engine result", async () =>
     projectId: "project-1",
     source: new Blob(),
     mediaIdentity,
-    config,
+    resolved,
     durationUs: 2_000_000,
     fpsNumerator: 30,
     fpsDenominator: 1,
@@ -115,6 +141,8 @@ test("service persists progress and adapts completed engine result", async () =>
   })
   await new Promise((resolve) => setTimeout(resolve, 0))
   assert.equal(store.records.get("project-1").progress.decodedFrames, 12)
+  assert.equal(store.records.get("project-1").controlSnapshot.preset.id, "general")
+  assert.equal(store.records.get("project-1").controlSnapshot.preset.catalog, "research")
   fake.resolve({
     status: "completed",
     result: {
@@ -152,7 +180,7 @@ test("pause stores checkpoint, resume uses it, and cancel never stores one", asy
     projectId: "project-2",
     source: new Blob(),
     mediaIdentity,
-    config,
+    resolved,
     durationUs: 2_000_000,
     fpsNumerator: 30,
     fpsDenominator: 1,
@@ -187,7 +215,7 @@ test("pause stores checkpoint, resume uses it, and cancel never stores one", asy
     projectId: "project-2",
     source: new Blob(),
     mediaIdentity,
-    config,
+    resolved,
     durationUs: 2_000_000,
     fpsNumerator: 30,
     fpsDenominator: 1,
@@ -218,7 +246,7 @@ test("restart removes a previous task and failed outcome is terminal", async () 
     projectId: "project-3",
     source: new Blob(),
     mediaIdentity,
-    config,
+    resolved,
     durationUs: 1_000_000,
     fpsNumerator: 30,
     fpsDenominator: 1,
@@ -276,7 +304,7 @@ test("resume invalidates a checkpoint when media or config no longer matches", a
         projectId: "project-4",
         source: new Blob(),
         mediaIdentity,
-        config,
+        resolved,
         durationUs: 1_000_000,
         fpsNumerator: 30,
         fpsDenominator: 1,
@@ -308,7 +336,7 @@ test("synchronous engine start failure disposes the client", async () => {
         projectId: "project-start-failure",
         source: new Blob(),
         mediaIdentity,
-        config,
+        resolved,
         durationUs: 1_000_000,
         fpsNumerator: 30,
         fpsDenominator: 1,
@@ -351,7 +379,7 @@ test("initial persistence failure cancels the engine and disposes the client", a
         projectId: "project-persistence-failure",
         source: new Blob(),
         mediaIdentity,
-        config,
+        resolved,
         durationUs: 1_000_000,
         fpsNumerator: 30,
         fpsDenominator: 1,
@@ -387,7 +415,7 @@ test("progress persistence failure is surfaced in the terminal task record", asy
     projectId: "project-progress-failure",
     source: new Blob(),
     mediaIdentity,
-    config,
+    resolved,
     durationUs: 1_000_000,
     fpsNumerator: 30,
     fpsDenominator: 1,

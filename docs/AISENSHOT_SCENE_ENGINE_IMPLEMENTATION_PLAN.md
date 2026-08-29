@@ -2216,14 +2216,14 @@ DB 升级和真实产品回归证据。
 
 ### 4.14 Phase 12 任务单：整体验收、研究控制面板、标定与旧路径删除
 
-**阶段状态**：`[ ] 未开始正式执行（12.1、12.5 仅有准备性记录；必须先完成 Phase 11 的 11.2–11.5、11.7–11.11 并关闭验收门。后续 Agent 不得因已有准备记录跳过 Phase 11）`
+**阶段状态**：`进行中（用户明确批准将人工质量标注延期至 Phase 12；技术/产品链路门已通过，质量真值与缺失媒体重绑作为本阶段显式剩余项）`
 
 **本阶段强制执行顺序**：`12.1 → 12.2 → 12.3A → 12.6A → 12.6B → 12.6C → 12.6D → 12.3B → 12.3C → 12.4 → 12.5 → 12.7`。
 任务编号保留历史文档编号，不表示可按页面出现的数值顺序执行。先完成 PySceneDetect
 语义驱动的**研究型控制面板**，再建立人工标定与 promotion；不得反向等待标定后才设计
 面板，也不得将研究 preset 当作生产默认。
 
-#### [ ] Task 12.1：在 Phase 11 关闭后重建删除前验收基线
+#### [x] Task 12.1：在 Phase 11 关闭后重建删除前验收基线
 
 **输入**：Phase 11 生产新链路、旧路径引用证据清单。
 
@@ -2238,9 +2238,9 @@ DB 升级和真实产品回归证据。
 
 **禁止**：凭人工点击一次就删除旧实现、把当前范围外的 Desktop/Mobile 写成已验证。
 
-**准备性记录（2026-08-28，不代表 Task 完成）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`，记录当时的 native、C ABI、baseline/SIMD、Worker 生命周期、Web build/preview、IndexedDB 12→13 升级和旧生产引用审计。Phase 11 后续会改变 identity/hash/task/shot schema，故 Agent 必须在新版本上完整重跑并更新该基线，不能复用旧结果勾选完成。
+**完成记录（2026-08-29）**：已在当前 Phase 11 最终 schema/代码上重建删除前基线，记录 native/CTest、C ABI、baseline/SIMD、Worker、Web build/preview、IndexedDB 12→14 链式升级、`test02.mov`/`test03.mov` 完整媒体 smoke、默认浏览器基线、lint/build 和旧生产引用审计；所有自动化门禁通过。人工质量标注按用户明确决定延期至 Phase 12，不作为本任务的技术通过依据；具体缺失媒体文件重绑仍列为产品交互补证项。详见 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`。
 
-#### [ ] Task 12.2：删除旧自动分镜实现与字段
+#### [x] Task 12.2：删除旧自动分镜实现与字段
 
 **前置条件**：Task 12.1 在 Phase 11 最终版本上通过，且旧 service 的准确率历史结果已经以
 报告形式冻结；不再为了比较保留可执行旧生产服务。
@@ -2257,7 +2257,13 @@ DB 升级和真实产品回归证据。
 
 **禁止**：删除项目/镜头/缩略图等仍在使用的通用服务、保留隐藏 fallback、加入临时兼容 adapter。
 
-#### [ ] Task 12.3A：建立研究/生产双 catalog 的配置基础
+**完成记录（2026-08-29）**：已删除 `apps/web/src/features/auto-shot/services/autoShotService.ts`、
+旧 `AutoShotRunRecord` 及其 project repository 读写方法，移除仅依赖旧服务的基线 verification 与
+`evaluate:auto-shot` 脚本入口；浏览器矩阵改为直接验证 Scene Engine 媒体/Worker 链路，历史 Phase 0
+评分文档保留为不可执行的基线记录。生产源码与测试中对旧 service、旧 record、旧 repository 方法和
+旧基线 verification 已无引用；通用视频缩略图 Canvas、截图与导出 Canvas 未删除。
+
+#### [x] Task 12.3A：建立研究/生产双 catalog 的配置基础
 
 **前置条件**：Task 12.2 完成。
 
@@ -2280,6 +2286,13 @@ DB 升级和真实产品回归证据。
 
 **完成检查**：研究面板、标定脚本与未来生产 UI 将调用同一个 resolver；仓库中没有第二套
 sensitivity/threshold 映射；未标定 preset 不可从 production registry 枚举。
+
+**完成记录（2026-08-29）**：新增 `features/auto-shot/config/` 的类型、研究/生产 registry、
+唯一 `resolveAutoShotConfig` 和配置摘要。研究 catalog 已登记 `general`、`film-series`、
+`short-form`、`talking-head`、`animation-gameplay` 五个待标定种子，production catalog 保持空；
+resolver 固定 preset → detail → transition/min duration → 完整 advanced override 顺序，复用
+Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项 Vite SSR 配置契约测试，覆盖
+全部组合、catalog 隔离、detector 覆盖和结构化错误。
 
 #### [ ] Task 12.3B：在研究面板后建立标定工作台、数据集 manifest、评分与 sweep 工具
 
@@ -2372,7 +2385,7 @@ preset 不进入产品性能结论。
 
 **准备性记录（2026-08-28，不代表 Task 完成）**：已新增根目录 `NOTICE`，同步当时的 Scene Engine README、架构/计划文档和根 README；新增 `scene-engine:verify:core` 根验收脚本，覆盖 native、WASM、TypeScript contract 和 SIMD parity。Phase 11/12 最终 schema、preset 和依赖确定后仍须重新审计发布包含关系、许可证、CI 和文档状态。
 
-#### [ ] Task 12.6A：引入 Zustand 并建立研究型 feature 设置控制器
+#### [x] Task 12.6A：引入 Zustand 并建立研究型 feature 设置控制器
 
 **前置条件**：Task 12.3A 通过；先检查 `apps/web/package.json`，确认尚无现有
 状态库可满足同一职责，再用 pnpm 为 Web workspace 安装并锁定 Zustand。
@@ -2395,6 +2408,12 @@ preset 不进入产品性能结论。
 **完成检查**：依赖和 lockfile 由 pnpm 更新；全仓只有一个 auto-shot 设置 store；没有临时
 Context/第二套状态；Web build 通过。
 
+**完成记录（2026-08-29）**：使用 pnpm 11.24.0 引入最新 Zustand，新增
+`useAutoShotSettingsStore` 与 `useAutoShotControl`。store 仅按 `projectId + mediaIdentityDigest`
+保存小型研究配置草稿、dirty 状态和重置动作，不保存 Blob、Worker、候选、checkpoint 或结果，
+也不写 localStorage/IndexedDB；切换媒体身份不会继承其他媒体草稿。新增 2 项 store 隔离/重置
+测试，配置 resolver、lint、Web build 均通过。
+
 #### [ ] Task 12.6B：扩展任务快照、review 与 IndexedDB schema
 
 **前置条件**：Task 12.6A 通过，复用 Phase 11 的强媒体身份和 canonical hash。
@@ -2414,6 +2433,11 @@ Context/第二套状态；Web build 通过。
 
 **完成检查**：数据库 fixture 从 12 经 13 到当前版本链式升级通过；没有旧 sensitivity task
 兼容读取/双写；完整快照可复现同一 Engine config。
+
+**进行记录（2026-08-29）**：已先将 IndexedDB 当前版本提升至 14，并在 `AutoShotTaskRecord` 中
+预留 `controlSnapshot` 字段及 repository 校验；旧 `auto-shot-runs` 在 12→14 升级时继续整体清理。
+完整的“resolver 生成快照 → task service 只接收 resolved configuration → resume 使用冻结快照”
+接线将在研究控制面板接入前完成，Task 12.6B 暂不勾选。
 
 #### [ ] Task 12.6C：实现研究型控制面板与候选审阅组件
 
@@ -2493,7 +2517,7 @@ holdout promotion report，旧路径已按 Task 12.2 删除。
 
 ## 五、风险与注意事项
 
-1. **当前首个阻断项是 Phase 11 正确性收口。** 工具链和核心构建已有历史通过记录，但强媒体身份、canonical config hash、刷新中断语义、候选应用领域命令与 provenance 未通过前，不得进入正式 Phase 12；任何环境仍须按任务单重新验证实际编译器，而不能只引用旧报告。
+1. **Phase 12 现已按用户批准的例外开始。** Phase 11 技术/产品链路门已通过；人工质量标注延期至 Phase 12.3B/12.3C，质量真值完成前不得晋升或宣称任何 production preset。缺失媒体文件重绑的 Edge 原生选择器证据也必须补齐并保持单独记录。
 2. **时间权威不得回退到帧号。** C++/WASM 全程使用微秒；只有 `sceneResultAdapter` 能转为 AisenLens 项目帧，VFR 尤其不能用平均帧率参与 detector 决策。
 3. **WebCodecs 到 WASM 不是物理零复制。** 可实现的目标是 `copyTo()` 一次必要复制直接进入预分配 WASM memory，禁止再经 Canvas、ImageData 或 JS 中间数组。
 4. **恢复确定性是核心验收项。** Adaptive look-ahead、Fade 状态和过滤器状态都必须进入 checkpoint；连续运行与暂停/恢复结果不一致时不得接 UI，刷新遗留的无 checkpoint `running` 记录不得伪装为 `paused`。

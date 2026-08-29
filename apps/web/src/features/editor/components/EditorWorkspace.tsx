@@ -96,6 +96,7 @@ import type {
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
+import { resolveAutoShotConfig } from "../../auto-shot/config/resolveAutoShotConfig"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
@@ -427,16 +428,19 @@ export default function EditorWorkspace({
     initialDurationSeconds: media.metadata?.durationSeconds ?? 0,
   })
 
-  const autoShotConfig = useMemo(() => ({
-    hardCut: {
-      kind: "content" as const,
-      threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 34))),
-      weights: { hue: 3333, saturation: 3333, luma: 3334 },
+  const autoShotResolved = useMemo(() => resolveAutoShotConfig({
+    schemaVersion: 1,
+    presetId: "general",
+    detail: "balanced",
+    transitions: "hard-cuts",
+    minimumSceneDuration: { mode: "custom", seconds: autoMinDuration },
+    overrides: {
+      hardCut: {
+        kind: "content",
+        threshold: Math.max(500, Math.min(9_500, Math.round(5_200 - autoSensitivity * 34))),
+        weights: { hue: 3333, saturation: 3333, luma: 3334 },
+      },
     },
-    fade: null,
-    minimumSceneDurationUs: Math.max(1, Math.round(autoMinDuration * 1_000_000)),
-    analysis: { maxWidth: 96, temporalSampling: { kind: "every-frame" as const } },
-    diagnostics: "off" as const,
   }), [autoMinDuration, autoSensitivity])
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
@@ -448,7 +452,7 @@ export default function EditorWorkspace({
     mediaFingerprint: autoShotMediaFingerprint,
     durationSeconds,
     frameRate: media.metadata?.frameRate ?? FRAMES_PER_SECOND,
-    config: autoShotConfig,
+    resolved: autoShotResolved,
   })
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
   const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])

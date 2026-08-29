@@ -7,6 +7,7 @@ import type {
   SceneTimePoint,
 } from "@aisenlens/scene-engine";
 import type { AutoShotMediaIdentity } from "./mediaIdentity";
+import type { AutoShotTaskControlSnapshot } from "./config/types";
 
 export type { AutoShotMediaIdentity, AutoShotMediaIdentityDigestStrategy } from "./mediaIdentity";
 
@@ -46,6 +47,8 @@ export interface AutoShotTaskRecord {
   projectId: string;
   mediaIdentity: AutoShotMediaIdentity;
   review: AutoShotTaskReview;
+  /** Frozen research/production control input used to create this task. */
+  controlSnapshot: AutoShotTaskControlSnapshot | null;
   config: SceneDetectionConfig;
   status: AutoShotTaskStatus;
   engineVersion: string | null;

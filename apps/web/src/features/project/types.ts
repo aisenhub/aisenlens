@@ -102,21 +102,6 @@ export interface DerivedWaveform {
   lastAccessedAt: string;
 }
 
-export interface AutoShotRunRecord {
-  id: string;
-  projectId: string;
-  mediaFingerprint: MediaSourceFingerprint;
-  status: "running" | "paused" | "completed" | "failed" | "cancelled";
-  sensitivity: number;
-  minimumShotFrames: number;
-  cursorFrame: number;
-  durationFrames: number;
-  cuts: Array<{ frame: number; confidence: number; kind: "hard-cut" | "gradual-transition" }>;
-  createdAt: string;
-  updatedAt: string;
-  errorMessage: string | null;
-}
-
 export interface StoredShotRecord {
   id: string;
   projectId: string;
@@ -218,9 +203,6 @@ export interface ProjectRepository {
   getDerivedWaveform: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<DerivedWaveform | null>;
   saveDerivedWaveform: (waveform: DerivedWaveform) => Promise<void>;
   deleteProjectDerivedWaveform: (projectId: string) => Promise<void>;
-  getProjectAutoShotRun: (projectId: string, mediaFingerprint: MediaSourceFingerprint) => Promise<AutoShotRunRecord | null>;
-  saveProjectAutoShotRun: (run: AutoShotRunRecord) => Promise<void>;
-  deleteProjectAutoShotRun: (projectId: string) => Promise<void>;
   getAutoShotTask: (projectId: string, mediaIdentity: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<AutoShotTaskRecord | null>;
   saveAutoShotTask: (task: AutoShotTaskRecord) => Promise<void>;
   deleteAutoShotTask: (projectId: string) => Promise<void>;

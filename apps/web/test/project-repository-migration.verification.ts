@@ -202,6 +202,14 @@ export async function runProjectRepositoryMigrationVerification() {
     projectId: "migration-project",
     mediaIdentity,
     review: { excludedCandidateIds: [], updatedAt: null, appliedAt: null },
+    controlSnapshot: {
+      schemaVersion: 1,
+      detail: "balanced",
+      transitions: "hard-cuts",
+      minimumSceneDuration: { mode: "preset" },
+      overrides: {},
+      preset: { id: "general", version: 1, catalog: "research" },
+    },
     config: {
       hardCut: {
         kind: "content",
@@ -215,7 +223,7 @@ export async function runProjectRepositoryMigrationVerification() {
     },
     status: "completed",
     engineVersion: "wasm-media-simd",
-    configHash: "config-hash",
+    configHash: "fnv1a64-v1:d6c05e27c12b7519",
     progress: {
       processedUs: 1000000,
       durationUs: 1000000,

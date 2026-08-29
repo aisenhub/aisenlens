@@ -2,19 +2,28 @@
 
 首次日期：2026-08-28；最近更新：2026-08-29
 
-> 历史快照说明：本报告记录 Phase 11 最小接线时已经通过的证据，不再代表 Phase 11
-> 验收门已关闭。2026-08-28 第二轮架构审计发现强媒体身份、canonical config hash、
-> 刷新中断语义、候选应用领域命令与正式镜头 provenance 缺口；后续 Agent 必须按实施
-> 计划 Task 11.7–11.11 补齐并重跑本报告矩阵，不能以本文件直接进入 Phase 12。
+> 历史快照说明：本报告曾记录 Phase 11 最小接线阶段的未完成证据。2026-08-28 第二轮架构审计
+> 发现的强媒体身份、canonical config hash、刷新中断语义、候选应用领域命令与正式镜头
+> provenance 缺口已按 Task 11.7–11.11 补齐并重跑矩阵；人工质量标注按用户批准延期到 Phase 12，
+> 不得把当前候选边界当作质量真值或据此晋升 production preset。
+
+## 用户批准的阶段例外（2026-08-29）
+
+Phase 11 的技术、生命周期、数据保护、Web 和 Edge 产品链路已完成验证。用户明确决定将
+人工质量标注留到 Phase 12 的标定工作台中处理，并批准立即进入 Phase 12；因此本报告不把
+当前真实视频的候选边界当作质量真值，也不允许在人工标注和 search/holdout 评分完成前晋升
+任何 production preset。缺失媒体项目的原生文件重新绑定仍需后续在 Edge 中补做一次交互证据，
+与人工标注分开记录。
 
 ## 已确认
 
 - `EditorWorkspace` 不再导入旧 `autoShotService`、Worker、WASM 或 Mediabunny；自动分镜控制由 `useAutoShotTask` 提供。
-- `projectRepository` 使用 IndexedDB version 13。升级事务只清理可重新生成的 `auto-shot-runs` 派生记录，不触碰项目、镜头、截图、注释和其他媒体数据。
+- `projectRepository` 使用 IndexedDB version 14。升级事务只清理可重新生成的 `auto-shot-runs` 派生记录，不触碰项目、镜头、截图、注释和其他媒体数据。
 - 新任务记录复用唯一 `projectId` 索引，包含版本化 `AutoShotMediaIdentity`、配置、微秒进度、候选 evidence、engine/config 标识、checkpoint 和错误信息；恢复比较使用完整媒体身份字段与摘要。
 - checkpoint 必须包含 `schemaVersion = 1`、`engineVersion`、`configHash`、`mediaIdentityDigest` 和 `ArrayBuffer coreState`；媒体身份不匹配时任务不可恢复。
 - resume 会再次比较任务保存的完整媒体身份、配置快照和 checkpoint 媒体摘要；不匹配时原子删除任务并要求重新扫描，不会把旧 checkpoint 交给 Worker。
-- 旧 `autoShotService.ts`、`AutoShotRunRecord` 和旧 repository 方法仅剩测试/待删除路径引用，未被 `EditorWorkspace` 生产调用。
+- 旧 `autoShotService.ts`、`AutoShotRunRecord` 和旧 repository 方法已按 Phase 12.2 删除；`EditorWorkspace`
+  与当前 Web 测试只使用 Scene Engine task/service 链路。
 
 ## 验证证据
 

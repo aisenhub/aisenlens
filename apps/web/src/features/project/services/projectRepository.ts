@@ -1,13 +1,14 @@
-import type { AutoShotRunRecord, CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
+import { hashSceneDetectionConfig } from "../../../../../../packages/scene-engine/src/api/configHash.ts";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 13;
+const DATABASE_VERSION = 14;
 const PROJECTS_STORE = "projects";
 const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
@@ -160,7 +161,7 @@ function openDatabase(): Promise<IDBDatabase> {
         const runs = database.createObjectStore(AUTO_SHOT_RUNS_STORE, { keyPath: "id" });
         runs.createIndex("projectId", "projectId", { unique: true });
       }
-      if (oldVersion < 13) {
+      if (oldVersion < 14) {
         request.transaction?.objectStore(AUTO_SHOT_RUNS_STORE).clear();
       }
       if (!database.objectStoreNames.contains(SHOT_GROUPS_STORE)) {
@@ -219,6 +220,12 @@ function assertAutoShotTaskRecord(task: AutoShotTaskRecord): void {
     throw new Error("自动分镜任务缺少有效强媒体身份。");
   }
   if (!task.config || !task.progress || !Array.isArray(task.candidates)) throw new Error("自动分镜任务结构无效。");
+  if (task.configHash && hashSceneDetectionConfig(task.config).text !== task.configHash) {
+    throw new Error("自动分镜任务配置哈希与完整配置不一致。");
+  }
+  if (task.controlSnapshot !== null && task.controlSnapshot !== undefined && (task.controlSnapshot.schemaVersion !== 1 || !task.controlSnapshot.preset || !task.controlSnapshot.preset.id || !task.controlSnapshot.preset.version || !task.controlSnapshot.preset.catalog)) {
+    throw new Error("自动分镜控制快照无效。");
+  }
   if (!task.review || !Array.isArray(task.review.excludedCandidateIds) || (task.review.updatedAt !== null && typeof task.review.updatedAt !== "string") || (task.review.appliedAt !== null && typeof task.review.appliedAt !== "string")) {
     throw new Error("自动分镜任务审阅状态无效。");
   }
@@ -542,34 +549,6 @@ export function createProjectRepository(): ProjectRepository {
       const transaction = database.transaction(DERIVED_WAVEFORMS_STORE, "readwrite");
       const store = transaction.objectStore(DERIVED_WAVEFORMS_STORE);
       const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (!cursor) return;
-        cursor.delete();
-        cursor.continue();
-      };
-      await transactionResult(transaction);
-    },
-
-    async getProjectAutoShotRun(projectId: string, mediaFingerprint: MediaSourceFingerprint) {
-      const database = await openDatabase();
-      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readonly");
-      const run = await requestResult(transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").get(projectId)) as AutoShotRunRecord | undefined;
-      if (!run) return null;
-      return run.mediaFingerprint.name === mediaFingerprint.name && run.mediaFingerprint.size === mediaFingerprint.size && run.mediaFingerprint.lastModified === mediaFingerprint.lastModified && run.mediaFingerprint.mimeType === mediaFingerprint.mimeType ? run : null;
-    },
-
-    async saveProjectAutoShotRun(run: AutoShotRunRecord) {
-      const database = await openDatabase();
-      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readwrite");
-      transaction.objectStore(AUTO_SHOT_RUNS_STORE).put({ ...run, updatedAt: new Date().toISOString() });
-      await transactionResult(transaction);
-    },
-
-    async deleteProjectAutoShotRun(projectId: string) {
-      const database = await openDatabase();
-      const transaction = database.transaction(AUTO_SHOT_RUNS_STORE, "readwrite");
-      const request = transaction.objectStore(AUTO_SHOT_RUNS_STORE).index("projectId").openCursor(IDBKeyRange.only(projectId));
       request.onsuccess = () => {
         const cursor = request.result;
         if (!cursor) return;

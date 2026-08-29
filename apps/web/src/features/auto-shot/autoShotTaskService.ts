@@ -1,23 +1,19 @@
 import type {
-  SceneDetectionConfig,
   SceneEngineError,
   SceneEngineClient,
   SceneEngineTask,
 } from "@aisenlens/scene-engine"
-import {
-  canonicalizeSceneDetectionConfig,
-  hashSceneDetectionConfig,
-} from "../../../../../packages/scene-engine/src/api/configHash.ts"
+import { canonicalizeSceneDetectionConfig } from "../../../../../packages/scene-engine/src/api/configHash.ts"
 import { adaptSceneResultToCandidates } from "./sceneResultAdapter.ts"
 import type { AutoShotTaskRecord, AutoShotTaskRepository } from "./types"
 import type { AutoShotMediaIdentity } from "./mediaIdentity.ts"
+import type { ResolvedAutoShotConfiguration } from "./config/types.ts"
 import { sameAutoShotMediaIdentity } from "./mediaIdentity.ts"
 import { canPersistPausedAutoShotTask } from "./taskState.ts"
 
 export interface AutoShotTaskServiceDependencies {
   createClient: () => SceneEngineClient
   repository: AutoShotTaskRepository
-  resolveConfig: (config: SceneDetectionConfig) => SceneDetectionConfig
   now?: () => string
   createId?: () => string
 }
@@ -26,7 +22,7 @@ export interface StartAutoShotTaskInput {
   projectId: string
   source: Blob
   mediaIdentity: AutoShotMediaIdentity
-  config: SceneDetectionConfig
+  resolved: ResolvedAutoShotConfiguration
   durationUs: number
   fpsNumerator: number
   fpsDenominator: number
@@ -91,9 +87,7 @@ export function createAutoShotTaskService(
 
   function baseRecord(
     input: StartAutoShotTaskInput,
-    config: SceneDetectionConfig,
     id: string,
-    configHash: string,
     checkpoint: AutoShotTaskRecord["checkpoint"],
   ): AutoShotTaskRecord {
     const timestamp = now()
@@ -102,10 +96,11 @@ export function createAutoShotTaskService(
       projectId: input.projectId,
       mediaIdentity: input.mediaIdentity,
       review: { excludedCandidateIds: [], updatedAt: null, appliedAt: null },
-      config,
+      controlSnapshot: input.resolved.settings,
+      config: input.resolved.engineConfig,
       status: "running",
       engineVersion: checkpoint?.engineVersion ?? null,
-      configHash: checkpoint?.configHash ?? configHash,
+      configHash: checkpoint?.configHash ?? input.resolved.configHash,
       progress: {
         processedUs: checkpoint?.resumeAfter.timestampUs ?? 0,
         durationUs: input.durationUs,
@@ -124,8 +119,8 @@ export function createAutoShotTaskService(
   async function start(
     input: StartAutoShotTaskInput,
   ): Promise<AutoShotTaskHandle> {
-    const config = dependencies.resolveConfig(input.config)
-    const configSnapshot = hashSceneDetectionConfig(config)
+    const config = input.resolved.engineConfig
+    const configSnapshot = { text: input.resolved.configHash, canonical: input.resolved.canonicalConfig }
     const existing = await dependencies.repository.getAutoShotTask(
       input.projectId,
       input.mediaIdentity,
@@ -173,9 +168,7 @@ export function createAutoShotTaskService(
     }
     const record = baseRecord(
       input,
-      config,
       createId(),
-      configSnapshot.text,
       checkpoint,
     )
     const client = dependencies.createClient()

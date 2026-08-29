@@ -15,6 +15,8 @@
     "test:auto-shot-adapter": "node --experimental-strip-types --test test/auto-shot-scene-result-adapter.test.ts",
     "test:auto-shot-media-fingerprint": "node --experimental-strip-types --test test/auto-shot-media-fingerprint.test.ts",
     "test:auto-shot-task-service": "node --experimental-strip-types --test test/auto-shot-task-service.test.ts",
+    "test:auto-shot-config": "node --test test/auto-shot-config.test.mjs",
+    "test:auto-shot-settings-store": "node --test test/auto-shot-settings-store.test.mjs",
     "test:editor-history": "node --experimental-strip-types --test test/editor-history-state.test.ts",
     "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
@@ -35,7 +37,8 @@
     "react-router-dom": "^7.18.2",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

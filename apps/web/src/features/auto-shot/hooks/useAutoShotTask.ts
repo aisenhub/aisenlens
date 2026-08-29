@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createSceneEngineClient } from "@aisenlens/scene-engine";
-import { resolveSceneDetectionConfig } from "@aisenlens/scene-engine";
 import projectRepository from "../../project/services/projectRepository";
 import type { MediaSourceFingerprint } from "../../project/types";
 import { createAutoShotTaskService, type AutoShotTaskHandle, type StartAutoShotTaskInput } from "../autoShotTaskService";
@@ -8,6 +7,7 @@ import type { AutoShotTaskRecord } from "../types";
 import { recoverAutoShotTaskStatus } from "../taskState";
 import { createAutoShotMediaIdentity } from "../mediaIdentityService";
 import type { AutoShotMediaIdentity } from "../mediaIdentity";
+import type { ResolvedAutoShotConfiguration } from "../config/types";
 
 interface UseAutoShotTaskInput {
   projectId: string;
@@ -15,7 +15,7 @@ interface UseAutoShotTaskInput {
   mediaFingerprint: MediaSourceFingerprint | null;
   durationSeconds: number;
   frameRate: number;
-  config: StartAutoShotTaskInput["config"];
+  resolved: ResolvedAutoShotConfiguration;
 }
 
 function fpsRational(frameRate: number): { numerator: number; denominator: number } {
@@ -38,7 +38,6 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       createWorker: () => new Worker(new URL("../workers/scene-engine.worker.ts", import.meta.url), { type: "module" }),
     }),
     repository: projectRepository,
-    resolveConfig: resolveSceneDetectionConfig,
   }), []);
 
   useEffect(() => {
@@ -124,7 +123,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
         projectId: input.projectId,
         source,
         mediaIdentity: mediaIdentity ?? await createAutoShotMediaIdentity(new File([source], input.mediaFingerprint.name, { type: input.mediaFingerprint.mimeType })),
-        config: input.config,
+        resolved: input.resolved,
         durationUs: Math.max(1, Math.round(input.durationSeconds * 1_000_000)),
         fpsNumerator: fps.numerator,
         fpsDenominator: fps.denominator,
@@ -158,7 +157,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       if (revision === revisionRef.current) setError(message);
       return null;
     }
-  }, [input.config, input.durationSeconds, input.frameRate, input.mediaFingerprint, input.projectId, input.sourceUrl, mediaIdentity, service]);
+  }, [input.durationSeconds, input.frameRate, input.mediaFingerprint, input.projectId, input.resolved, input.sourceUrl, mediaIdentity, service]);
 
   const pause = useCallback(async () => {
     const handle = handleRef.current;

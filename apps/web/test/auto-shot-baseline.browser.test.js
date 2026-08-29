@@ -129,7 +129,7 @@ async function evaluate(client, sessionId, expression) {
 // Keep the outer test budget above the per-operation budget so a slower developer
 // machine does not turn a valid full-media run into a false timeout.
 test(
-  "当前 JS 自动分镜基线可重复运行并记录环境与性能指标",
+  "当前 Scene Engine 浏览器矩阵可重复运行并记录环境与性能指标",
   { timeout: 900_000 },
   async (context) => {
     assert.ok(
@@ -321,24 +321,6 @@ test(
       )
       return
     }
-    const result = await waitFor(
-      () =>
-        evaluate(
-          client,
-          sessionId,
-          `(async () => (await import('${serverUrl}/test/auto-shot-baseline.verification.ts')).runAutoShotBaselineVerification())()`,
-        ),
-      "自动分镜基线运行失败",
-      840_000,
-    )
-    assert.equal(
-      result.run.status,
-      "completed",
-      result.run.errorMessage ?? "基线运行未完成",
-    )
-    assert.equal(result.run.cursorFrame, result.run.durationFrames)
-    assert.ok(result.fixture.durationSeconds > 0)
-    assert.ok(result.metrics.totalMilliseconds > 0)
     const capability = await evaluate(
       client,
       sessionId,
@@ -382,25 +364,10 @@ test(
       "报告只保留有界的首帧摘要，不得截断解码",
     )
     if (process.env.AISENLENS_RUN_FIXTURE_REPEAT_SMOKE === "1") {
-      const repeatResult = await evaluate(
-        client,
-        sessionId,
-        `(async () => (await import('${serverUrl}/test/auto-shot-baseline.verification.ts')).runAutoShotBaselineVerification())()`,
-      )
       const repeatMedia = await evaluate(
         client,
         sessionId,
         `(async () => (await import('${serverUrl}/test/auto-shot-media.verification.ts')).runAutoShotMediaVerification())()`,
-      )
-      assert.equal(
-        repeatResult.run.status,
-        "completed",
-        repeatResult.run.errorMessage ?? "重复基线运行未完成",
-      )
-      assert.deepEqual(
-        repeatResult.run.cuts,
-        result.run.cuts,
-        "合成 fixture 两次运行的边界必须一致",
       )
       assert.equal(
         repeatMedia.frameCount,
@@ -428,8 +395,6 @@ test(
           {
             generatedAt: new Date().toISOString(),
             browser: version.Browser,
-            first: result,
-            second: repeatResult,
             firstMedia: mediaDecoder,
             secondMedia: repeatMedia,
           },
@@ -599,7 +564,7 @@ test(
     const reportPath = resolve(
       repositoryDirectory,
       "test-results",
-      "auto-shot-baseline.json",
+      "scene-engine-browser-matrix.json",
     )
     await mkdir(resolve(repositoryDirectory, "test-results"), {
       recursive: true,
@@ -610,7 +575,7 @@ test(
         {
           generatedAt: new Date().toISOString(),
           browser: version.Browser,
-          ...result,
+          media: mediaDecoder,
         },
         null,
         2,
