@@ -23,7 +23,7 @@
 - 自动分镜 task-state、result-adapter、task-service：通过。
 - task service lifecycle：新增 checkpoint 媒体/配置失配、启动/首写失败清理和进度写入失败
   终态测试，通过 7/7。
-- Engine contract：25/25 通过。
+- Engine contract：当前 contract 矩阵 29/29 通过（早期记录的 25/25 已由新增生命周期与 SIMD 契约覆盖取代）。
 - Web strict TypeScript、production build、旧基线浏览器测试和 `git diff --check`：通过。
 - H.264 顺序解码生命周期 smoke：暂停后恢复完成、取消得到 `CANCELLED`、损坏素材得到 `ERROR`。
 - 本地页面启动检查：首页、项目库和空项目编辑器均可进入，浏览器控制台无 error/warning；未上传素材或执行破坏性清理。
@@ -52,6 +52,15 @@
   默认仍使用 `apps/web/test/test.mov`；本轮在 production preview 以相同 SIMD 配置完成额外素材
   smoke：`test03.mov` 完整解码 `359` 帧、输出 `3` 个边界；`test02.mov` 完整解码 `1429` 帧、
   输出 `9` 个边界，均到达 `COMPLETED`。
+- 本轮再次执行完整自动化门禁：`corepack pnpm install --frozen-lockfile`、`corepack pnpm lint`、
+  `corepack pnpm build`、native Debug/CTest、baseline/SIMD WASM 重建、Scene Engine typecheck、
+  ABI/Worker contract `29/29`、Web 自动分镜 contract/task-state/adapter/media-fingerprint/
+  task-service、editor history、retain-shot-map 及 `git diff --check` 均通过；默认浏览器基线通过
+  （Chrome 152，约 `180.8s`）。
+- Edge 非破坏性复验确认项目库中的 `test03` 与 `测试` 可分别打开且镜头数据不串；直接进入 `/app`
+  时显示“项目不存在或已删除/返回项目库”失败页。尝试用 Edge 自动化绑定缺失媒体的原生文件选择器
+  时仍因浏览器扩展边界无法捕获 `filechooser`，未伪造成功证据；该入口需要后续在真实缺失媒体
+  项目中由用户交互完成一次选择文件回归。
 - 本轮将完整媒体 smoke 拆分为独立命令执行；组合启用所有长视频 smoke 时超过旧的 360 秒总时限，
   不作为功能失败。backend parity 单后端超时已从 120 秒调整为 300 秒，以匹配完整媒体验证成本。
 - 默认浏览器基线在本机一次运行达到旧的 360 秒外层预算时没有产生断言失败，但被测试超时取消；

@@ -2191,7 +2191,7 @@ React 组件中复制应用算法、为旧 detection 长期保留兼容层。
 **完成检查**：11.2–11.5、11.7–11.11 全部 `[x]`，Phase 11 验收门逐项有证据；之后才能把
 Phase 12 从未开始改为进行中。
 
-**当前记录（2026-08-29）**：Scene Engine、Worker、强身份 task/checkpoint、候选 review/apply、
+**当前记录（2026-08-29；本轮验收补充）**：Scene Engine、Worker、强身份 task/checkpoint、候选 review/apply、
 provenance、确认 Dialog、分组协调、单事务 recovery snapshot 恢复（含迁移浏览器 smoke 的修改后恢复断言）和 Web build 已有自动化证据；Edge 实测真实 H.264 项目可完成扫描、候选应用、刷新恢复且控制台无错误。
 2026-08-29 在 Edge 重新打开项目并重跑约 99.88 秒的 `test.mov`：早先 UI 使用旧默认 threshold 4000，扫描进度正常从 0% 到 100%，但只得到 1 个候选切点；同日修正临时映射后，Edge UI 显示 27 个边界/28 段候选且刷新后保留 28 个镜头，完整媒体 WASM smoke 和 `/aisenlens/` production preview 也得到 27 个边界，证明解码帧覆盖和临时阈值链路已接通。随后 Edge 完成显式暂停→继续、首候选排除、应用影响确认、创建快照并应用、保存/刷新，以及恢复应用前快照（26→28 镜头）；暂停竞态修复后未再出现协议错误，页面错误日志为空。当前仍不能把 27 个边界当作质量真值；后续需用人工标注长视频专项验证 Content/Adaptive/Threshold/Fade 配置、融合去抖、最短镜头过滤、时间映射和结果适配器。
 项目/媒体上下文切换、无活动项目失败页、持久化撤销矩阵和 lint 工具链已完成；Task 11.11 仍保持未完成，
@@ -2199,6 +2199,14 @@ provenance、确认 Dialog、分组协调、单事务 recovery snapshot 恢复�
 React hook 挂载/卸载专项已由独立 Chrome smoke 覆盖；Edge 已覆盖真实暂停/继续、候选排除、
 应用、保存/刷新、恢复快照、`test03`→`测试` 媒体上下文切换和无活动项目失败分支；未把普通项目切换
 误记为缺失媒体文件重绑，后者仍需在实际缺失句柄的项目上执行一次可交互文件选择器回归。
+
+本轮自动化验收已再次完成：`corepack pnpm install --frozen-lockfile`、`corepack pnpm lint`、
+`corepack pnpm build`、Scene Engine native Debug/CTest、baseline 与 SIMD WASM 重建、TypeScript
+typecheck、ABI/Worker contract `29/29`、Web 自动分镜 contract/task-state/adapter/media-fingerprint/
+task-service、editor history 和 retain-shot-map 全部通过，`git diff --check` 通过。生产 preview 使用
+`AISENLENS_SCENE_FIXTURE` 分别跑通 `test02.mov`（完整 `1429` 帧、`9` 个边界）和 `test03.mov`
+（完整 `359` 帧、`3` 个边界），均为 `wasm-simd` 并到达 `COMPLETED`；默认浏览器基线也通过（Chrome
+152，约 `180.8s`）。这些结果只证明链路、生命周期和确定性，不替代人工质量真值。
 
 **最终交付物**：强媒体身份、canonical config hash、新 task persistence、明确的
 paused/interrupted 生命周期、候选审阅状态、可撤销应用领域命令、镜头 provenance、
