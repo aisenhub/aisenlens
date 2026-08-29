@@ -2329,10 +2329,11 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 
 **阶段记录（2026-08-29，进行中）**：已创建独立 `features/scene-calibration/` 真值模型、
 `CalibrationWorkbench` 组件和 calibration service；支持 hard-cut 候选接受/拒绝、手动新增/移动/
-删除、不确定区间、强媒体身份与研究运行快照字段。已实现 search/holdout manifest 的来源泄漏、
+删除、不确定区间、强媒体身份与研究运行快照字段；尾段或无边界候选不会被误收为 hard-cut。
+已实现 search/holdout manifest 的来源泄漏、
 schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
-边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，参数搜索明确只读 search。当前仍缺
-真实人工标注数据、完整 JSON 导出/复读 UI、checksum 复核和满足 8.1 数量门槛的 search/holdout，
+边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，支持标注 JSON 导出/复读，参数搜索
+明确只读 search。当前仍缺真实人工标注数据、工作台接入编辑器、checksum 复核和满足 8.1 数量门槛的 search/holdout，
 因此本任务保持未完成，不能进入 12.3C 生产晋升。
 
 #### [ ] Task 12.3C：标定、独立留出验收与生产晋升

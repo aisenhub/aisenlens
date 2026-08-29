@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addUncertainRange, scoreHardCuts, updateHardCutAnnotation, validateCalibrationManifests } from "../src/features/scene-calibration/services/calibrationService.ts";
+import { addUncertainRange, hashCalibrationManifest, parseCalibrationAnnotation, scoreHardCuts, serializeCalibrationAnnotation, updateHardCutAnnotation, validateCalibrationManifests } from "../src/features/scene-calibration/services/calibrationService.ts";
 import type { CalibrationAnnotationRecord, CalibrationManifest, CalibrationManifestEntry } from "../src/features/scene-calibration/types.ts";
 
 const identity = {
@@ -80,4 +80,14 @@ test("manifest 校验拒绝 search/holdout 来源泄漏和未解决分歧", () =
   const issues = validateCalibrationManifests(search, holdout);
   assert.ok(issues.some((item) => item.code === "SPLIT_LEAKAGE"));
   assert.ok(issues.some((item) => item.code === "UNRESOLVED_DISPUTE"));
+});
+
+test("标注 JSON 可确定性导出并复读，manifest checksum 稳定", async () => {
+  const current = annotation("search", "fixture-1");
+  const encoded = serializeCalibrationAnnotation(current);
+  assert.deepEqual(parseCalibrationAnnotation(encoded), current);
+  const first = await hashCalibrationManifest(manifest("search", "fixture-1"));
+  const second = await hashCalibrationManifest(manifest("search", "fixture-1"));
+  assert.match(first, /^[0-9a-f]{64}$/);
+  assert.equal(first, second);
 });

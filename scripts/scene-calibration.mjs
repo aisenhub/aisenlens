@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { assertCalibrationManifests, scoreHardCuts } from "../apps/web/src/features/scene-calibration/services/calibrationService.ts";
+import { assertCalibrationManifests, parseCalibrationAnnotation, scoreHardCuts, serializeCalibrationAnnotation } from "../apps/web/src/features/scene-calibration/services/calibrationService.ts";
 
 function flag(name) {
   const index = process.argv.indexOf(name);
@@ -23,7 +23,12 @@ if (command === "validate") {
   if (manifest.fixtures.some((entry) => entry.split !== "search")) throw new Error("score 命令只接受 search manifest；holdout 必须使用独立验收流程。");
   const scores = manifest.fixtures.map((entry) => ({ fixtureId: entry.fixtureId, score: scoreHardCuts(predictions[entry.fixtureId] ?? [], entry.annotation.hardCuts, entry.media.durationUs) }));
   console.log(JSON.stringify({ split: "search", datasetVersion: manifest.datasetVersion, scores }, null, 2));
+} else if (command === "export") {
+  const annotation = parseCalibrationAnnotation(await readFile(flag("--input"), "utf8"));
+  const expectedSplit = flag("--split");
+  if (expectedSplit !== annotation.split) throw new Error(`导出 split 与标注不一致：期望 ${expectedSplit}，实际 ${annotation.split}`);
+  process.stdout.write(serializeCalibrationAnnotation(annotation));
 } else {
-  console.error("用法：pnpm scene-calibration validate --search <search.json> --holdout <holdout.json>\n      pnpm scene-calibration score --manifest <search.json> --predictions <predictions.json>");
+  console.error("用法：pnpm scene-calibration validate --search <search.json> --holdout <holdout.json>\n      pnpm scene-calibration score --manifest <search.json> --predictions <predictions.json>\n      pnpm scene-calibration export --split <search|holdout> --input <annotation.json>");
   process.exitCode = 2;
 }

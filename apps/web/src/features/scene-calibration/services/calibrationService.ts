@@ -82,7 +82,7 @@ export function assertCalibrationManifests(search: CalibrationManifest, holdout:
 
 export function updateHardCutAnnotation(annotation: CalibrationAnnotationRecord, operation: "accept" | "reject" | "add" | "move" | "delete", input: { candidate?: AutoShotCandidate; id?: string; timestampUs?: number; frame?: number; confidence?: CalibrationBoundaryConfidence; note?: string }): CalibrationAnnotationRecord {
   const next = structuredClone(annotation);
-  if (operation === "accept" && input.candidate) {
+  if (operation === "accept" && input.candidate?.kind === "hard-cut" && input.candidate.boundary) {
     const candidate = input.candidate;
     if (!next.hardCuts.some((cut) => cut.id === `candidate:${candidate.id}`)) next.hardCuts.push({ id: `candidate:${candidate.id}`, timestampUs: candidate.boundary?.timestampUs ?? 0, frame: candidate.startFrame, confidence: input.confidence ?? "confirmed", source: "candidate", candidateId: candidate.id, note: input.note });
   } else if (operation === "reject" && input.id) {
@@ -96,6 +96,23 @@ export function updateHardCutAnnotation(annotation: CalibrationAnnotationRecord,
   }
   next.updatedAt = new Date().toISOString();
   return next;
+}
+
+export function serializeCalibrationAnnotation(annotation: CalibrationAnnotationRecord): string {
+  return `${JSON.stringify(annotation, null, 2)}\n`;
+}
+
+export function parseCalibrationAnnotation(value: string): CalibrationAnnotationRecord {
+  const parsed = JSON.parse(value) as CalibrationAnnotationRecord;
+  const issues = validateAnnotation(parsed, "annotation");
+  if (issues.length) throw new Error(issues.map((item) => `${item.code} ${item.path}: ${item.message}`).join("\n"));
+  return parsed;
+}
+
+export async function hashCalibrationManifest(manifest: CalibrationManifest): Promise<string> {
+  const canonical = JSON.stringify(manifest);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function addUncertainRange(annotation: CalibrationAnnotationRecord, range: Omit<CalibrationUncertainRange, "id">): CalibrationAnnotationRecord {
