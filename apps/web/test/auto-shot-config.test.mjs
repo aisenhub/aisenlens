@@ -13,6 +13,17 @@ function settings(presetId, detail, transitions) {
 
 test.after(async () => vite.close())
 
+test("研究 catalog 暴露四个内容预设，通用与影视统一为 general", () => {
+  assert.deepEqual(Object.keys(getResearchPresetRegistry()).sort(), [
+    "animation-gameplay",
+    "general",
+    "short-form",
+    "talking-head",
+  ])
+  const resolved = resolveAutoShotConfig(settings("general", "balanced", "hard-cuts"))
+  assert.equal(resolved.summary.presetName, "通用/影视")
+})
+
 test("研究 catalog 的所有 preset/detail/transition 组合都产生合法配置", () => {
   for (const presetId of Object.keys(getResearchPresetRegistry())) {
     for (const detail of ["conservative", "balanced", "detailed"]) {

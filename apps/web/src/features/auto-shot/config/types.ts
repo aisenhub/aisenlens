@@ -2,7 +2,6 @@ import type { SceneDetectionConfig } from "@aisenlens/scene-engine";
 
 export type AutoShotPresetId =
   | "general"
-  | "film-series"
   | "short-form"
   | "talking-head"
   | "animation-gameplay";

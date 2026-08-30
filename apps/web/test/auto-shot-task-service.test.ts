@@ -52,7 +52,7 @@ const resolved = {
   configHash: "fnv1a64-v1:dabf02d3cce72112",
   summary: {
     presetId: "general" as const,
-    presetName: "通用视频",
+    presetName: "通用/影视",
     catalog: "research" as const,
     catalogStatus: "uncalibrated" as const,
     detail: "balanced" as const,

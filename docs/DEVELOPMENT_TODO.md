@@ -41,7 +41,7 @@
 1. Phase 11 技术与产品链路已完成：canonical config hash、强媒体身份及 task/checkpoint 持久化、`paused/interrupted` 生命周期、候选 review、应用前确认、分组协调、recovery snapshot、正式镜头 provenance、真实暂停恢复/取消、项目/媒体切换、失败页、保存/刷新和快照恢复均已覆盖；人工质量标注与缺失媒体重绑交互证据明确延期到 Phase 12，不能把现有候选边界当作质量真值。
 2. 已加入 `apps/web/eslint.config.mjs` 与根目录/Web `lint` 脚本，当前 lint 以 ESLint flat config、TypeScript 推荐规则、React Hooks 基础规则和 `--max-warnings=0` 作为静态门；`react-hooks/exhaustive-deps` 暂不阻断构建，待逐个审计现有媒体/编辑器生命周期 effect 后再提升为 error。
 3. Phase 11 门关闭后重建删除前基线，再删除无生产引用的旧 Canvas/seek 自动分镜路径和旧字段。
-4. 已建立唯一 resolver 与 research/production 双 catalog，并登记五个待标定研究预设；下一步按 PySceneDetect 的 Content、Adaptive、Threshold/Fade、最短镜头和过滤器**语义**完成研究型控制面板与候选审阅。研究面板必须显式显示“待标定”，其数值不得称为生产默认。
+4. 已建立唯一 resolver 与 research/production 双 catalog，并登记四个待标定研究预设（通用/影视、短视频、访谈/Vlog、动画/游戏）；下一步按 PySceneDetect 的 Content、Adaptive、Threshold/Fade、最短镜头和过滤器**语义**完成研究型控制面板与候选审阅。研究面板必须显式显示“待标定”，其数值不得称为生产默认。
 5. 已引入最新 Zustand，新增按 `projectId + mediaIdentityDigest` 隔离的 auto-shot 设置 store 与控制 hook；不保存 Blob、Worker、候选或 checkpoint，不写 localStorage/IndexedDB。
 6. Phase 12.2 已删除旧 Canvas/seek 自动分镜 service、旧 `AutoShotRunRecord`、旧 repository 方法和旧基线入口；Phase 12.6B 已完成任务控制快照、resolver 冻结、resume 使用旧快照和 IndexedDB version 14 迁移。
 7. **Phase 12 控制面（2026-08-29，已验证）**：旧“灵敏度 + 最短时长”映射已删除；编辑器现在通过 research catalog、Zustand 设置草稿和 resolver 生成冻结任务快照，面板明确显示“研究配置 · 待标定”。

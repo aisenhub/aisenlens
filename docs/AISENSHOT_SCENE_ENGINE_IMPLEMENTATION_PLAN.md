@@ -2287,9 +2287,9 @@ DB 升级和真实产品回归证据。
 **完成检查**：研究面板、标定脚本与未来生产 UI 将调用同一个 resolver；仓库中没有第二套
 sensitivity/threshold 映射；未标定 preset 不可从 production registry 枚举。
 
-**完成记录（2026-08-29）**：新增 `features/auto-shot/config/` 的类型、研究/生产 registry、
-唯一 `resolveAutoShotConfig` 和配置摘要。研究 catalog 已登记 `general`、`film-series`、
-`short-form`、`talking-head`、`animation-gameplay` 五个待标定种子，production catalog 保持空；
+**完成记录（2026-08-29；2026-08-30 更新）**：新增 `features/auto-shot/config/` 的类型、研究/生产 registry、
+唯一 `resolveAutoShotConfig` 和配置摘要。研究 catalog 已登记 `general`（通用/影视）、
+`short-form`、`talking-head`、`animation-gameplay` 四个待标定种子，production catalog 保持空；
 resolver 固定 preset → detail → transition/min duration → 完整 advanced override 顺序，复用
 Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项 Vite SSR 配置契约测试，覆盖
 全部组合、catalog 隔离、detector 覆盖和结构化错误。
@@ -2337,7 +2337,7 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 `timestampUs` 按标注媒体的量化 FPS 与 `ceil` 规则重新投影。此前导出的 `test03.mov`
 历史 JSON 中 7 个边界的帧号与时间戳不一致，不能直接作为最终真值；重新扫描并导出后，
 该素材的预期帧号为 `39,83,147,177,242,302,340`，旧文件应废弃并重新生成。
-2026-08-30 已重新导出并复读 `test03.mov` 标注：`film-series` 预设、`balanced`、仅硬切，
+2026-08-30 已重新导出并复读 `test03.mov` 标注：`general`（通用/影视）预设、`balanced`、仅硬切，
 `wasm-media-simd`，7/7 候选接受，帧号与时间戳一致，强媒体身份和 candidateIds 完整。
 该记录属于 search 集合的首条有效标定样本，尚不能代表算法质量结论；后续需继续采集其他
 视频并完成独立人工复核、checksum 复核及 search/holdout 数量门槛。

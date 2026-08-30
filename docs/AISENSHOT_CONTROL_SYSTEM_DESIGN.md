@@ -2,7 +2,7 @@
 
 > 状态：第二轮架构审计完成；需先关闭 Phase 11 的媒体身份、配置哈希、恢复语义和候选应用边界。Phase 12 采用“先研究型控制面板，再人工标定和生产晋升”的顺序；未标定配置不得宣称为生产默认值
 >
-> 日期：2026-08-28
+> 日期：2026-08-30（内容预设合并更新）
 >
 > 范围：Web 自动分镜的用户配置、预设解析、任务快照与候选审阅
 
@@ -76,8 +76,7 @@ PySceneDetect 数值与本项目 C++/WASM 固定点 score 等价。正式预设�
 
 | preset ID | 用户名称 | 检测目标 | 初始 detector 倾向 | 默认转场 | 最短镜头种子 |
 | --- | --- | --- | --- | --- | --- |
-| `general` | 通用视频 | 未知类型的安全起点 | Adaptive | 仅硬切 | 0.6s |
-| `film-series` | 电影 / 剧集 | 长叙事、镜头运动、可能存在黑场转场 | Adaptive | 硬切与淡入淡出 | 0.8s |
+| `general` | 通用/影视 | 通用与影视叙事内容、镜头运动和可能的黑场转场 | Adaptive | 仅硬切 | 0.8s |
 | `short-form` | 短视频 | 快节奏剪辑与较短镜头 | Adaptive | 仅硬切 | 0.4s |
 | `talking-head` | 访谈 / Vlog | 压制人物动作和曝光变化造成的误切 | Adaptive（更保守） | 仅硬切 | 1.0s |
 | `animation-gameplay` | 动画 / 游戏 | 大幅色彩变化、闪光和界面切换 | Content/Adaptive 对照标定 | 仅硬切 | 0.5s |
@@ -131,7 +130,6 @@ preset，用户自定义预设的命名、保存与跨项目管理作为后续�
 ```ts
 type AutoShotPresetId =
   | "general"
-  | "film-series"
   | "short-form"
   | "talking-head"
   | "animation-gameplay";
@@ -294,7 +292,7 @@ apps/web/src/features/scene-calibration/
 ```text
 自动分镜
 ├─ 配置状态：研究配置 / 待标定（首轮 promotion 前必须可见）
-├─ 视频类型：通用 / 电影剧集 / 短视频 / 访谈Vlog / 动画游戏
+├─ 视频类型：通用/影视 / 短视频 / 访谈Vlog / 动画游戏
 ├─ 检出程度：保守 / 均衡 / 细致
 ├─ 转场：仅硬切 / 硬切与淡入淡出
 ├─ 最短镜头：跟随预设（0.8s） / 自定义

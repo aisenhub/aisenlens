@@ -26,7 +26,7 @@
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
-| 内容预设是否需要按视频类型拆分 | PySceneDetect 官方 `ContentDetector`、`AdaptiveDetector`、`ThresholdDetector` 文档与 CLI；PySceneDetect `benchmark/README.md`、`benchmark/SWEEP_REPORT.md`；OpenReel `cloud-job-types.ts`、`ai-kinds.config.ts`、`AIPanel.tsx`；OpenCut `scenes-view.tsx`、`scenes-manager.ts`；AisenLens `researchPresetRegistry.ts`、`resolveAutoShotConfig.ts` | PySceneDetect 将检测器语义与阈值、窗口、最短场景长度独立配置；BBC、AutoShot、ClipShots 的最优参数不同，不能用一个全局灵敏度覆盖。OpenReel 只把场景检测作为一种分析任务，OpenCut 只提供场景管理交互，均没有可复用的内容类型预设体系。 | 普通 UI 合并“通用视频”和“电影 / 剧集”为“通用 / 叙事”，因为两者均为 Adaptive 且差异主要是默认最短时长与转场选择；转场继续独立控制。保留“短视频”（快节奏/较短镜头）、“访谈 / Vlog”（人物动作与曝光更保守）和“动画 / 游戏”（Content 检测器）三个预设。不得因 UI 合并而混淆 Adaptive 与 Content 的引擎语义；合并后的参数需重新用 search/holdout 标定。 |
+| 内容预设是否需要按视频类型拆分 | PySceneDetect 官方 `ContentDetector`、`AdaptiveDetector`、`ThresholdDetector` 文档与 CLI；PySceneDetect `benchmark/README.md`、`benchmark/SWEEP_REPORT.md`；OpenReel `cloud-job-types.ts`、`ai-kinds.config.ts`、`AIPanel.tsx`；OpenCut `scenes-view.tsx`、`scenes-manager.ts`；AisenLens `researchPresetRegistry.ts`、`resolveAutoShotConfig.ts` | PySceneDetect 将检测器语义与阈值、窗口、最短场景长度独立配置；BBC、AutoShot、ClipShots 的最优参数不同，不能用一个全局灵敏度覆盖。OpenReel 只把场景检测作为一种分析任务，OpenCut 只提供场景管理交互，均没有可复用的内容类型预设体系。 | 普通 UI 合并“通用视频”和“电影 / 剧集”为“通用/影视”，因为两者均为 Adaptive 且差异主要是默认最短时长与转场选择；转场继续独立控制。保留“短视频”（快节奏/较短镜头）、“访谈 / Vlog”（人物动作与曝光更保守）和“动画 / 游戏”（Content 检测器）三个预设。不得因 UI 合并而混淆 Adaptive 与 Content 的引擎语义；合并后的参数需重新用 search/holdout 标定。 |
 
 ## 2026-08-29 自动分镜人工标定与数据导出
 
