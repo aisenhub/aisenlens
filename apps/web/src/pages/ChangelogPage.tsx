@@ -1,5 +1,14 @@
 const LOGS = [
   {
+    version: "v1.0.0",
+    date: "2026-08-30",
+    tag: "自动分镜",
+    tagColor: "text-accent border-accent/30 bg-accent/10",
+    items: [
+      "重构自动分镜算法。",
+    ],
+  },
+  {
     version: "v0.2.0",
     date: "2026-08-15",
     tag: "项目重构",
