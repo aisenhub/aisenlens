@@ -50,9 +50,9 @@ export default function BasicSettings({ settings, disabled = false, onChange }: 
               size="sm"
               disabled={disabled}
               onClick={() => onChange({ transitions: value })}
-              className={`${settings.transitions === value ? "border-accent/70 bg-accent/10 text-accent" : "text-text-muted"}`}
+              className={`h-auto min-h-8 min-w-0 whitespace-normal px-1.5 py-1.5 text-center leading-4 ${settings.transitions === value ? "border-accent/70 bg-accent/10 text-accent" : "text-text-muted"}`}
             >
-              {value === "hard-cuts" ? "硬切" : "硬切 + 淡入淡出"}
+              <span className="min-w-0 whitespace-normal break-words">{value === "hard-cuts" ? "硬切" : "硬切 + 淡入淡出"}</span>
             </Button>
           ))}
         </div>
