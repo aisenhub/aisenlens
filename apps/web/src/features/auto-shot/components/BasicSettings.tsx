@@ -4,6 +4,7 @@ import type { AutoShotControlSettings, DetectionDetail, TransitionSelection } fr
 
 interface BasicSettingsProps {
   settings: AutoShotControlSettings;
+  presetDefaultMinimumSceneDurationSeconds?: number;
   disabled?: boolean;
   onChange: (patch: Partial<AutoShotControlSettings>) => void;
 }
@@ -14,10 +15,14 @@ const details: Array<{ value: DetectionDetail; label: string; hint: string }> = 
   { value: "detailed", label: "细致", hint: "提高召回" },
 ];
 
-export default function BasicSettings({ settings, disabled = false, onChange }: BasicSettingsProps) {
+export default function BasicSettings({ settings, presetDefaultMinimumSceneDurationSeconds, disabled = false, onChange }: BasicSettingsProps) {
   const customDuration = settings.minimumSceneDuration.mode === "custom"
     ? settings.minimumSceneDuration.seconds
     : undefined;
+  const presetDuration = Number.isFinite(presetDefaultMinimumSceneDurationSeconds)
+    ? presetDefaultMinimumSceneDurationSeconds
+    : undefined;
+  const displayedDuration = customDuration ?? presetDuration;
   return (
     <div className="space-y-3 rounded-xl border border-border bg-bg-deep p-3">
       <div>
@@ -50,42 +55,42 @@ export default function BasicSettings({ settings, disabled = false, onChange }: 
               size="sm"
               disabled={disabled}
               onClick={() => onChange({ transitions: value })}
-              className={`h-auto min-h-8 min-w-0 whitespace-normal px-1.5 py-1.5 text-center leading-4 ${settings.transitions === value ? "border-accent/70 bg-accent/10 text-accent" : "text-text-muted"}`}
+              className={`h-8 min-w-0 whitespace-nowrap px-1.5 py-1 text-center text-[11px] leading-none tracking-tight ${settings.transitions === value ? "border-accent/70 bg-accent/10 text-accent" : "text-text-muted"}`}
             >
-              <span className="min-w-0 whitespace-normal break-words">{value === "hard-cuts" ? "硬切" : "硬切 + 淡入淡出"}</span>
+              <span className="whitespace-nowrap">{value === "hard-cuts" ? "硬切" : "硬切 + 淡入淡出"}</span>
             </Button>
           ))}
         </div>
       </div>
       <div>
-        <div className="flex items-center justify-between">
-          <span className="editor-meta text-text-dim">最短镜头</span>
-          <span className="editor-meta text-accent">{customDuration === undefined ? "按预设" : `${customDuration.toFixed(1)} s`}</span>
-        </div>
+        <span className="editor-meta text-text-dim">最短镜头</span>
         <div className="mt-1.5 flex items-center gap-2">
-          <Button
-            type="button"
-            variant={customDuration === undefined ? "default" : "outline"}
-            size="sm"
-            disabled={disabled}
-            onClick={() => onChange({ minimumSceneDuration: { mode: "preset" } })}
-          >
-            预设
-          </Button>
           <Input
             type="number"
             min={0.1}
             max={30}
             step={0.1}
             disabled={disabled}
-            value={customDuration ?? ""}
-            placeholder="自定义秒数"
+            value={displayedDuration ?? ""}
+            aria-label="最短镜头秒数"
+            placeholder={presetDuration === undefined ? "自定义秒数" : `${presetDuration.toFixed(1)} 秒`}
             onChange={(event) => {
               const seconds = Number(event.target.value);
               if (Number.isFinite(seconds)) onChange({ minimumSceneDuration: { mode: "custom", seconds } });
             }}
-            className="h-7 flex-1 text-right font-mono text-xs"
+            className="h-7 w-16 flex-none text-center font-mono text-xs"
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => onChange({ minimumSceneDuration: { mode: "preset" } })}
+            title="恢复当前内容预设的最短镜头"
+            className={`h-7 shrink-0 px-2 ${customDuration === undefined ? "border-accent/70 bg-accent/10 text-accent" : "text-text-muted"}`}
+          >
+            预设
+          </Button>
         </div>
       </div>
     </div>

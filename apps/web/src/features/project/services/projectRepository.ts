@@ -254,7 +254,7 @@ function assertCalibrationAnnotationRecord(annotation: CalibrationAnnotationReco
   if (!Array.isArray(annotation.hardCuts) || !Array.isArray(annotation.uncertainRanges) || !annotation.candidateReviews || typeof annotation.candidateReviews !== "object") {
     throw new Error("标定记录结构无效。");
   }
-  if (Object.values(annotation.candidateReviews).some((status) => status !== "accepted" && status !== "rejected")) {
+  if (Object.values(annotation.candidateReviews).some((status) => status !== "accepted" && status !== "rejected" && status !== "corrected")) {
     throw new Error("标定候选判定状态无效。");
   }
 }

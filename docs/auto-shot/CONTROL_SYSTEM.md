@@ -1,6 +1,6 @@
 # AisenShot 自动分镜控制系统设计
 
-> 状态：第二轮架构审计完成；需先关闭 Phase 11 的媒体身份、配置哈希、恢复语义和候选应用边界。Phase 12 采用“先研究型控制面板，再人工标定和生产晋升”的顺序；未标定配置不得宣称为生产默认值
+> 状态：第二轮架构审计完成；Phase 11 的媒体身份、配置哈希、恢复语义和候选应用边界已关闭。Phase 12 已完成研究控制面板与首批 production 晋升：通用/影视和短视频为 production version 1；未晋升配置不得宣称为生产默认值
 >
 > 日期：2026-08-30（内容预设合并更新）
 >
@@ -81,13 +81,23 @@ PySceneDetect 数值与本项目 C++/WASM 固定点 score 等价。正式预设�
 | `talking-head` | 访谈 / Vlog | 压制人物动作和曝光变化造成的误切 | Adaptive（更保守） | 仅硬切 | 1.0s |
 | `animation-gameplay` | 动画 / 游戏 | 大幅色彩变化、闪光和界面切换 | Content/Adaptive 对照标定 | 仅硬切 | 0.5s |
 
-表中的 detector 和时长只是待 sweep 的**标定种子**，不是已通过验收的生产默认值。
+当前 Web 编辑器只开放 `general`（通用/影视）和 `short-form`（短视频），二者已晋升为 production version 1。
+`talking-head`（访谈 / Vlog）与 `animation-gameplay`（动画 / 游戏）暂时封存为研究种子：
+它们仍保留在 research registry、resolver、标定与 sweep 工具中，供后续补充标注和参数验证，
+但不会出现在普通自动分镜控制面板，也不应被误认为生产预设。重新开放前必须先完成对应素材的
+search/holdout 验收。
+
+表中的 detector 和时长对未晋升专项只是待 sweep 的**标定种子**；`general` 与 `short-form`
+的 version 1 已按用户批准冻结为当前 production 基线，后续改动必须升版本。
 BBC、AutoShot、ClipShots 可以作为长内容与短 Web 内容的外部参考，但最终值必须在
 AisenLens 自有分类标注集上通过 Precision、Recall、F1 和边界偏移验证。
 
-在首轮标定完成前，这些 preset 属于 `research` catalog：面板可以运行、审阅和应用
-结果，但必须显示“研究配置 / 待标定”，不能使用“推荐”“最佳”或“生产默认”等文案。
+在首轮标定完成前，未晋升 preset 属于 `research` catalog：研究/标定工具可以运行、审阅和应用
+结果，但必须显示“研究配置 / 待标定”，不能使用“推荐”“最佳”或“生产默认”等文案；普通 Web
+编辑器只枚举当前开放的两个预设，封存种子不进入用户选择列表。
 `production` catalog 初始为空，只有 promotion 报告通过后才允许同一 preset ID 的版本进入。
+当前已根据用户批准的 [production promotion report](archive/production-v1-promotion.json)
+晋升 `general` 与 `short-form` version 1；后续测试若需改参数，必须创建新版本并重新评估。
 
 内容类型不能仅根据横竖屏、文件扩展名或视频时长自动猜测。首版由用户明确选择；
 未来若增加推荐功能，只能显示“建议预设”，不能静默改写任务配置。
@@ -119,9 +129,10 @@ Content 模式调整 `threshold`；Adaptive 模式调整 `adaptiveThreshold`，�
   宽分析；stride 或更高分辨率必须先通过准确率、性能和内存门槛，不能作为无效选项
   提前出现在 UI。
 
-任一高级参数偏离预设后，界面显示“基于〈预设名称〉已调整”；恢复预设会一次性
-清除覆盖值。首版不把 `custom` 伪装成内容预设：高级覆盖始终保留一个明确的基础
-preset，用户自定义预设的命名、保存与跨项目管理作为后续能力单独立项。
+任一高级参数偏离预设后，覆盖值仍写入当前设置草稿并在任务快照中冻结；普通生产面板
+不显示 catalog、配置状态或内部摘要。开发者工具中的高级设置可清除覆盖并恢复跟随预设。
+首版不把 `custom` 伪装成内容预设：高级覆盖始终保留一个明确的基础 preset，用户自定义
+预设的命名、保存与跨项目管理作为后续能力单独立项。
 
 ## 4. 类型与解析边界
 
@@ -214,8 +225,8 @@ Worker、repository 和 C ABI 都不得各自维护第二套映射。高级设�
 - 候选结果、checkpoint 和引擎结果继续保存到 IndexedDB 的 auto-shot task record，
   不把大数据放入 Zustand。
 - 首版按 `projectId + mediaIdentityDigest` 保存当前浏览器会话中的小型设置草稿；在 production
-  catalog 为空时初始化为当前 `general` 研究配置，并显示其待标定状态；首次晋升 `general`
-  后，新扫描才初始化为生产默认。草稿不写 localStorage/IndexedDB，任务快照始终持久化。
+  catalog 为空时初始化为当前 `general` 生产配置；研究/标定模式才使用 research catalog。
+  草稿不写 localStorage/IndexedDB，任务快照始终持久化。
   项目默认预设的长期保存可在项目设置模型明确后单独实施。
 
 Zustand 尚未安装，实施本控制系统时按既有开发待办正式引入并锁定版本；不创建临时
@@ -291,19 +302,26 @@ apps/web/src/features/scene-calibration/
 
 ```text
 自动分镜
-├─ 配置状态：研究配置 / 待标定（首轮 promotion 前必须可见）
-├─ 视频类型：通用/影视 / 短视频 / 访谈Vlog / 动画游戏
+├─ 视频类型：通用/影视 / 短视频
 ├─ 检出程度：保守 / 均衡 / 细致
 ├─ 转场：仅硬切 / 硬切与淡入淡出
-├─ 最短镜头：跟随预设（0.8s） / 自定义
-├─ 高级设置（折叠）
-├─ 配置摘要：电影剧集 · 均衡 · 含淡入淡出 · ≥0.8s
-└─ 开始扫描
+├─ 最短镜头：秒数输入 + 预设恢复按钮
+└─ 开始自动分镜 / 继续扫描 / 重新扫描
+
+完成后追加候选边界统计、逐候选纳入/排除、应用候选分镜（先确认）和重新扫描；普通
+面板不显示配置状态徽标、黄色说明或 detector/采样尺寸摘要。恢复自动分镜默认设置移入
+左侧工具栏底部的“设置”面板。高级检测参数和标定入口移入“开发者”工具，并由各自
+开关控制。
 ```
 
-运行中替换设置区为只读摘要、进度、暂停和取消；完成后显示**检测边界数**和生成的候选
-镜头数（尾段不得被称为切点）、hard-cut/fade
-分类、配置摘要、重新扫描和显式应用。原始 score 不显示为“置信率”；需要用户友好
+标定工作台不属于普通自动分镜控制面板。Web 编辑器左侧提供独立的“开发者”工具入口，
+其中的“启用标定模式”默认关闭；只有用户主动打开后，自动分镜完成时才显示 hard-cut
+候选审阅、真值编辑和 JSON 导出内容。关闭标定模式不会删除已有标注，只隐藏标定界面，
+避免普通生产操作被研究工具干扰。高级检测参数也归入该入口，使用独立开关控制；开启后
+可选择检测器并编辑阈值、窗口、最低内容差异和分量权重，所有改动仅作为当前任务的高级覆盖。
+
+运行中设置只读并显示进度、暂停和取消；完成后显示**检测边界数**和生成的候选镜头数
+（尾段不得被称为切点）、hard-cut/fade 分类、候选审阅和显式应用。原始 score 不显示为“置信率”；需要用户友好
 等级时，应由有标定依据的展示映射生成“较弱/明确/强”，并保留原始 evidence。
 
 ## 7. 运行逻辑
@@ -357,8 +375,8 @@ config hash。raw score/threshold/evidence 保留在候选任务中，不复制�
 1. 先完成研究型控制面板、Zustand 草稿、任务快照与 `EditorWorkspace` 接入；所有扫描必须
    通过同一个 resolver，并保存 `catalog = research | production`。
 2. 随后建立独立的 `scene-calibration` 工作台：加载同一媒体和研究配置的检测结果，允许人工
-   接受、拒绝、新增、移动和删除 hard-cut 真值，及标记不确定区域；首版不把 fade 区间混入
-   hard-cut 标注。
+   接受、拒绝、修正候选位置、新增、移动和删除 hard-cut 真值，及标记不确定区域；拒绝后的
+   候选仍保留在审阅列表，可直接修正到当前播放头；首版不把 fade 区间混入 hard-cut 标注。
 3. 标定记录绑定强媒体身份、标注 schema、标注者、时间权威（微秒）、当前 Engine/config
    和候选结果。默认导出 JSON，不含视频；外部 AI 如需查看素材，由用户另行选择相同身份的
    本地视频文件。
@@ -373,8 +391,10 @@ config hash。raw score/threshold/evidence 保留在候选任务中，不复制�
   150 个 hard-cut。
 - 默认启用 fade 的预设，其留出集还必须至少包含 20 个完整 fade 区间；数量不足时只能
   发布“仅硬切”默认，不能用 hard-cut 数据推断 fade 质量。
-- 每个素材记录来源/授权、SHA-256、codec、尺寸、rotation、时长和标注者。至少 20% 的
-  标注由第二人复核；分歧必须在进入评分前解决并记录。
+- 每个素材记录来源/授权、SHA-256、codec、尺寸、rotation、时长和标注者。经用户确认，
+  `annotator = aisen` 的标注不强制第二人复核；只要媒体身份、schema、边界时间/帧号完整，
+  并完成合理性分析，即可作为 search 标定输入。其他标注仍按第二人复核约束执行；holdout
+  与 production 晋升仍必须依靠独立数据集和冻结指标，不得仅凭单人 search 标注宣称通过。
 - hard-cut 使用精确边界时间/项目帧；fade 保存开始、结束和建议点。模糊转场单独标记，
   不得临时改成 hard-cut 以提高指标。
 
@@ -421,10 +441,11 @@ hard-cut 以 `±2` 项目帧容差评分，首轮门槛冻结如下；Agent 不�
 1. 先关闭 Phase 11：强媒体身份、canonical config hash、刷新/中断语义、React hook 测试、
    候选应用领域命令和镜头 provenance 全部通过。
 2. 建立产品设置类型、canonical resolver、摘要器和只供标定使用的 candidate registry；
-   此时不创建生产 UI，也不把未标定名称暴露为生产 preset。
+   未晋升配置不得暴露为生产 preset。
 3. 建立数据集 manifest、搜索/留出分离检查和批量评分/sweep 工具，完成各类别标定。
 4. 只把通过 8.3 门槛的候选配置晋升到 `productionPresetRegistry`，生成带 checksum 的
-   promotion report；未通过项继续隐藏。
+   promotion report；未通过项继续隐藏。当前 `general` 与 `short-form` 已按用户批准的
+   version 1 晋升，后续人工测试用于创建新版本并重新评估。
 5. 正式引入 Zustand，建立 feature 设置 store 与 `useAutoShotControl`；扩展 task record、
    review 和 IndexedDB 升级，只清理旧 auto-shot 派生记录。
 6. 拆出控制面板和候选审阅组件，删除 `EditorWorkspace` 中旧 sensitivity/min-duration

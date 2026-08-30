@@ -58,7 +58,7 @@ registry 注入，任务同时冻结用户设置快照、预设版本、canonica
 React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”“短视频”等产品概念。
 该控制层和 Zustand 设置 store 尚未实施，只有通过独立 holdout 门槛的 preset 才能进入
 生产 registry 与 UI。完整边界见
-[自动分镜控制系统设计](AISENSHOT_CONTROL_SYSTEM_DESIGN.md)。
+[自动分镜控制系统设计](auto-shot/CONTROL_SYSTEM.md)。
 
 自动分镜恢复使用版本化强媒体身份，不以文件名、MIME、修改时间或普通四字段 fingerprint
 作为最终依据。只有完整 checkpoint 已持久化的任务才能标记为 `paused`；刷新或崩溃遗留的
@@ -74,8 +74,9 @@ hash、刷新/中断生命周期、候选应用领域命令、正式镜头 prove
 开放验收项。必须先关闭这些项，再进入 Phase 12 的配置标定、Zustand 控制层、UI 和旧路径
 删除。实施时仅按已批准的架构与分阶段计划推进：
 
-- [AisenShot Scene Engine 架构方案](AISENSHOT_SCENE_ENGINE_PLAN.md)
-- [AisenShot Scene Engine 实施计划](AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md)
+- [AisenShot 文档索引](auto-shot/README.md)
+- [AisenShot Scene Engine 架构方案](auto-shot/ARCHITECTURE.md)
+- [AisenShot Scene Engine 实施计划](auto-shot/IMPLEMENTATION_PLAN.md)
 
 本阶段不在 Engine 中实现关键帧提取或其他视频分析能力；仅保留独立包与稳定输入/输出边界以便未来扩展。
 

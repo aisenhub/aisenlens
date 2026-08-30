@@ -1,4 +1,4 @@
-import { Check, FlaskConical } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type { AutoShotPresetDefinition, AutoShotPresetId } from "../config/types";
 
@@ -14,9 +14,6 @@ export default function PresetSelector({ presets, value, disabled = false, onCha
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="editor-meta text-text-dim">内容预设</span>
-        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-300/5 px-2 py-0.5 text-[10px] text-amber-200">
-          <FlaskConical className="size-3" /> 研究配置 · 待标定
-        </span>
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         {presets.map((preset) => {

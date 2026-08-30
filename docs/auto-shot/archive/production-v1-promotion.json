@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "reportId": "aisenlens-production-promotion-2026-08-30-v1",
+  "decision": "user-approved",
+  "decidedAt": "2026-08-30",
+  "catalog": "production",
+  "basis": "用户批准将当前人工回归测试通过的通用/影视与短视频冻结 version 1 晋升为正式预设。",
+  "holdout": {
+    "status": "deferred",
+    "reason": "后续由用户在开发过程中使用更多视频测试；测试结果用于创建新版本和参数优化。"
+  },
+  "presets": [
+    {
+      "id": "general",
+      "version": 1,
+      "name": "通用/影视",
+      "configHash": "fnv1a64-v1:3ba804f6a898c7bf",
+      "canonicalConfig": "[\"aisenlens-scene-config\",1,[\"adaptive\",3300,3,1400,3333,3333,3334],null,800000,[96,[\"every-frame\"]],\"off\"]",
+      "transitions": "hard-cuts",
+      "minimumSceneDurationSeconds": 0.8
+    },
+    {
+      "id": "short-form",
+      "version": 1,
+      "name": "短视频",
+      "configHash": "fnv1a64-v1:3eff6e7231489b76",
+      "canonicalConfig": "[\"aisenlens-scene-config\",1,[\"adaptive\",3000,2,1250,3333,3333,3334],null,400000,[96,[\"every-frame\"]],\"off\"]",
+      "transitions": "hard-cuts",
+      "minimumSceneDurationSeconds": 0.4
+    }
+  ],
+  "notPromoted": ["animation-gameplay", "talking-head"]
+}

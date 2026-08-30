@@ -1,6 +1,6 @@
 # AisenShot Scene Engine 架构规划
 
-> 状态：架构已审核，Phase 0–10 已完成；Phase 11.7–11.8（强媒体身份、canonical hash、checkpoint 字段）已完成，11.9–11.10 已完成主要代码接线，应用确认、分组协调和 recovery snapshot 已接入，但 React 生命周期矩阵、持久化撤销验收仍待完成；Phase 12 先完成基于 PySceneDetect 语义的研究型控制面板，再进行人工标定、生产 preset 晋升、产品视频回归与最终清理
+> 状态：架构已审核，Phase 0–10 已完成；Phase 11.7–11.8（强媒体身份、canonical hash、checkpoint 字段）已完成，11.9–11.10 已完成主要代码接线，应用确认、分组协调和 recovery snapshot 已接入，但 React 生命周期矩阵、持久化撤销验收仍待完成；Phase 12 已将通用/影视与短视频 version 1 晋升 production，后续继续进行产品视频回归、参数迭代与最终清理
 >
 > 初版日期：2026-08-25
 >
@@ -761,16 +761,16 @@ Scene Engine 只接受严格、与 UI 无关的 `SceneDetectionConfig`，不得�
 
 Phase 11 为验证新运行链路而保留的旧“灵敏度 + 最短时长”界面不是最终控制模型。
 最终 UI、状态所有权、预设边界和实施门槛以
-[AisenShot 自动分镜控制系统设计](AISENSHOT_CONTROL_SYSTEM_DESIGN.md) 为准。正式预设
+[AisenShot 自动分镜控制系统设计](CONTROL_SYSTEM.md) 为准。正式预设
 必须在 AisenLens 自有分类标注集上标定，不能直接复制 PySceneDetect 默认值，也不能
 根据横竖屏、文件名或时长静默猜测内容类型。
 
 Phase 12 的实现顺序不是“先标定再画面板”，而是先按 PySceneDetect 的 Content、Adaptive、
 Threshold/Fade、最短镜头与过滤器语义完成研究型控制面板。该面板让用户以内容预设、检出
-程度、转场和最短镜头驱动唯一 resolver，并明确显示“研究配置 / 待标定”。其研究 catalog
-可以运行扫描和候选审阅，但不得被称为生产默认或自动推荐。标定工作台随后复用相同 resolver
-和任务快照，人工确认 hard-cut 真值、导出数据并据此优化；只有独立 holdout 通过的版本才
-进入 production catalog，届时同一面板切换为生产 preset。
+程度、转场和最短镜头驱动唯一 resolver，并明确区分研究与生产 catalog。研究 catalog
+可以运行扫描和候选审阅，但不得被称为生产默认或自动推荐。当前通用/影视与短视频已按用户
+批准的 version 1 晋升 production catalog，同一面板已切换为生产 preset；后续人工测试用于
+发现问题、优化参数并创建新版本，动画/游戏与访谈/Vlog 仍保持隐藏。
 
 产品设置草稿与已冻结任务快照是不同类型。草稿只保存 preset ID、catalog、检出程度、转场、
 最短镜头和高级覆盖；preset version 由 registry/解析器注入，不能由 React 或用户输入。
@@ -904,7 +904,7 @@ Phase 12 删除前基线只是准备性历史快照。下一步必须先按实�
 候选审阅、可撤销应用领域命令、正式镜头 provenance 与真实 H.264 产品矩阵，并关闭
 Phase 11 验收门。
 
-之后再按 `docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md` 建立唯一 resolver、隔离的 search/
+之后再按 `docs/auto-shot/CONTROL_SYSTEM.md` 建立唯一 resolver、隔离的 search/
 holdout 标定、production preset registry、feature 级 Zustand 设置 store 与新控制面板，
 最后完成性能/内存回归和旧路径删除。在这些证据通过前，不删除旧 Canvas/seek 基线服务，
 也不宣称 Phase 12 完成。App 会话与其他业务状态迁移仍是独立待办。

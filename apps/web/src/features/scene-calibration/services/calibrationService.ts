@@ -78,8 +78,8 @@ function validateAnnotation(annotation: CalibrationAnnotationRecord, path: strin
     }
   }
   for (const [candidateId, status] of Object.entries(annotation.candidateReviews)) {
-    if (!candidateId || (status !== "accepted" && status !== "rejected")) {
-      issues.push(issue("INVALID_SCHEMA", `${path}.candidateReviews.${candidateId}`, "候选审阅状态只能是 accepted 或 rejected。"));
+    if (!candidateId || (status !== "accepted" && status !== "rejected" && status !== "corrected")) {
+      issues.push(issue("INVALID_SCHEMA", `${path}.candidateReviews.${candidateId}`, "候选审阅状态只能是 accepted、rejected 或 corrected。"));
     }
   }
   for (const [index, range] of annotation.uncertainRanges.entries()) {
@@ -123,7 +123,7 @@ export function assertCalibrationManifests(search: CalibrationManifest, holdout:
   if (issues.length) throw new Error(issues.map((item) => `${item.code} ${item.path}: ${item.message}`).join("\n"));
 }
 
-export function updateHardCutAnnotation(annotation: CalibrationAnnotationRecord, operation: "accept" | "reject" | "add" | "move" | "delete", input: { candidate?: AutoShotCandidate; candidateId?: string; id?: string; timestampUs?: number; frame?: number; confidence?: CalibrationBoundaryConfidence; note?: string }): CalibrationAnnotationRecord {
+export function updateHardCutAnnotation(annotation: CalibrationAnnotationRecord, operation: "accept" | "reject" | "correct" | "add" | "move" | "delete", input: { candidate?: AutoShotCandidate; candidateId?: string; id?: string; timestampUs?: number; frame?: number; confidence?: CalibrationBoundaryConfidence; note?: string }): CalibrationAnnotationRecord {
   const next = structuredClone(annotation);
   const candidate = input.candidate;
   if (operation === "accept" && candidate?.kind === "hard-cut" && candidate.boundary) {
@@ -133,10 +133,25 @@ export function updateHardCutAnnotation(annotation: CalibrationAnnotationRecord,
     const candidateId = input.candidateId ?? input.id!;
     next.candidateReviews[candidateId] = "rejected";
     next.hardCuts = next.hardCuts.filter((cut) => cut.candidateId !== candidateId && cut.id !== `candidate:${candidateId}`);
+  } else if (operation === "correct" && candidate?.kind === "hard-cut" && candidate.boundary && validInteger(input.timestampUs) && validInteger(input.frame, 1)) {
+    const candidateId = candidate.id;
+    next.candidateReviews[candidateId] = "corrected";
+    const existing = next.hardCuts.find((cut) => cut.candidateId === candidateId || cut.id === `candidate:${candidateId}`);
+    if (existing) {
+      next.hardCuts = next.hardCuts.map((cut) => cut.id === existing.id
+        ? { ...cut, timestampUs: input.timestampUs!, frame: input.frame!, confidence: input.confidence ?? cut.confidence, source: "candidate", candidateId, note: input.note ?? cut.note }
+        : cut);
+    } else {
+      next.hardCuts.push({ id: `candidate:${candidateId}`, timestampUs: input.timestampUs, frame: input.frame, confidence: input.confidence ?? "confirmed", source: "candidate", candidateId, note: input.note });
+    }
   } else if (operation === "add" && validInteger(input.timestampUs) && validInteger(input.frame, 1)) {
     next.hardCuts.push({ id: `manual:${crypto.randomUUID()}`, timestampUs: input.timestampUs, frame: input.frame, confidence: input.confidence ?? "confirmed", source: "manual", note: input.note });
   } else if (operation === "move" && input.id && validInteger(input.timestampUs) && validInteger(input.frame, 1)) {
-    next.hardCuts = next.hardCuts.map((cut) => cut.id === input.id ? { ...cut, timestampUs: input.timestampUs!, frame: input.frame! } : cut);
+    next.hardCuts = next.hardCuts.map((cut) => {
+      if (cut.id !== input.id) return cut;
+      if (cut.candidateId) next.candidateReviews[cut.candidateId] = "corrected";
+      return { ...cut, timestampUs: input.timestampUs!, frame: input.frame! };
+    });
   } else if (operation === "delete" && input.id) {
     const deleted = next.hardCuts.find((cut) => cut.id === input.id);
     if (deleted?.candidateId) next.candidateReviews[deleted.candidateId] = "rejected";

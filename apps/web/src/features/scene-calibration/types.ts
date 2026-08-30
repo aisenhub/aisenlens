@@ -6,7 +6,7 @@ import type { ResolvedAutoShotConfiguration } from "../auto-shot/config/types";
 export type CalibrationSplit = "search" | "holdout";
 export type CalibrationReviewStatus = "unreviewed" | "reviewed" | "disputed";
 export type CalibrationBoundaryConfidence = "confirmed" | "uncertain";
-export type CalibrationCandidateReviewStatus = "accepted" | "rejected";
+export type CalibrationCandidateReviewStatus = "accepted" | "rejected" | "corrected";
 
 export interface CalibrationSource {
   workId: string;

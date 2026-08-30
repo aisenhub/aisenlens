@@ -6,7 +6,7 @@
 
 - 只接受 `FrameView`、配置和值类型，不依赖 React、浏览器 DOM、Supabase 或项目数据库。
 - 后续 C++ 核心通过稳定 C ABI/WASM 供 Web Worker 使用；项目帧映射、任务持久化和 UI 状态留在 Web 适配层。
-- 输入帧的像素格式、visible rect、色彩字段、微秒时间和 presentation index 遵守 [`docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`](/E:/Projects/Aisenlens/docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md) 与架构文档。
+- 输入帧的像素格式、visible rect、色彩字段、微秒时间和 presentation index 遵守 [`docs/auto-shot/REGRESSION_CONTRACT.md`](/E:/Projects/Aisenlens/docs/auto-shot/REGRESSION_CONTRACT.md) 与架构文档。
 
 ## 工具链预检（2026-08-27）
 
@@ -41,13 +41,13 @@ corepack pnpm --filter @aisenlens/scene-engine test:native
 
 Phase 1–5、Phase 6.2–6.5、Phase 7.1–7.5、Phase 8.1–8.5 和 Phase 9 已完成。native Debug、Release、sanitizer Debug、Emscripten baseline/SIMD WASM、TypeScript strict/contract tests、Worker fake-runtime lifecycle tests、Chrome 152 下 H.264/NV12 顺序解码 smoke、fixture 双轮确定性、真实媒体 Worker 的 pause/resume/cancel/error、200 帧 WASM 内存复用、production build 资源产物检查及 `/aisenlens/` 非根路径 preview smoke 均已通过；不得把 native 包当作 Web 运行时依赖。Web 任务服务和 IndexedDB 迁移已接入，产品 UI 的真实视频回归仍是单独验收项。
 
-Adaptive 使用 `adaptive_window_width` 的 look-ahead 窗口，事件时间固定为窗口中心帧；详细规则见 [`docs/AISENSHOT_SCENE_ENGINE_PHASE_3_ADAPTIVE.md`](/E:/Projects/Aisenlens/docs/AISENSHOT_SCENE_ENGINE_PHASE_3_ADAPTIVE.md)。Threshold/Fade、事件解析、最短镜头过滤和 checkpoint 规则见 [`docs/AISENSHOT_SCENE_ENGINE_PHASE_4_THRESHOLD.md`](/E:/Projects/Aisenlens/docs/AISENSHOT_SCENE_ENGINE_PHASE_4_THRESHOLD.md)。
+Adaptive 使用 `adaptive_window_width` 的 look-ahead 窗口，事件时间固定为窗口中心帧；Threshold/Fade、事件解析、最短镜头过滤和 checkpoint 规则见 [`docs/auto-shot/ARCHITECTURE.md`](/E:/Projects/Aisenlens/docs/auto-shot/ARCHITECTURE.md)。
 
 ## C ABI
 
 `cpp/include/aisenshot/scene_engine_abi.h` 是稳定边界：只使用固定宽度整数、显式 version 和 opaque `asen_engine_t*` 句柄，不暴露 C++/STL。调用方拥有输入帧和 checkpoint 缓冲区；引擎只在调用期间读取帧数据，事件由调用方提供输出结构接收。checkpoint 支持先查询所需长度再写入调用方缓冲区，导入失败不会改变现有句柄状态。
 
-Phase 5 的接口与验证记录见 [`docs/AISENSHOT_SCENE_ENGINE_PHASE_5_ABI.md`](/E:/Projects/Aisenlens/docs/AISENSHOT_SCENE_ENGINE_PHASE_5_ABI.md)。
+C ABI 的接口和验证规则见 [`docs/auto-shot/ARCHITECTURE.md`](/E:/Projects/Aisenlens/docs/auto-shot/ARCHITECTURE.md)。
 
 ## Baseline WASM
 

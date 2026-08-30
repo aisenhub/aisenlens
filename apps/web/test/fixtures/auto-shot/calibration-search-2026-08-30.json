@@ -1,0 +1,984 @@
+{
+  "schemaVersion": 1,
+  "manifestKind": "scene-calibration",
+  "datasetVersion": "search-2026-08-30-v1",
+  "matching": {
+    "hardCutToleranceFrames": [
+      0,
+      1,
+      2
+    ],
+    "oneToOne": true
+  },
+  "fixtures": [
+    {
+      "fixtureId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
+      "split": "search",
+      "path": "apps/web/test/test02.mov",
+      "source": {
+        "workId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
+        "name": "test02.mov",
+        "url": "local://test02.mov",
+        "acquiredAt": "2026-08-30",
+        "license": "unknown-local-copy; verify before redistribution"
+      },
+      "media": {
+        "container": "mov",
+        "codec": "avc1.640029",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "rotation": 0,
+        "durationUs": 47645896,
+        "fpsNumerator": 30000,
+        "fpsDenominator": 1000
+      },
+      "sha256": "04a5194ca722e53de947b00f8310dbd44692a56e06635e9e832d878196fdc2ac",
+      "annotation": {
+        "schemaVersion": 1,
+        "annotationId": "annotation:c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a:511e9991c992",
+        "projectId": "c9712676-7df7-4034-a37c-8d1cd445aff5",
+        "fixtureId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
+        "split": "search",
+        "source": {
+          "workId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
+          "name": "test02.mov",
+          "url": "local://test02.mov",
+          "acquiredAt": "2026-08-30",
+          "license": "unknown-local-copy; verify before redistribution"
+        },
+        "media": {
+          "container": "mov",
+          "codec": "avc1.640029",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 47645896,
+          "fpsNumerator": 30000,
+          "fpsDenominator": 1000
+        },
+        "mediaIdentity": {
+          "identitySchema": "aisenlens-auto-shot-media-identity",
+          "schemaVersion": 1,
+          "contentDigestStrategy": "sha256-chunk-manifest-4m-v1",
+          "contentDigest": "04a5194ca722e53de947b00f8310dbd44692a56e06635e9e832d878196fdc2ac",
+          "size": 72454765,
+          "codec": "avc1.640029",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 47645896,
+          "mediaIdentityDigest": "511e9991c992bb2a0965b43ac75e060e2b558dfb89c0cc02f6f60479a46c74ff"
+        },
+        "sha256": "04a5194ca722e53de947b00f8310dbd44692a56e06635e9e832d878196fdc2ac",
+        "annotator": "aisen",
+        "reviewer": null,
+        "reviewStatus": "unreviewed",
+        "hardCuts": [
+          {
+            "id": "manual:5767646b-8ed3-487b-9425-7bdc251fab71",
+            "timestampUs": 400000,
+            "frame": 12,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "manual:8eafe39f-436e-4fc6-99b9-c72f2352fee9",
+            "timestampUs": 4366666,
+            "frame": 131,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-3012a46d:0:68",
+            "timestampUs": 2266666,
+            "frame": 68,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-3012a46d:0:68"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-5f1b0db5:68:195",
+            "timestampUs": 6500000,
+            "frame": 195,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-5f1b0db5:68:195"
+          },
+          {
+            "id": "manual:bcf35cfb-378e-4a94-80ea-3823ea72df33",
+            "timestampUs": 9266666,
+            "frame": 278,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-2c58db8b:195:381",
+            "timestampUs": 12700000,
+            "frame": 381,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-2c58db8b:195:381"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-495ae640:381:410",
+            "timestampUs": 13666666,
+            "frame": 410,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-495ae640:381:410"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4ddbdb00:410:446",
+            "timestampUs": 14866666,
+            "frame": 446,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4ddbdb00:410:446"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-246c8fdc:446:477",
+            "timestampUs": 15900000,
+            "frame": 477,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-246c8fdc:446:477"
+          },
+          {
+            "id": "manual:e90ac844-a94b-4009-8fb2-2e5442c254f0",
+            "timestampUs": 17258329,
+            "frame": 518,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "manual:e60be29f-cf46-4a0f-a3bf-98963c6b95e1",
+            "timestampUs": 20700000,
+            "frame": 621,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4a9a2ff5:477:561",
+            "timestampUs": 18700000,
+            "frame": 561,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4a9a2ff5:477:561"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-b6a68d01:561:598",
+            "timestampUs": 19933333,
+            "frame": 598,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-b6a68d01:561:598"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-1178cb13:598:709",
+            "timestampUs": 23633333,
+            "frame": 709,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-1178cb13:598:709"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-24ffa6b5:709:804",
+            "timestampUs": 26800000,
+            "frame": 804,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-24ffa6b5:709:804"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-a0594869:804:871",
+            "timestampUs": 29033333,
+            "frame": 871,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-a0594869:804:871"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-1cd28c57:871:928",
+            "timestampUs": 30933333,
+            "frame": 928,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-1cd28c57:871:928"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-21449879:928:969",
+            "timestampUs": 32300000,
+            "frame": 969,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-21449879:928:969"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-63448ad2:969:1068",
+            "timestampUs": 35600000,
+            "frame": 1068,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-63448ad2:969:1068"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-2ef30f1e:1068:1162",
+            "timestampUs": 38733333,
+            "frame": 1162,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-2ef30f1e:1068:1162"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-f6a879d8:1162:1207",
+            "timestampUs": 40233333,
+            "frame": 1207,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-f6a879d8:1162:1207"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-cdf6d4a2:1207:1394",
+            "timestampUs": 46466666,
+            "frame": 1394,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-cdf6d4a2:1207:1394"
+          }
+        ],
+        "candidateReviews": {
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-3012a46d:0:68": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-5f1b0db5:68:195": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-2c58db8b:195:381": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-495ae640:381:410": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4ddbdb00:410:446": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-246c8fdc:446:477": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4a9a2ff5:477:561": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-b6a68d01:561:598": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-1178cb13:598:709": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-24ffa6b5:709:804": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-a0594869:804:871": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-1cd28c57:871:928": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-21449879:928:969": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-63448ad2:969:1068": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-2ef30f1e:1068:1162": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-f6a879d8:1162:1207": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-cdf6d4a2:1207:1394": "accepted"
+        },
+        "uncertainRanges": [],
+        "researchRun": {
+          "presetId": "general",
+          "presetVersion": 1,
+          "catalog": "research",
+          "detail": "balanced",
+          "config": {
+            "hardCut": {
+              "kind": "adaptive",
+              "adaptiveThreshold": 3300,
+              "windowWidth": 3,
+              "minimumContentScore": 1400,
+              "weights": {
+                "hue": 3333,
+                "saturation": 3333,
+                "luma": 3334
+              }
+            },
+            "fade": null,
+            "minimumSceneDurationUs": 800000,
+            "analysis": {
+              "maxWidth": 96,
+              "temporalSampling": {
+                "kind": "every-frame"
+              }
+            },
+            "diagnostics": "off"
+          },
+          "canonicalConfig": "[\"aisenlens-scene-config\",1,[\"adaptive\",3300,3,1400,3333,3333,3334],null,800000,[96,[\"every-frame\"]],\"off\"]",
+          "configHash": "fnv1a64-v1:3ba804f6a898c7bf",
+          "engineVersion": "wasm-media-simd",
+          "candidateIds": [
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-3012a46d:0:68",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-5f1b0db5:68:195",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-2c58db8b:195:381",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-495ae640:381:410",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4ddbdb00:410:446",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-246c8fdc:446:477",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4a9a2ff5:477:561",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-b6a68d01:561:598",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-1178cb13:598:709",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-24ffa6b5:709:804",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-a0594869:804:871",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-1cd28c57:871:928",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-21449879:928:969",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-63448ad2:969:1068",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-2ef30f1e:1068:1162",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-f6a879d8:1162:1207",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-cdf6d4a2:1207:1394",
+            "fnv1a64-v1:3ba804f6a898c7bf:tail:1394:1429"
+          ]
+        },
+        "updatedAt": "2026-08-30T02:47:52.759Z"
+      }
+    },
+    {
+      "fixtureId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
+      "split": "search",
+      "path": "apps/web/test/test.mov",
+      "source": {
+        "workId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
+        "name": "test.mov",
+        "url": "local://test.mov",
+        "acquiredAt": "2026-08-30",
+        "license": "unknown-local-copy; verify before redistribution"
+      },
+      "media": {
+        "container": "mov",
+        "codec": "avc1.640028",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "rotation": 0,
+        "durationUs": 99880000,
+        "fpsNumerator": 25000,
+        "fpsDenominator": 1000
+      },
+      "sha256": "602b984ca56e00de471805e48672c5e6ca7e93e11c9a402c71ad0550ce988865",
+      "annotation": {
+        "schemaVersion": 1,
+        "annotationId": "annotation:8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d:6501d3efdff5",
+        "projectId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9",
+        "fixtureId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
+        "split": "search",
+        "source": {
+          "workId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
+          "name": "test.mov",
+          "url": "local://test.mov",
+          "acquiredAt": "2026-08-30",
+          "license": "unknown-local-copy; verify before redistribution"
+        },
+        "media": {
+          "container": "mov",
+          "codec": "avc1.640028",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 99880000,
+          "fpsNumerator": 25000,
+          "fpsDenominator": 1000
+        },
+        "mediaIdentity": {
+          "identitySchema": "aisenlens-auto-shot-media-identity",
+          "schemaVersion": 1,
+          "contentDigestStrategy": "sha256-chunk-manifest-4m-v1",
+          "contentDigest": "602b984ca56e00de471805e48672c5e6ca7e93e11c9a402c71ad0550ce988865",
+          "size": 175764378,
+          "codec": "avc1.640028",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 99880000,
+          "mediaIdentityDigest": "6501d3efdff5080da945dc41af2ff4e391a6304bb5102a74a30f44ee5774f6f9"
+        },
+        "sha256": "602b984ca56e00de471805e48672c5e6ca7e93e11c9a402c71ad0550ce988865",
+        "annotator": "aisen",
+        "reviewer": null,
+        "reviewStatus": "unreviewed",
+        "hardCuts": [
+          {
+            "id": "manual:72a59d43-ccbc-485a-a4c4-9deb77d0962f",
+            "timestampUs": 58641663,
+            "frame": 1466,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "manual:cd371adb-24bf-411d-b494-413bd759f64a",
+            "timestampUs": 67709991,
+            "frame": 1693,
+            "confidence": "confirmed",
+            "source": "manual"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-7bd29de8:0:157",
+            "timestampUs": 6280000,
+            "frame": 157,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-7bd29de8:0:157"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-d75dfa93:157:236",
+            "timestampUs": 9440000,
+            "frame": 236,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-d75dfa93:157:236"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-7c7d1dd4:236:319",
+            "timestampUs": 12760000,
+            "frame": 319,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-7c7d1dd4:236:319"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-04e7ea0f:319:387",
+            "timestampUs": 15480000,
+            "frame": 387,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-04e7ea0f:319:387"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-2e469c85:387:426",
+            "timestampUs": 17040000,
+            "frame": 426,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-2e469c85:387:426"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-a2eee38d:426:472",
+            "timestampUs": 18880000,
+            "frame": 472,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-a2eee38d:426:472"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-965f05b4:472:560",
+            "timestampUs": 22400000,
+            "frame": 560,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-965f05b4:472:560"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-1b61b426:560:650",
+            "timestampUs": 26000000,
+            "frame": 650,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-1b61b426:560:650"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-f9d6e427:650:758",
+            "timestampUs": 30320000,
+            "frame": 758,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-f9d6e427:650:758"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-0f98007b:758:785",
+            "timestampUs": 31400000,
+            "frame": 785,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-0f98007b:758:785"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-6e9a1ca5:785:853",
+            "timestampUs": 34120000,
+            "frame": 853,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-6e9a1ca5:785:853"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-1f6ad93c:853:893",
+            "timestampUs": 35720000,
+            "frame": 893,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-1f6ad93c:853:893"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-19a6790f:893:932",
+            "timestampUs": 37280000,
+            "frame": 932,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-19a6790f:893:932"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-d624c080:932:998",
+            "timestampUs": 39920000,
+            "frame": 998,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-d624c080:932:998"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-51cb6242:998:1022",
+            "timestampUs": 40880000,
+            "frame": 1022,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-51cb6242:998:1022"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4baaf2fb:1022:1208",
+            "timestampUs": 48320000,
+            "frame": 1208,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4baaf2fb:1022:1208"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-b986f005:1208:1266",
+            "timestampUs": 50640000,
+            "frame": 1266,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-b986f005:1208:1266"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-1b3b368f:1266:1313",
+            "timestampUs": 52520000,
+            "frame": 1313,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-1b3b368f:1266:1313"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-f7409781:1313:1356",
+            "timestampUs": 54240000,
+            "frame": 1356,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-f7409781:1313:1356"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-62b0472f:1356:1389",
+            "timestampUs": 55560000,
+            "frame": 1389,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-62b0472f:1356:1389"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-563658b5:1389:1851",
+            "timestampUs": 74040000,
+            "frame": 1851,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-563658b5:1389:1851"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-a8e443b8:1851:1889",
+            "timestampUs": 75560000,
+            "frame": 1889,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-a8e443b8:1851:1889"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-7f5b9398:1889:1928",
+            "timestampUs": 77120000,
+            "frame": 1928,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-7f5b9398:1889:1928"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-188f77cc:1928:1971",
+            "timestampUs": 78840000,
+            "frame": 1971,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-188f77cc:1928:1971"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-885b19fc:1971:2073",
+            "timestampUs": 82920000,
+            "frame": 2073,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-885b19fc:1971:2073"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-c7502493:2073:2129",
+            "timestampUs": 85160000,
+            "frame": 2129,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-c7502493:2073:2129"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-5090c5b3:2129:2180",
+            "timestampUs": 87200000,
+            "frame": 2180,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-5090c5b3:2129:2180"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-dea77ad9:2180:2244",
+            "timestampUs": 89760000,
+            "frame": 2244,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-dea77ad9:2180:2244"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4150f259:2244:2303",
+            "timestampUs": 92120000,
+            "frame": 2303,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4150f259:2244:2303"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-aa77ba4d:2303:2333",
+            "timestampUs": 93320000,
+            "frame": 2333,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-aa77ba4d:2303:2333"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4c46476a:2333:2356",
+            "timestampUs": 94240000,
+            "frame": 2356,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4c46476a:2333:2356"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-e8263970:2356:2383",
+            "timestampUs": 95320000,
+            "frame": 2383,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-e8263970:2356:2383"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-4d0b19ac:2383:2409",
+            "timestampUs": 96360000,
+            "frame": 2409,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-4d0b19ac:2383:2409"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-717dde4f:2409:2431",
+            "timestampUs": 97240000,
+            "frame": 2431,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-717dde4f:2409:2431"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-ead9cde8:2431:2460",
+            "timestampUs": 98400000,
+            "frame": 2460,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-ead9cde8:2431:2460"
+          }
+        ],
+        "candidateReviews": {
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-7bd29de8:0:157": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-d75dfa93:157:236": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-7c7d1dd4:236:319": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-04e7ea0f:319:387": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-2e469c85:387:426": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-a2eee38d:426:472": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-965f05b4:472:560": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-1b61b426:560:650": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-f9d6e427:650:758": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-0f98007b:758:785": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-6e9a1ca5:785:853": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-1f6ad93c:853:893": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-19a6790f:893:932": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-d624c080:932:998": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-51cb6242:998:1022": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4baaf2fb:1022:1208": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-b986f005:1208:1266": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-1b3b368f:1266:1313": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-f7409781:1313:1356": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-62b0472f:1356:1389": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-563658b5:1389:1851": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-a8e443b8:1851:1889": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-7f5b9398:1889:1928": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-188f77cc:1928:1971": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-885b19fc:1971:2073": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-c7502493:2073:2129": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-5090c5b3:2129:2180": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-dea77ad9:2180:2244": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4150f259:2244:2303": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-aa77ba4d:2303:2333": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4c46476a:2333:2356": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-e8263970:2356:2383": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-4d0b19ac:2383:2409": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-717dde4f:2409:2431": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-ead9cde8:2431:2460": "accepted"
+        },
+        "uncertainRanges": [],
+        "researchRun": {
+          "presetId": "general",
+          "presetVersion": 1,
+          "catalog": "research",
+          "detail": "balanced",
+          "config": {
+            "hardCut": {
+              "kind": "adaptive",
+              "adaptiveThreshold": 3300,
+              "windowWidth": 3,
+              "minimumContentScore": 1400,
+              "weights": {
+                "hue": 3333,
+                "saturation": 3333,
+                "luma": 3334
+              }
+            },
+            "fade": null,
+            "minimumSceneDurationUs": 800000,
+            "analysis": {
+              "maxWidth": 96,
+              "temporalSampling": {
+                "kind": "every-frame"
+              }
+            },
+            "diagnostics": "off"
+          },
+          "canonicalConfig": "[\"aisenlens-scene-config\",1,[\"adaptive\",3300,3,1400,3333,3333,3334],null,800000,[96,[\"every-frame\"]],\"off\"]",
+          "configHash": "fnv1a64-v1:3ba804f6a898c7bf",
+          "engineVersion": "wasm-media-simd",
+          "candidateIds": [
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-7bd29de8:0:157",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-d75dfa93:157:236",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-7c7d1dd4:236:319",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-04e7ea0f:319:387",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-2e469c85:387:426",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-a2eee38d:426:472",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-965f05b4:472:560",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-1b61b426:560:650",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-f9d6e427:650:758",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-0f98007b:758:785",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-6e9a1ca5:785:853",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-1f6ad93c:853:893",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-19a6790f:893:932",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-d624c080:932:998",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-51cb6242:998:1022",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4baaf2fb:1022:1208",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-b986f005:1208:1266",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-1b3b368f:1266:1313",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-f7409781:1313:1356",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-62b0472f:1356:1389",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-563658b5:1389:1851",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-a8e443b8:1851:1889",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-7f5b9398:1889:1928",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-188f77cc:1928:1971",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-885b19fc:1971:2073",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-c7502493:2073:2129",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-5090c5b3:2129:2180",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-dea77ad9:2180:2244",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4150f259:2244:2303",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-aa77ba4d:2303:2333",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4c46476a:2333:2356",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-e8263970:2356:2383",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-4d0b19ac:2383:2409",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-717dde4f:2409:2431",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-ead9cde8:2431:2460",
+            "fnv1a64-v1:3ba804f6a898c7bf:tail:2460:2497"
+          ]
+        },
+        "updatedAt": "2026-08-30T03:28:15.183Z"
+      }
+    },
+    {
+      "fixtureId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
+      "split": "search",
+      "path": "apps/web/test/test03.mov",
+      "source": {
+        "workId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
+        "name": "test03.mov",
+        "url": "local://test03.mov",
+        "acquiredAt": "2026-08-30",
+        "license": "unknown-local-copy; verify before redistribution"
+      },
+      "media": {
+        "container": "mov",
+        "codec": "avc1.640028",
+        "codedWidth": 1920,
+        "codedHeight": 1080,
+        "displayWidth": 1920,
+        "displayHeight": 1080,
+        "rotation": 0,
+        "durationUs": 14360000,
+        "fpsNumerator": 25000,
+        "fpsDenominator": 1000
+      },
+      "sha256": "e7433e97765177fabd63958d849342c46ac4f9e7cc1499df1cfbda4d2c9183f7",
+      "annotation": {
+        "schemaVersion": 1,
+        "annotationId": "annotation:1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d:1c4928c9fb6b",
+        "projectId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5",
+        "fixtureId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
+        "split": "search",
+        "source": {
+          "workId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
+          "name": "test03.mov",
+          "url": "local://test03.mov",
+          "acquiredAt": "2026-08-30",
+          "license": "unknown-local-copy; verify before redistribution"
+        },
+        "media": {
+          "container": "mov",
+          "codec": "avc1.640028",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 14360000,
+          "fpsNumerator": 25000,
+          "fpsDenominator": 1000
+        },
+        "mediaIdentity": {
+          "identitySchema": "aisenlens-auto-shot-media-identity",
+          "schemaVersion": 1,
+          "contentDigestStrategy": "sha256-file-v1",
+          "contentDigest": "e7433e97765177fabd63958d849342c46ac4f9e7cc1499df1cfbda4d2c9183f7",
+          "size": 22405825,
+          "codec": "avc1.640028",
+          "codedWidth": 1920,
+          "codedHeight": 1080,
+          "displayWidth": 1920,
+          "displayHeight": 1080,
+          "rotation": 0,
+          "durationUs": 14360000,
+          "mediaIdentityDigest": "1c4928c9fb6bed5daa4f9d4bab5337c1a925ef91ccc7031faaea5054cc79d260"
+        },
+        "sha256": "e7433e97765177fabd63958d849342c46ac4f9e7cc1499df1cfbda4d2c9183f7",
+        "annotator": "aisen",
+        "reviewer": null,
+        "reviewStatus": "unreviewed",
+        "hardCuts": [
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-3e8dbea9:0:39",
+            "timestampUs": 1560000,
+            "frame": 39,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-3e8dbea9:0:39"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-c713d158:39:83",
+            "timestampUs": 3320000,
+            "frame": 83,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-c713d158:39:83"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-77aeeb7a:83:147",
+            "timestampUs": 5880000,
+            "frame": 147,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-77aeeb7a:83:147"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-b059237b:147:177",
+            "timestampUs": 7080000,
+            "frame": 177,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-b059237b:147:177"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-6adb5482:177:242",
+            "timestampUs": 9680000,
+            "frame": 242,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-6adb5482:177:242"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-b344f08d:242:302",
+            "timestampUs": 12080000,
+            "frame": 302,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-b344f08d:242:302"
+          },
+          {
+            "id": "candidate:fnv1a64-v1:3ba804f6a898c7bf:scene-3fbfc69e:302:340",
+            "timestampUs": 13600000,
+            "frame": 340,
+            "confidence": "confirmed",
+            "source": "candidate",
+            "candidateId": "fnv1a64-v1:3ba804f6a898c7bf:scene-3fbfc69e:302:340"
+          }
+        ],
+        "candidateReviews": {
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-3e8dbea9:0:39": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-c713d158:39:83": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-77aeeb7a:83:147": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-b059237b:147:177": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-6adb5482:177:242": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-b344f08d:242:302": "accepted",
+          "fnv1a64-v1:3ba804f6a898c7bf:scene-3fbfc69e:302:340": "accepted"
+        },
+        "uncertainRanges": [],
+        "researchRun": {
+          "presetId": "general",
+          "presetVersion": 1,
+          "catalog": "research",
+          "detail": "balanced",
+          "config": {
+            "hardCut": {
+              "kind": "adaptive",
+              "adaptiveThreshold": 3300,
+              "windowWidth": 3,
+              "minimumContentScore": 1400,
+              "weights": {
+                "hue": 3333,
+                "saturation": 3333,
+                "luma": 3334
+              }
+            },
+            "fade": null,
+            "minimumSceneDurationUs": 800000,
+            "analysis": {
+              "maxWidth": 96,
+              "temporalSampling": {
+                "kind": "every-frame"
+              }
+            },
+            "diagnostics": "off"
+          },
+          "canonicalConfig": "[\"aisenlens-scene-config\",1,[\"adaptive\",3300,3,1400,3333,3333,3334],null,800000,[96,[\"every-frame\"]],\"off\"]",
+          "configHash": "fnv1a64-v1:3ba804f6a898c7bf",
+          "engineVersion": "wasm-media-simd",
+          "candidateIds": [
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-3e8dbea9:0:39",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-c713d158:39:83",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-77aeeb7a:83:147",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-b059237b:147:177",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-6adb5482:177:242",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-b344f08d:242:302",
+            "fnv1a64-v1:3ba804f6a898c7bf:scene-3fbfc69e:302:340",
+            "fnv1a64-v1:3ba804f6a898c7bf:tail:340:359"
+          ]
+        },
+        "updatedAt": "2026-08-30T03:31:12.799Z"
+      }
+    }
+  ]
+}

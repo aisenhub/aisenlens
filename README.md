@@ -47,7 +47,8 @@ Vercel deploys the Web application from the repository root with `pnpm --filter 
 
 - [Project architecture](docs/PROJECT_ARCHITECTURE.md)
 - [Operations and Supabase constraints](docs/OPERATIONS.md)
-- [AisenShot Scene Engine architecture](docs/AISENSHOT_SCENE_ENGINE_PLAN.md)
-- [AisenShot Scene Engine implementation plan](docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md)
-- [AisenShot automatic scene control design](docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md)
+- [AisenShot documentation index](docs/auto-shot/README.md)
+- [AisenShot Scene Engine architecture](docs/auto-shot/ARCHITECTURE.md)
+- [AisenShot Scene Engine implementation plan](docs/auto-shot/IMPLEMENTATION_PLAN.md)
+- [AisenShot automatic scene control design](docs/auto-shot/CONTROL_SYSTEM.md)
 - [SEO and discoverability plan](docs/SEO_DISCOVERABILITY_PLAN.md)

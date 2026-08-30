@@ -1,12 +1,12 @@
 # AisenShot Scene Engine 开发实施计划
 
-> 状态：Phase 0–10 已完成；Phase 11 的技术、生命周期、数据保护和 Web 产品链路已完成验收。人工质量标注按用户明确决定延期至 Phase 12.3B/12.3C，缺失媒体重绑仍需补做 Edge 原生选择器证据；Phase 12 已进入控制面板与标定开发阶段。
+> 状态：Phase 0–10 已完成；Phase 11 的技术、生命周期、数据保护和 Web 产品链路已完成验收。人工质量标注按用户明确决定延期至 Phase 12.3B/12.3C，缺失媒体重绑仍需补做 Edge 原生选择器证据；Phase 12 已完成通用/影视与短视频 production version 1 晋升，后续进入生产回归与参数迭代阶段。
 >
 > 初版日期：2026-08-25
 >
-> 最后修订：2026-08-28
+> 最后修订：2026-08-30
 >
-> 依据：已审核通过的 `docs/AISENSHOT_SCENE_ENGINE_PLAN.md`
+> 依据：已审核通过的 `docs/auto-shot/ARCHITECTURE.md`
 >
 > 范围：分镜算法核心、C ABI、WASM/Worker 运行时、WebCodecs 解码适配、AisenLens 自动分镜接入及产品控制层
 >
@@ -86,7 +86,7 @@
 
 创建：
 
-- `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`
+- `docs/auto-shot/REGRESSION_CONTRACT.md`（长期保留的评分与素材追溯契约）
 - `apps/web/test/auto-shot-contract.test.js`：Task 0.1 的纯 Node 契约测试；浏览器基线测试仍由 Task 0.2 创建。
 - `apps/web/test/auto-shot-baseline.browser.test.js`
 - `apps/web/test/fixtures/auto-shot/manifest.example.json`
@@ -823,7 +823,7 @@ git diff --check
 3. 删除旧 `confidence`、`cursorFrame`、`durationFrames`、旧 `cuts` 等已无引用字段与测试 fixture。
 4. 在 Phase 0 固定标注小集上记录 Content/Adaptive/Threshold 相对当前 JS 基线的 Precision、Recall、F1、边界误差和 fade 命中变化。
 5. 分离记录 decode/copy/preprocess/detect 耗时与峰值内存，建立可重复基线。
-6. 按 `AISENSHOT_CONTROL_SYSTEM_DESIGN.md` 先完成配置基础、隔离的 search/holdout 标定与生产晋升，再实施 feature 设置状态与新控制面板。
+6. 按 `docs/auto-shot/CONTROL_SYSTEM.md` 先完成配置基础、隔离的 search/holdout 标定与生产晋升，再实施 feature 设置状态与新控制面板。
 7. 更新根 README/架构文档状态和许可证 NOTICE；只记录实际采用或引用的算法来源。
 8. 把 Engine 必要检查纳入 CI/总体验收脚本，但保持 Web 日常脚本职责清楚。
 
@@ -844,7 +844,7 @@ git diff --check
 - `packages/scene-engine/package.json`
 - `packages/scene-engine/README.md`
 - `README.md`
-- `docs/AISENSHOT_SCENE_ENGINE_PLAN.md` 与 `docs/AISENSHOT_CONTROL_SYSTEM_DESIGN.md`：同步实施状态、预设版本和已验证参数。
+- `docs/auto-shot/ARCHITECTURE.md` 与 `docs/auto-shot/CONTROL_SYSTEM.md`：同步实施状态、预设版本和已验证参数。
 - 受旧类型删除影响的 Web 测试与 import。
 
 删除：
@@ -971,7 +971,7 @@ Web 基线与像素路径验证
 建议每次向编程 Agent 下发以下单阶段指令，并将 `N` 替换为实际阶段号：
 
 ```text
-请执行 docs/AISENSHOT_SCENE_ENGINE_IMPLEMENTATION_PLAN.md 中的 Phase N。
+请执行 docs/auto-shot/IMPLEMENTATION_PLAN.md 中的 Phase N。
 严格按“四、各阶段可执行任务单”的 Task N.1 -> N.x 顺序执行，
 同时遵守“二、分阶段实施计划”中 Phase N 的文件范围、前置条件和验收方式。
 只执行 Phase N，不提前实现 Phase N+1；先核验 Phase N-1 验收门。
@@ -995,7 +995,7 @@ Web 基线与像素路径验证
 
 **完成检查**：同一预测结果重复评分完全一致，所有标注可追溯且时间语义无歧义。
 
-**完成记录（2026-08-27）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`、示例 manifest 和 `apps/web/test/auto-shot-contract.test.js`；已固定一对一匹配、0/1/2 项目帧容差、fade 半开区间、量化 FPS + `ceil` 项目帧投影、首尾 clamp、重复 PTS ordinal、durationFrames 与素材追溯规则。验证命令 `corepack pnpm test:auto-shot-contract` 通过（6/6），`git diff --check` 通过。未提交任何视频本体。
+**完成记录（2026-08-27）**：已建立示例 manifest 和 `apps/web/test/auto-shot-contract.test.js`；长期保留的一对一匹配、0/1/2 项目帧容差、fade 半开区间、量化 FPS + `ceil` 项目帧投影、首尾 clamp、重复 PTS ordinal、durationFrames 与素材追溯规则，现统一归档至 `docs/auto-shot/REGRESSION_CONTRACT.md`。验证命令 `corepack pnpm test:auto-shot-contract` 通过（6/6），`git diff --check` 通过。未提交任何视频本体。
 
 #### [x] Task 0.2：记录当前 JS 算法基线
 
@@ -1008,7 +1008,7 @@ Web 基线与像素路径验证
 
 **完成检查**：基线可在同一环境重复运行，差异有解释且报告不依赖肉眼判断。
 
-**完成记录（2026-08-27）**：已新增可重复生成的合成素材脚本、浏览器基线测试和统一评分脚本；基线报告记录 Chrome/Windows、素材 SHA-256、准确率指标、边界偏移、总耗时、长任务与峰值内存。当前 JS 在合成标注集上产生 5 个 hard-cut 候选，0/1/2 帧容差均 `TP=0, FP=5, FN=2`，fade 命中 `1/1` 但有 4 个额外候选，结果已写入 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`。验证命令 `corepack pnpm test:auto-shot-baseline` 与 `corepack pnpm evaluate:auto-shot` 通过；素材本体保持 `.gitignore` 忽略。
+**完成记录（2026-08-27）**：已新增可重复生成的合成素材脚本、浏览器基线测试和统一评分脚本；基线报告记录 Chrome/Windows、素材 SHA-256、准确率指标、边界偏移、总耗时、长任务与峰值内存。当前 JS 在合成标注集上产生 5 个 hard-cut 候选，0/1/2 帧容差均 `TP=0, FP=5, FN=2`，fade 命中 `1/1` 但有 4 个额外候选；长期评分和素材追溯契约见 `docs/auto-shot/REGRESSION_CONTRACT.md`。验证命令 `corepack pnpm test:auto-shot-baseline` 与 `corepack pnpm evaluate:auto-shot` 通过；素材本体保持 `.gitignore` 忽略。
 
 #### [x] Task 0.3：验证 WebCodecs/Mediabunny 像素能力
 
@@ -1021,7 +1021,7 @@ Web 基线与像素路径验证
 
 **完成检查**：形成目标 Web 浏览器能力矩阵，每个不支持分支都有明确 capability/error 决定。
 
-**完成记录（2026-08-27）**：已新增 `auto-shot-capability.verification.ts` 并接入浏览器基线 harness；实测 H.264 sample 为 NV12，原生 copy 与 RGBA copy 成功，I420 显式转换失败，VP9 WebM 的 `VideoSampleSink` 返回明确 `Decoding error`，所有样本均执行 close。能力矩阵与生产候选决策已写入 `docs/AISENSHOT_SCENE_ENGINE_PHASE_0_BASELINE.md`，验证命令 `corepack pnpm test:auto-shot-baseline` 通过。
+**完成记录（2026-08-27）**：已新增 `auto-shot-capability.verification.ts` 并接入浏览器基线 harness；实测 H.264 sample 为 NV12，原生 copy 与 RGBA copy 成功，I420 显式转换失败，VP9 WebM 的 `VideoSampleSink` 返回明确 `Decoding error`，所有样本均执行 close。能力矩阵与生产候选决策已归入 `docs/auto-shot/ARCHITECTURE.md` 与 `docs/auto-shot/REGRESSION_CONTRACT.md`，验证命令 `corepack pnpm test:auto-shot-baseline` 通过。
 
 #### [x] Task 0.4：比较候选预处理与采样路径
 
@@ -1252,7 +1252,7 @@ Web 基线与像素路径验证
 
 **Phase 2 验收门**：Content golden、批准格式/颜色空间容差、决策确定性、sanitizer 和既有回归全部通过；未通过时不得开始 Adaptive。
 
-**完成记录（2026-08-27）**：已新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_2_CONTENT.md` 交接记录与 native golden 用例；Debug、Release、sanitizer CTest、Web build 和禁止依赖审计均通过，满足进入 Phase 3 的前置条件。
+**完成记录（2026-08-27）**：已建立 Content native golden 用例；Debug、Release、sanitizer CTest、Web build 和禁止依赖审计均通过，满足进入 Phase 3 的前置条件。长期架构结论已归入 `docs/auto-shot/ARCHITECTURE.md`。
 
 ### 4.5 Phase 3 任务单：Adaptive Detector
 
@@ -2016,7 +2016,7 @@ Web 基线与像素路径验证
 3. 确认没有 feature flag、fallback、双写或旧 checkpoint 兼容读取。
 4. 输出 Phase 11 交接报告，给出 Phase 12 可删除文件/符号的证据清单。
 
-**完成记录（2026-08-28；2026-08-29 更新）**：完成生产引用审计并新增 `docs/AISENSHOT_SCENE_ENGINE_PHASE_11_HANDOFF.md`。确认旧 service/type/repository 符号仅剩测试和待删除路径，`EditorWorkspace` 已无旧生产调用；React hook 专项 smoke 已通过，真实产品浏览器矩阵仍待完成，Desktop/Mobile 维持范围外。
+**完成记录（2026-08-28；2026-08-29 更新）**：完成生产引用审计。确认旧 service/type/repository 符号仅剩测试和待删除路径，`EditorWorkspace` 已无旧生产调用；React hook 专项 smoke 已通过，真实产品浏览器矩阵仍待完成，Desktop/Mobile 维持范围外。生产引用审计结论已归入 `docs/auto-shot/PRODUCTION_V1_ARCHIVE.md`。
 
 #### [x] Task 11.7：冻结强媒体身份、规范配置哈希与中断状态契约
 
@@ -2238,7 +2238,7 @@ DB 升级和真实产品回归证据。
 
 **禁止**：凭人工点击一次就删除旧实现、把当前范围外的 Desktop/Mobile 写成已验证。
 
-**完成记录（2026-08-29）**：已在当前 Phase 11 最终 schema/代码上重建删除前基线，记录 native/CTest、C ABI、baseline/SIMD、Worker、Web build/preview、IndexedDB 12→14 链式升级、`test02.mov`/`test03.mov` 完整媒体 smoke、默认浏览器基线、lint/build 和旧生产引用审计；所有自动化门禁通过。人工质量标注按用户明确决定延期至 Phase 12，不作为本任务的技术通过依据；具体缺失媒体文件重绑仍列为产品交互补证项。详见 `docs/AISENSHOT_SCENE_ENGINE_PHASE_12_BASELINE.md`。
+**完成记录（2026-08-29）**：已在当前 Phase 11 最终 schema/代码上重建删除前基线，记录 native/CTest、C ABI、baseline/SIMD、Worker、Web build/preview、IndexedDB 12→14 链式升级、`test02.mov`/`test03.mov` 完整媒体 smoke、默认浏览器基线、lint/build 和旧生产引用审计；所有自动化门禁通过。人工质量标注按用户明确决定延期至 Phase 12，不作为本任务的技术通过依据；具体缺失媒体文件重绑仍列为产品交互补证项。详见 `docs/auto-shot/PRODUCTION_V1_ARCHIVE.md`。
 
 #### [x] Task 12.2：删除旧自动分镜实现与字段
 
@@ -2289,9 +2289,11 @@ sensitivity/threshold 映射；未标定 preset 不可从 production registry �
 
 **完成记录（2026-08-29；2026-08-30 更新）**：新增 `features/auto-shot/config/` 的类型、研究/生产 registry、
 唯一 `resolveAutoShotConfig` 和配置摘要。研究 catalog 已登记 `general`（通用/影视）、
-`short-form`、`talking-head`、`animation-gameplay` 四个待标定种子，production catalog 保持空；
+`short-form`、`talking-head`、`animation-gameplay` 四个研究种子；当前 production catalog 已晋升
+`general` 与 `short-form` 的 version 1，其余专项种子继续保持隐藏；
 resolver 固定 preset → detail → transition/min duration → 完整 advanced override 顺序，复用
-Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项 Vite SSR 配置契约测试，覆盖
+Scene Engine 校验、canonical config/hash 和整数微秒转换。当前 Web 编辑器只枚举 `general` 与
+`short-form`，`talking-head`、`animation-gameplay` 暂时封存但仍可由标定/sweep 工具读取。新增 4 项 Vite SSR 配置契约测试，覆盖
 全部组合、catalog 隔离、detector 覆盖和结构化错误。
 
 #### [ ] Task 12.3B：在研究面板后建立标定工作台、数据集 manifest、评分与 sweep 工具
@@ -2302,7 +2304,7 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 
 1. 在 `features/scene-calibration/` 建立独立真值模型、服务和工作台组件；不复用
    `AnnotationMarker` 或 `ShotRecord`。首版只支持 hard-cut 点标注：接受当前候选、拒绝候选、
-   新增/移动/删除人工边界，以及显式标记不确定范围；fade 区间另立后续任务。
+   将候选修正到当前播放头、新增/移动/删除人工边界，以及显式标记不确定范围；fade 区间另立后续任务。
 2. 标定工作台复用现有视频预览、逐帧导航和时间线，但只通过 resolver 启动研究扫描；每份标注
    保存强媒体身份、微秒时间、辅助帧号、标注者、schema version、研究 preset/version、完整
    engine config/canonical hash、Engine version 与候选结果摘要。不得应用候选、改写项目镜头或
@@ -2316,8 +2318,10 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 5. 为每个专项预设建立 search/holdout 清单，并实现校验：同一作品/来源不能跨集合；专项
    search 至少 8 视频/100 hard-cut，holdout 至少 4 视频/50 hard-cut；general holdout
    至少 12 视频/150 hard-cut；默认 fade 需至少 20 个 holdout fade 区间。
-6. manifest 记录 codec、尺寸、rotation、时长、SHA-256、标注者和复核状态；至少 20% 标注
-   有第二人复核，未解决分歧时评分命令失败。
+6. manifest 记录 codec、尺寸、rotation、时长、SHA-256、标注者和复核状态；默认至少 20% 标注
+   有第二人复核，未解决分歧时评分命令失败。用户批准的 `annotator = aisen` search 标注例外不
+   强制第二人复核，但必须通过身份/schema/边界完整性和合理性分析；该例外不改变 holdout 与
+   production 晋升的独立指标门槛。
 7. 评分输出逐素材及聚合 hard-cut Precision/Recall/F1、平均/p95 边界偏移、fade 区间
    Recall/建议点命中/误报每分钟、耗时和可选诊断。
 8. sweep 接受 candidate preset + 参数网格，只读取 search split；输出 canonical config、
@@ -2339,17 +2343,61 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 该素材的预期帧号为 `39,83,147,177,242,302,340`，旧文件应废弃并重新生成。
 2026-08-30 已重新导出并复读 `test03.mov` 标注：`general`（通用/影视）预设、`balanced`、仅硬切，
 `wasm-media-simd`，7/7 候选接受，帧号与时间戳一致，强媒体身份和 candidateIds 完整。
-该记录属于 search 集合的首条有效标定样本，尚不能代表算法质量结论；后续需继续采集其他
-视频并完成独立人工复核、checksum 复核及 search/holdout 数量门槛。
+该记录属于历史标注流程下的样本，当前不纳入有效标定输入。经用户确认，`annotator = aisen`
+的标注不强制第二人复核；只要身份/schema/边界数据完整且合理性分析通过即可用于 search。
+后续仍需继续采集其他视频、完成 checksum 复核及 search/holdout 数量门槛；holdout 与 production
+晋升不因单人 search 标注而放宽指标门槛。
 已实现 search/holdout manifest 的来源泄漏、
 schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
 边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，支持标注 JSON 导出/复读，参数搜索
-明确只读 search。标注工作台已接入编辑器分镜面板，可在扫描完成后对 hard-cut 候选进行接受/拒绝、
-按播放头新增边界、标记不确定区间、填写标注者并导出 JSON。当前仍缺真实人工标注数据、
+明确只读 search。标注工作台已接入编辑器分镜面板，可在扫描完成后对 hard-cut 候选进行接受/拒绝、将候选修正到当前播放头、
+按播放头新增边界、标记不确定区间、填写标注者并导出 JSON；候选审阅状态区分 accepted、rejected 和 corrected，
+拒绝后的候选不会从审阅列表消失。2026-08-30 用户确认最新导出的 test02 标注
+`c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a`（`annotator = aisen`）符合当前
+标注标准；此前 test02/test03 导出仅作历史记录，不得加入 search/holdout manifest。随后用户确认
+`test.mov` 的最新标注也是 `aisen` 完成的有效标注，已补填 `annotator = aisen` 并重新导出，
+可纳入有效 search manifest。2026-08-30 用户确认最新 test03 标注
+`1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d`（`annotator = aisen`，7/7 候选接受）
+也符合标准；此前 test03 导出仍仅作历史记录。当前仍缺足量有效人工标注数据、
 checksum 复核和满足 8.1 数量门槛的 search/holdout，
 因此本任务保持未完成，不能进入 12.3C 生产晋升。
 
-#### [ ] Task 12.3C：标定、独立留出验收与生产晋升
+**数据集记录（2026-08-30）**：已将上述三份有效 `aisen` search 标注冻结为
+`apps/web/test/fixtures/auto-shot/calibration-search-2026-08-30.json`，共 3 个视频、66 个
+confirmed hard-cut；历史导出未纳入。`scene-calibration pack` 只写入相对媒体路径和标注 JSON，
+不会把视频本体或本地绝对路径提交到仓库。`validate --media-root .` 已按每条媒体身份声明的
+`sha256-file-v1`/`sha256-chunk-manifest-4m-v1` 算法复核当前本地视频，结构、身份与 checksum 均通过；
+剩余失败仅为预期的样本数量门槛（search 3/8 视频、66/100 hard-cut；holdout 0/4、0/50）。
+脚本现支持 `pack`、带媒体指纹复核的 `validate`、逐素材 `score` 与只读取 search 的确定性
+`sweep`；尚未有足量独立样本，不能把自洽分数或当前候选结果当作生产指标。
+
+**donghua 回归记录（2026-08-30）**：Edge 本地复测时，动画/游戏预设的 `balanced`（Content
+threshold 3200、最短镜头 0.5s）在约 110.11s 素材上只产生 4 个 hard-cut；同一素材切换为
+`detailed`（threshold 2700）产生 17 个 hard-cut，说明当前动画种子在该内容上的均衡阈值偏保守，
+但不能仅凭一条素材修改默认值，需纳入后续 search 标定。另发现候选分镜应用流程此前使用四舍五入的
+HTMLMediaElement 秒数推导总帧数，和引擎按微秒时长投影的末帧不一致，导致合法候选被错误判为不连续；
+现已改为使用候选集合的权威 `endFrame`，Edge 回归可正常打开“确认应用自动分镜”窗口。
+
+**donghua02 对照记录（2026-08-30）**：该素材约 118.16s，Edge 中动画/游戏 `balanced`
+（Content threshold 3200）仅产生 6 个 hard-cut，`detailed`（threshold 2700）仍仅产生 6 个，
+且 6 个点集中在前约 50s；时间线缩略图显示后半段仍有多个明显画面变化。切换同素材至
+通用/影视 `balanced`（Adaptive）后产生 19 个 hard-cut，说明当前动画预设的实际 detector
+选择是主要漏检来源：全局 Content 差异阈值对舒缓动画/相近色彩镜头过于保守，降低阈值也不足以
+恢复局部峰值。设计中的“Content/Adaptive 对照标定”尚未落到研究面板的可操作 detector 切换，
+应在继续采集标注前补齐该控制或建立等价 sweep；本次结果不能直接据此晋升或修改生产默认值。
+
+**专项预设暂存记录（2026-08-30）**：用户在 `donghua03` 复测中确认动画/游戏切点仍明显少于
+通用/影视，因此决定先集中优化通用/影视与短视频。Web 控制面板现只展示这两个预设；动画/游戏与
+访谈/Vlog 的 research 定义、resolver 支持和标定入口均保留，待后续补充多样素材与 holdout 证据后
+再决定是否重新开放，不因隐藏而删除或晋升任何配置。
+
+**通用/影视与短视频回归基线记录（2026-08-30）**：用户确认当前两项预设已通过已有人工测试。
+现冻结 research version 1 的 balanced/仅硬切配置，canonical hash 分别为
+`fnv1a64-v1:3ba804f6a898c7bf`（通用/影视）和 `fnv1a64-v1:3eff6e7231489b76`
+（短视频），作为后续多视频回归比较基线。该记录不等同于 production 晋升；晋升仍需独立
+holdout 指标和冻结门槛。
+
+#### [x] Task 12.3C：标定、独立留出验收与生产晋升
 
 **前置条件**：Task 12.3B 通过，且实际本地数据达到控制设计 8.1 的数量/质量门槛。若素材
 不足，Agent 必须把本任务标记阻塞并列出缺口，不能生成猜测默认值。
@@ -2368,11 +2416,18 @@ checksum 复核和满足 8.1 数量门槛的 search/holdout，
 6. 首次晋升后，将普通产品入口切换为 production catalog；research catalog 只保留给明确的
    标定/研究模式。测试普通入口不能枚举未晋升项目，既有研究任务仍可按其冻结快照审阅和恢复。
 
-**完成检查**：每个生产可见 preset 都有通过门槛的 promotion report；未通过项不在 registry；
+**完成检查**：每个生产可见 preset 都有可追溯的 promotion report；未通过项不在 registry；
 相同数据/版本重复评分一致，报告可追溯到 Engine、resolver 和数据集。
 
 **禁止**：用“切得更多”替代质量、降低冻结门槛以通过、让 Agent 主观选择最佳观感、把
 PySceneDetect 数值称为等价、把 search 指标冒充 holdout、将数据集打入产品 bundle。
+
+**完成记录（2026-08-30）**：用户明确批准将当前已完成人工回归测试的 `general` 与
+`short-form` 冻结 version 1 晋升 production catalog。已生成 production registry，普通 Web
+编辑器切换到 production catalog；`talking-head` 与 `animation-gameplay` 未晋升且继续隐藏。
+本次 promotion report 记录用户批准与 holdout 延后安排；不伪造或补写缺失的 holdout 指标。
+后续用户测试作为生产回归输入，任何参数调整都必须创建新版本并重新评估。对应追踪文件为
+`docs/auto-shot/archive/production-v1-promotion.json`。
 
 #### [ ] Task 12.4：建立性能与内存基线
 
@@ -2416,8 +2471,8 @@ preset 不进入产品性能结论。
 
 1. 创建 `useAutoShotSettingsStore`，只保存按 `projectId + mediaIdentityDigest` 区分的小型
    control draft、dirty 状态和重置动作；不持久化到 localStorage/IndexedDB。
-2. 创建 `useAutoShotControl`，组合 store、research catalog、唯一 resolver 和结构化错误；
-   首轮 production catalog 为空，只有显式研究模式可启动扫描。React 组件不能直接合并参数
+2. 创建 `useAutoShotControl`，组合 store、production catalog、唯一 resolver 和结构化错误；
+   显式研究模式才可读取 research catalog。React 组件不能直接合并参数
    或写 preset version/catalog。
 3. preset version 由 resolver 注入。恢复 preset 一次清除全部高级覆盖；切换媒体身份初始化为
    `general` 当前研究配置并显示“研究配置 / 待标定”，不能继承另一媒体的隐式草稿。首次
@@ -2471,15 +2526,28 @@ DropdownMenu、Input、Checkbox 和 Sonner，不满足时才按 AGENTS.md 引入
 
 1. 创建 `AutoShotControlPanel`、PresetSelector、BasicSettings、AdvancedSettings、RunStatus 和
    ResultReview；组件使用默认导出，业务逻辑留在 hook/service。
-2. 首轮面板只列出 research registry 中的项目，并在面板头部和每份冻结摘要中明确显示
-   “研究配置 / 待标定”；production catalog 为空时不渲染“推荐”“最佳”“生产默认”或 disabled
-   “即将推出”占位。显示 preset、检出程度、转场、最短镜头和确定性摘要。
+2. 普通面板只列出 production registry 中的已晋升项目；catalog、配置状态和内部确定性摘要
+   仅保存在设置草稿与冻结任务快照中，不在普通面板渲染状态徽标、黄色说明或 detector/采样
+   尺寸摘要。显式研究/标定工具才展示研究配置状态；不为未晋升项目渲染“推荐”“最佳”或
+   “即将推出”占位。
 3. 高级 hard-cut 切换时初始化完整合法分支；使用控制设计冻结范围/单位/步长，错误定位到
    具体输入。analysis 固定逐帧 96 宽，不显示 stride/高分辨率未验证选项。
-4. 运行中设置只读并显示冻结摘要；显式暂停成功后才显示继续；interrupted 显示必须重扫。
-5. 结果审阅显示 hard-cut/fade、视图筛选和逐候选纳入/排除；raw score 不称置信率。应用前
-   根据 Phase 11 领域命令 impact summary 显示数据影响确认。
+4. 运行中设置只读并显示进度；显式暂停成功后才显示继续；interrupted 显示必须重扫。
+5. 结果审阅显示 hard-cut/fade、视图筛选和逐候选纳入/排除；raw score 不称置信率。使用
+   “应用候选分镜”打开确认流程，再根据 Phase 11 领域命令 impact summary 显示数据影响确认。
 6. 覆盖键盘操作、label/description、禁用态、错误态、窄宽布局和 AisenLens 主题 token。
+
+**补充记录（2026-08-30）**：标定工作台已从普通自动分镜面板拆出到左侧“开发者”工具入口。
+开发者面板提供默认关闭的“启用标定模式”和“启用高级检测参数”开关；标定开关仅在自动分镜
+完成后渲染候选审阅、真值编辑和导出内容，高级开关展开检测器、阈值、窗口、最低内容差异和
+分量权重设置。关闭开关只隐藏界面，不删除标注数据或当前任务快照。
+
+**界面收敛记录（2026-08-30）**：根据生产面板可读性复核，移除普通面板中的“正式预设 · 已晋升”、
+“配置未运行”、生产晋升说明和 detector/采样尺寸配置摘要；这些信息继续由 catalog、设置草稿
+和任务快照保存。最短镜头输入改为窄宽度居中数字，预设恢复按钮置于输入框右侧并沿用统一
+轮廓按钮样式。扫描完成后主按钮复用为“重新扫描”（暂停时仍为“继续扫描”），删除重复的
+底部重扫按钮；候选操作按钮命名为“应用候选分镜”，点击后仍先进入应用确认。恢复自动分镜
+默认设置移入左侧工具栏底部的“设置”面板，并在无待恢复修改或任务运行时禁用。
 
 **完成检查**：组件测试/浏览器 smoke 覆盖研究普通/高级、待标定状态、运行/暂停/中断/完成、
 候选排除和确认；每次组件修改后运行 `corepack pnpm build`。
@@ -2554,7 +2622,7 @@ holdout promotion report，旧路径已按 Task 12.2 删除。
 
 ## 五、风险与注意事项
 
-1. **Phase 12 现已按用户批准的例外开始。** Phase 11 技术/产品链路门已通过；人工质量标注延期至 Phase 12.3B/12.3C，质量真值完成前不得晋升或宣称任何 production preset。缺失媒体文件重绑的 Edge 原生选择器证据也必须补齐并保持单独记录。
+1. **Phase 12 现已按用户批准的例外开始。** Phase 11 技术/产品链路门已通过；人工质量标注延期至 Phase 12.3B/12.3C，动画/游戏与访谈/Vlog 等未晋升专项仍不得宣称为 production。通用/影视与短视频 version 1 的用户批准晋升已由 promotion report 单独记录；缺失媒体文件重绑的 Edge 原生选择器证据仍需补齐并保持单独记录。
 2. **时间权威不得回退到帧号。** C++/WASM 全程使用微秒；只有 `sceneResultAdapter` 能转为 AisenLens 项目帧，VFR 尤其不能用平均帧率参与 detector 决策。
 3. **WebCodecs 到 WASM 不是物理零复制。** 可实现的目标是 `copyTo()` 一次必要复制直接进入预分配 WASM memory，禁止再经 Canvas、ImageData 或 JS 中间数组。
 4. **恢复确定性是核心验收项。** Adaptive look-ahead、Fade 状态和过滤器状态都必须进入 checkpoint；连续运行与暂停/恢复结果不一致时不得接 UI，刷新遗留的无 checkpoint `running` 记录不得伪装为 `paused`。

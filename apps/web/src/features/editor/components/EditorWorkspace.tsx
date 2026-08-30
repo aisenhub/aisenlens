@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import {
   Bookmark,
   Clapperboard,
+  Code2,
   FileVideo,
   Grid3X3,
   Keyboard,
@@ -45,6 +46,7 @@ import projectRepository from "../../project/services/projectRepository"
 import formatTimecode from "../utils/formatTimecode"
 import retainShotMap from "../utils/retainShotMap"
 import { Button } from "../../../components/ui/button"
+import { Checkbox } from "../../../components/ui/checkbox"
 import { Input } from "../../../components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs"
 import { Textarea } from "../../../components/ui/textarea"
@@ -74,6 +76,7 @@ import {
 import { loadOrCreateProjectTemplate } from "../../template/services/templateService"
 import {
   applyAutoShotCandidates,
+  resolveAutoShotTotalFrames,
   type AutoShotApplyOutput,
 } from "../../auto-shot/applyAutoShotCandidates"
 import {
@@ -96,10 +99,11 @@ import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
 import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
-import { getResearchPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
-import { listPresetDefinitions } from "../../auto-shot/config/presetRegistry"
-import type { AutoShotTaskRecord } from "../../auto-shot/types"
+import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
+import { listFrontendPresetDefinitions } from "../../auto-shot/config/presetRegistry"
+import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
+import AdvancedSettings from "../../auto-shot/components/AdvancedSettings"
 import CalibrationWorkbench from "../../scene-calibration/components/CalibrationWorkbench"
 import { addUncertainRange, attachCalibrationResearchRun, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
 import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
@@ -265,6 +269,8 @@ export default function EditorWorkspace({
   const [activeShot, setActiveShot] = useState(0)
   const [panel, setPanel] = useState<Panel>("frame")
   const [activeTool, setActiveTool] = useState<PanelToolId>(null)
+  const [calibrationModeEnabled, setCalibrationModeEnabled] = useState(false)
+  const [advancedDetectionEnabled, setAdvancedDetectionEnabled] = useState(false)
   const [maskOn, setMaskOn] = useState(false)
   const [canvasBackgroundColor, setCanvasBackgroundColor] =
     useState<string | null>(null)
@@ -438,7 +444,7 @@ export default function EditorWorkspace({
   const autoShotControl = useAutoShotControl({
     projectId,
     mediaIdentityDigest: autoShotMediaIdentityDigest,
-    catalog: "research",
+    catalog: "production",
   })
   const autoShotTask = useAutoShotTask({
     projectId,
@@ -452,7 +458,7 @@ export default function EditorWorkspace({
     setAutoShotMediaIdentityDigest(autoShotTask.mediaIdentityDigest)
   }, [autoShotTask.mediaIdentityDigest])
   const autoShotPresets = useMemo(
-    () => listPresetDefinitions(getResearchPresetRegistry(), "research"),
+    () => listFrontendPresetDefinitions(getProductionPresetRegistry(), "production"),
     [],
   )
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
@@ -1333,7 +1339,7 @@ export default function EditorWorkspace({
   const previewAutoShotCuts = () => {
     if (!autoShotRun || autoShotRun.status !== "completed") return
     const frameRate = media.metadata?.frameRate ?? FPS
-    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
+    const totalFrames = resolveAutoShotTotalFrames(autoShotRun.candidates, durationSeconds, frameRate)
     let applied
     try {
       applied = applyAutoShotCandidates({ candidates: autoShotRun.candidates, excludedCandidateIds: excludedAutoShotCandidateIds, totalFrames, frameRate, currentShots: shots, currentShotFrames: shotFrames, currentGroups: shotGroups })
@@ -1387,6 +1393,16 @@ export default function EditorWorkspace({
       id: boundaryId,
       timestampUs: Math.round(currentTime * 1_000_000),
       frame: Math.max(1, Math.round(currentTime * frameRate)),
+    }))
+  }
+
+  const correctCalibrationCandidateAtPlayhead = (candidate: AutoShotCandidate) => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    updateCalibration((current) => updateHardCutAnnotation(current, "correct", {
+      candidate,
+      timestampUs: Math.round(currentTime * 1_000_000),
+      frame: Math.max(1, Math.round(currentTime * frameRate)),
+      note: "候选位置已人工修正",
     }))
   }
 
@@ -2200,7 +2216,7 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / shot / videoinfo / template / video / mask / shortcuts */
+  /* Toolbar order: home / shot / videoinfo / template / video / mask / shortcuts / developer */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
@@ -2215,6 +2231,7 @@ export default function EditorWorkspace({
     { id: "shortcuts", icon: "▧", label: "快捷键", short: "快捷" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
     { id: "audio", icon: "", label: "音频", short: "音频" },
+    { id: "developer", icon: "", label: "开发者", short: "开发" },
   ]
 
   const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
@@ -2227,6 +2244,7 @@ export default function EditorWorkspace({
     shot: Scissors,
     shortcuts: Keyboard,
     template: Settings2,
+    developer: Code2,
   }
 
   const activeShotId = shots[activeShot]?.id ?? ""
@@ -2979,6 +2997,79 @@ export default function EditorWorkspace({
                   </div>
                 )}
 
+                {/* ── 开发者工具 / 标定 ── */}
+                {activeTool === "developer" && (
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-xl border border-accent/25 bg-accent/5 p-3">
+                      <p className="editor-heading font-mono tracking-wider text-accent">开发者工具</p>
+                      <p className="mt-1 text-[10px] leading-4 text-text-dim">
+                        标定功能用于记录自动分镜的 hard-cut 真值，不会改动正式分镜或项目数据。
+                      </p>
+                    </div>
+                    <label className="flex items-start justify-between gap-3 rounded-lg border border-border bg-bg-input/20 px-2.5 py-2.5">
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-text">启用标定模式</span>
+                        <span className="mt-0.5 block text-[10px] leading-4 text-text-dim">
+                          开启后，自动分镜完成时显示标定工作台和人工标注选项。
+                        </span>
+                      </span>
+                      <Checkbox
+                        checked={calibrationModeEnabled}
+                        onCheckedChange={(checked) => setCalibrationModeEnabled(checked === true)}
+                        aria-label="启用标定模式"
+                        className="mt-0.5"
+                      />
+                    </label>
+                    <label className="flex items-start justify-between gap-3 rounded-lg border border-border bg-bg-input/20 px-2.5 py-2.5">
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-text">启用高级检测参数</span>
+                        <span className="mt-0.5 block text-[10px] leading-4 text-text-dim">
+                          开启后可调整检测器、阈值、窗口和淡入淡出参数，仅用于开发调试。
+                        </span>
+                      </span>
+                      <Checkbox
+                        checked={advancedDetectionEnabled}
+                        onCheckedChange={(checked) => setAdvancedDetectionEnabled(checked === true)}
+                        aria-label="启用高级检测参数"
+                        className="mt-0.5"
+                      />
+                    </label>
+                    {advancedDetectionEnabled && autoShotControl.settings && (
+                      <AdvancedSettings
+                        settings={autoShotControl.settings}
+                        baseHardCut={autoShotControl.resolved?.engineConfig.hardCut}
+                        disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
+                        onChange={autoShotControl.updateSettings}
+                      />
+                    )}
+                    {!calibrationModeEnabled ? (
+                      <p className="rounded-lg bg-bg-input/25 px-2.5 py-2 text-[10px] leading-4 text-text-dim">
+                        标定模式已关闭。普通自动分镜不会显示标定内容。
+                      </p>
+                    ) : autoShotRun?.status === "completed" && calibrationAnnotation ? (
+                      <CalibrationWorkbench
+                        annotation={calibrationAnnotation}
+                        candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
+                        onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
+                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { candidateId }))}
+                        onCorrectCandidate={correctCalibrationCandidateAtPlayhead}
+                        onAddBoundary={addCalibrationBoundaryAtPlayhead}
+                        onMoveBoundaryToPlayhead={moveCalibrationBoundaryToPlayhead}
+                        onDeleteBoundary={deleteCalibrationBoundary}
+                        onLocateBoundary={locateCalibrationBoundary}
+                        onMarkUncertain={markCalibrationUncertainAtPlayhead}
+                        onDeleteUncertainRange={deleteCalibrationUncertainRange}
+                        onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
+                        onExport={exportCalibrationAnnotation}
+                      />
+                    ) : (
+                      <p className="rounded-lg bg-bg-input/25 px-2.5 py-2 text-[10px] leading-4 text-text-dim">
+                        请先在分镜面板完成一次自动分镜，完成后这里会出现候选标注和真值编辑工具。
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* ── 分镜 ── */}
                 {activeTool === "shot" && (
                   <div className="flex flex-col gap-4">
@@ -2986,13 +3077,11 @@ export default function EditorWorkspace({
                       settings={autoShotControl.settings}
                       resolved={autoShotControl.resolved}
                       presets={autoShotPresets}
-                      dirty={autoShotControl.dirty}
                       record={autoShotRun}
                       isActive={autoShotTask.isActive}
                       error={autoShotTask.error}
                       excludedCandidateIds={excludedAutoShotCandidateIds}
                       onChange={autoShotControl.updateSettings}
-                      onReset={autoShotControl.resetSettings}
                       onStart={() => void startAutoShotDetection()}
                       onPause={() => void autoShotTask.pause()}
                       onRestart={() => void startAutoShotDetection(true)}
@@ -3010,22 +3099,6 @@ export default function EditorWorkspace({
                         }
                       }}
                     />
-                    {autoShotRun?.status === "completed" && calibrationAnnotation && (
-                      <CalibrationWorkbench
-                        annotation={calibrationAnnotation}
-                        candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
-                        onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
-                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { candidateId }))}
-                        onAddBoundary={addCalibrationBoundaryAtPlayhead}
-                        onMoveBoundaryToPlayhead={moveCalibrationBoundaryToPlayhead}
-                        onDeleteBoundary={deleteCalibrationBoundary}
-                        onLocateBoundary={locateCalibrationBoundary}
-                        onMarkUncertain={markCalibrationUncertainAtPlayhead}
-                        onDeleteUncertainRange={deleteCalibrationUncertainRange}
-                        onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
-                        onExport={exportCalibrationAnnotation}
-                      />
-                    )}
                     <ShotGroupPanel
                         isSelecting={isSelectingGroupShots}
                         selectedShotCount={
@@ -3114,6 +3187,20 @@ export default function EditorWorkspace({
                       className="h-7 w-full editor-body font-normal text-red-400 hover:text-red-400"
                     >
                       清除缓存
+                    </Button>
+                    <div className="h-px bg-border" />
+                    <p className="editor-heading text-text-muted font-mono tracking-wider">
+                      自动分镜
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={autoShotTask.isActive || autoShotRun?.status === "running" || !autoShotControl.dirty}
+                      onClick={autoShotControl.resetSettings}
+                      className="h-7 w-full text-text-muted hover:text-text"
+                    >
+                      恢复自动分镜默认设置
                     </Button>
                   </div>
                 )}

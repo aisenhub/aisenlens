@@ -19,6 +19,8 @@ interface RunStatusProps {
 export default function RunStatus({ record, isActive, error, excludedCandidateIds, disabled = false, onStart, onPause, onRestart, onPreview, onToggleCandidate }: RunStatusProps) {
   const progress = record ? Math.round((record.progress.processedUs / Math.max(1, record.progress.durationUs)) * 100) : 0;
   const completed = record?.status === "completed";
+  const paused = record?.status === "paused";
+  const canRestart = Boolean(record && !paused && record.status !== "running");
   return (
     <div className="space-y-2">
       {record?.status === "running" && (
@@ -34,12 +36,11 @@ export default function RunStatus({ record, isActive, error, excludedCandidateId
         </div>
       )}
       {(error || record?.status === "failed") && <p className="editor-meta text-red-300">{error ?? record?.error?.message ?? "自动分镜失败。"}</p>}
-      <Button type="button" variant="outline" size="sm" disabled={disabled || isActive || record?.status === "running"} onClick={onStart} className="h-8 w-full border-accent/30 bg-accent/8 text-accent hover:bg-accent/15">
-        {record?.status === "paused" ? <><Play className="size-3" /> 继续扫描</> : <><Play className="size-3" /> 开始新自动分镜</>}
+      <Button type="button" variant="outline" size="sm" disabled={disabled || isActive || record?.status === "running"} onClick={canRestart ? onRestart : onStart} className="h-8 w-full border-accent/30 bg-accent/8 text-accent hover:bg-accent/15">
+        {paused ? <><Play className="size-3" /> 继续扫描</> : canRestart ? <><RotateCcw className="size-3" /> 重新扫描</> : <><Play className="size-3" /> 开始自动分镜</>}
       </Button>
       {record?.status === "running" && <Button type="button" variant="ghost" size="sm" onClick={onPause} className="h-7 w-full text-text-muted hover:text-white"><Pause className="size-3" /> 暂停扫描</Button>}
-      {completed && <Button type="button" size="sm" onClick={onPreview} className="h-8 w-full">预览候选分镜</Button>}
-      {record && record.status !== "running" && <Button type="button" variant="ghost" size="sm" onClick={onRestart} className="h-7 w-full text-text-muted hover:text-white"><RotateCcw className="size-3" /> 重新扫描</Button>}
+      {completed && <Button type="button" size="sm" onClick={onPreview} className="h-8 w-full">应用候选分镜</Button>}
     </div>
   );
 }

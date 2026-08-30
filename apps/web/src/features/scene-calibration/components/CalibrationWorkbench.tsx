@@ -11,6 +11,7 @@ interface CalibrationWorkbenchProps {
   candidates: AutoShotCandidate[];
   onAcceptCandidate: (candidate: AutoShotCandidate) => void;
   onRejectCandidate: (candidateId: string) => void;
+  onCorrectCandidate: (candidate: AutoShotCandidate) => void;
   onAddBoundary: () => void;
   onMoveBoundaryToPlayhead: (boundaryId: string) => void;
   onDeleteBoundary: (boundaryId: string) => void;
@@ -70,7 +71,7 @@ function UncertainRangeRow({ range, onLocate, onDelete }: { range: CalibrationUn
   );
 }
 
-export default function CalibrationWorkbench({ annotation, candidates, onAcceptCandidate, onRejectCandidate, onAddBoundary, onMoveBoundaryToPlayhead, onDeleteBoundary, onLocateBoundary, onMarkUncertain, onDeleteUncertainRange, onExport, onAnnotatorChange }: CalibrationWorkbenchProps) {
+export default function CalibrationWorkbench({ annotation, candidates, onAcceptCandidate, onRejectCandidate, onCorrectCandidate, onAddBoundary, onMoveBoundaryToPlayhead, onDeleteBoundary, onLocateBoundary, onMarkUncertain, onDeleteUncertainRange, onExport, onAnnotatorChange }: CalibrationWorkbenchProps) {
   const reviewedCount = candidates.filter((candidate) => candidateReviewStatus(annotation, candidate.id)).length;
   const boundaries = [...annotation.hardCuts].sort((left, right) => left.timestampUs - right.timestampUs);
 
@@ -99,11 +100,12 @@ export default function CalibrationWorkbench({ annotation, candidates, onAcceptC
 
       <div className="space-y-1.5 border-t border-border pt-2">
         <div className="flex items-center justify-between gap-2"><h3 className="text-[11px] font-medium text-text">自动候选</h3><span className="shrink-0 text-[10px] text-text-dim">待判定 {candidates.length - reviewedCount}</span></div>
+        <p className="text-[10px] leading-4 text-text-dim">接受会写入真值；位置不准时，把播放头移到正确切点后点击铅笔修正。拒绝后的候选仍可修正。</p>
         {candidates.length === 0 ? <p className="rounded-lg bg-bg-input/25 px-2 py-2 text-[10px] leading-4 text-text-dim">没有可复核的 hard-cut 候选。</p> : (
           <ul className="max-h-44 space-y-1 overflow-y-auto pr-0.5">
             {candidates.map((candidate) => {
               const status = candidateReviewStatus(annotation, candidate.id);
-              const statusLabel = status === "accepted" ? "已接受" : status === "rejected" ? "已拒绝" : "待判定";
+              const statusLabel = status === "accepted" ? "已接受" : status === "corrected" ? "已修正" : status === "rejected" ? "已拒绝" : "待判定";
               return (
                 <li key={candidate.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 rounded-lg border border-border/70 bg-bg-input/25 px-2 py-1.5">
                   <div className="min-w-0">
@@ -111,7 +113,8 @@ export default function CalibrationWorkbench({ annotation, candidates, onAcceptC
                     <p className="truncate text-[10px] text-text-dim">{statusLabel} · 候选 hard-cut</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    <IconAction label="接受为 hard-cut 真值" variant={status === "accepted" ? "default" : "outline"} pressed={status === "accepted"} onClick={() => onAcceptCandidate(candidate)}><Check className="size-3" /></IconAction>
+                    <IconAction label="接受为 hard-cut 真值" variant={status === "accepted" || status === "corrected" ? "default" : "outline"} pressed={status === "accepted" || status === "corrected"} onClick={() => onAcceptCandidate(candidate)}><Check className="size-3" /></IconAction>
+                    <IconAction label="修正到当前播放头" variant={status === "corrected" ? "default" : "ghost"} pressed={status === "corrected"} onClick={() => onCorrectCandidate(candidate)}><Pencil className="size-3" /></IconAction>
                     <IconAction label="拒绝为误检" variant={status === "rejected" ? "default" : "ghost"} pressed={status === "rejected"} onClick={() => onRejectCandidate(candidate.id)}><X className="size-3" /></IconAction>
                   </div>
                 </li>
@@ -123,6 +126,7 @@ export default function CalibrationWorkbench({ annotation, candidates, onAcceptC
 
       <div className="space-y-1.5 border-t border-border pt-2">
         <div className="flex items-center justify-between gap-2"><h3 className="text-[11px] font-medium text-text">Hard-cut 真值</h3><span className="shrink-0 text-[10px] text-text-dim">{boundaries.length} 条</span></div>
+        <p className="text-[10px] leading-4 text-text-dim">这里是最终边界集合；接受、修正和人工补充都会出现在这里，正式分镜不会被改动。</p>
         {boundaries.length === 0 ? <p className="rounded-lg bg-bg-input/25 px-2 py-2 text-[10px] leading-4 text-text-dim">播放到边界后选择“人工补充”，用于记录漏检或位置修正。</p> : <ul className="max-h-40 space-y-1 overflow-y-auto pr-0.5">{boundaries.map((boundary) => <BoundaryRow key={boundary.id} boundary={boundary} onLocate={() => onLocateBoundary(boundary.timestampUs)} onMove={() => onMoveBoundaryToPlayhead(boundary.id)} onDelete={() => onDeleteBoundary(boundary.id)} />)}</ul>}
       </div>
 

@@ -30,6 +30,17 @@ export interface AutoShotApplyOutput {
   summary: AutoShotReviewSummary;
 }
 
+/** Prefer the detector's exact covered range over a rounded HTMLMediaElement duration. */
+export function resolveAutoShotTotalFrames(candidates: readonly AutoShotCandidate[], durationSeconds: number, frameRate: number): number {
+  const detectedTotalFrames = candidates.reduce(
+    (maximum, candidate) => Math.max(maximum, candidate.endFrame),
+    0,
+  )
+  return detectedTotalFrames > 0
+    ? detectedTotalFrames
+    : Math.max(1, Math.round(durationSeconds * frameRate))
+}
+
 function validBoundary(frame: number, totalFrames: number): boolean {
   return Number.isSafeInteger(frame) && frame >= 0 && frame <= totalFrames;
 }
