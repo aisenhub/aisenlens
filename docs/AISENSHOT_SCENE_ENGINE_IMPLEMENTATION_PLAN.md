@@ -2337,6 +2337,10 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 `timestampUs` 按标注媒体的量化 FPS 与 `ceil` 规则重新投影。此前导出的 `test03.mov`
 历史 JSON 中 7 个边界的帧号与时间戳不一致，不能直接作为最终真值；重新扫描并导出后，
 该素材的预期帧号为 `39,83,147,177,242,302,340`，旧文件应废弃并重新生成。
+2026-08-30 已重新导出并复读 `test03.mov` 标注：`film-series` 预设、`balanced`、仅硬切，
+`wasm-media-simd`，7/7 候选接受，帧号与时间戳一致，强媒体身份和 candidateIds 完整。
+该记录属于 search 集合的首条有效标定样本，尚不能代表算法质量结论；后续需继续采集其他
+视频并完成独立人工复核、checksum 复核及 search/holdout 数量门槛。
 已实现 search/holdout manifest 的来源泄漏、
 schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
 边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，支持标注 JSON 导出/复读，参数搜索
