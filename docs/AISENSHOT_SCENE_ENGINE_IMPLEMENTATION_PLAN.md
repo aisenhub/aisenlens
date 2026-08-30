@@ -2328,13 +2328,20 @@ Scene Engine 校验、canonical config/hash 和整数微秒转换。新增 4 项
 失败；合法小 fixture 可在 CI 跑契约，受限/真实视频不进入产品包。
 
 **阶段记录（2026-08-29，进行中）**：已创建独立 `features/scene-calibration/` 真值模型、
-`CalibrationWorkbench` 组件和 calibration service；支持 hard-cut 候选接受/拒绝、手动新增/移动/
-删除、不确定区间、强媒体身份与研究运行快照字段；尾段或无边界候选不会被误收为 hard-cut。
+`CalibrationWorkbench` 组件和 calibration service；支持 hard-cut 候选接受/拒绝/待判定的独立审阅状态、
+手动新增/定位/移动/删除、不确定区间、强媒体身份与研究运行快照字段；尾段或无边界候选不会被误收为 hard-cut。
+标定记录按 `projectId + mediaIdentityDigest` 写入独立 IndexedDB store；项目恢复快照只恢复创作数据，
+不覆盖标定真值，项目删除才清理对应标定记录。更换 detector config/Engine version 时保留人工真值，
+清空旧候选的审阅状态，避免把过期候选判定带入新运行。
+2026-08-30 修正候选接受时的项目帧写入：不得沿用候选的 `startFrame`，必须使用边界
+`timestampUs` 按标注媒体的量化 FPS 与 `ceil` 规则重新投影。此前导出的 `test03.mov`
+历史 JSON 中 7 个边界的帧号与时间戳不一致，不能直接作为最终真值；重新扫描并导出后，
+该素材的预期帧号为 `39,83,147,177,242,302,340`，旧文件应废弃并重新生成。
 已实现 search/holdout manifest 的来源泄漏、
 schema、身份一致性、未解决分歧和样本量校验，以及一对一 hard-cut Precision/Recall/F1、平均/p95
 边界偏移和误报每分钟评分；新增 `scene-calibration` 命令入口，支持标注 JSON 导出/复读，参数搜索
 明确只读 search。标注工作台已接入编辑器分镜面板，可在扫描完成后对 hard-cut 候选进行接受/拒绝、
-按播放头新增边界、标记不确定区间、填写标注者并导出 JSON。当前仍缺真实人工标注数据、跨刷新持久化、
+按播放头新增边界、标记不确定区间、填写标注者并导出 JSON。当前仍缺真实人工标注数据、
 checksum 复核和满足 8.1 数量门槛的 search/holdout，
 因此本任务保持未完成，不能进入 12.3C 生产晋升。
 

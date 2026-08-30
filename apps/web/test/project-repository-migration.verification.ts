@@ -237,6 +237,25 @@ export async function runProjectRepositoryMigrationVerification() {
     createdAt: "2026-08-28T00:00:00.000Z",
     updatedAt: "2026-08-28T00:00:00.000Z",
   } as const
+  const calibration = {
+    schemaVersion: 1 as const,
+    annotationId: "annotation:migration-project",
+    projectId: "migration-project",
+    fixtureId: "migration-project:bbbbbbbbbbbbbbbb",
+    split: "search" as const,
+    source: { workId: "migration-project", name: "old.mp4", url: "local://old.mp4", acquiredAt: "2026-08-28", license: "test" },
+    media: { container: "mp4", codec: "avc1.640028", codedWidth: 1920, codedHeight: 1080, displayWidth: 1920, displayHeight: 1080, rotation: 0 as const, durationUs: 1_000_000, fpsNumerator: 30, fpsDenominator: 1 },
+    mediaIdentity,
+    sha256: mediaIdentity.contentDigest,
+    annotator: "tester",
+    reviewer: null,
+    reviewStatus: "unreviewed" as const,
+    hardCuts: [],
+    candidateReviews: { "candidate-1": "rejected" as const },
+    uncertainRanges: [],
+    researchRun: null,
+    updatedAt: "2026-08-28T00:00:00.000Z",
+  }
   await repository.saveAutoShotTask(task)
   const roundTrip = await repository.getAutoShotTask(
     "migration-project",
@@ -259,6 +278,15 @@ export async function runProjectRepositoryMigrationVerification() {
   const deletedTask = await repository.getAutoShotTask(
     "migration-project",
     mediaIdentity,
+  )
+  await repository.saveCalibrationAnnotation(calibration)
+  const savedCalibration = await repository.getCalibrationAnnotation(
+    "migration-project",
+    mediaIdentity,
+  )
+  const mismatchedCalibration = await repository.getCalibrationAnnotation(
+    "migration-project",
+    { ...mediaIdentity, size: 21 },
   )
   const { createProjectRecoverySnapshot, restoreProjectRecoverySnapshot } =
     await import("../src/features/project/services/projectRecoveryService.ts")
@@ -289,6 +317,10 @@ export async function runProjectRepositoryMigrationVerification() {
   await restoreProjectRecoverySnapshot(recoverySnapshot.id, "migration-project")
   const restoredProject = await repository.getProject("migration-project")
   const restoredShots = await repository.listProjectShots("migration-project")
+  const calibrationAfterRecovery = await repository.getCalibrationAnnotation(
+    "migration-project",
+    mediaIdentity,
+  )
   const retentionBase = Date.parse("2026-08-28T01:00:00.000Z")
   for (let index = 0; index < 4; index += 1) {
     await repository.saveProjectRecoverySnapshot({
@@ -313,6 +345,12 @@ export async function runProjectRepositoryMigrationVerification() {
     mediaIdentityMismatchInvalidated: mismatchedMedia === null,
     projectTaskUnique: uniqueProjectTask?.id === "task-roundtrip-2",
     taskDeletion: deletedTask === null,
+    calibrationRoundTrip:
+      savedCalibration?.annotationId === calibration.annotationId &&
+      savedCalibration.candidateReviews["candidate-1"] === "rejected",
+    calibrationMediaIdentityMismatchInvalidated: mismatchedCalibration === null,
+    calibrationPreservedAcrossRecovery:
+      calibrationAfterRecovery?.annotationId === calibration.annotationId,
     recoveryRestored:
       restoredProject?.title === project.title &&
       restoredShots[0]?.id === "migration-shot",

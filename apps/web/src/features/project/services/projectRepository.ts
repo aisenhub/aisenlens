@@ -3,12 +3,13 @@ import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
+import type { CalibrationAnnotationRecord } from "../../scene-calibration/types";
 import { hashSceneDetectionConfig } from "../../../../../../packages/scene-engine/src/api/configHash.ts";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 14;
+const DATABASE_VERSION = 15;
 const PROJECTS_STORE = "projects";
 const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
@@ -21,6 +22,7 @@ const ANNOTATION_MARKERS_STORE = "annotation-markers";
 const DERIVED_FRAME_THUMBNAILS_STORE = "derived-frame-thumbnails";
 const DERIVED_WAVEFORMS_STORE = "derived-waveforms";
 const AUTO_SHOT_RUNS_STORE = "auto-shot-runs";
+const CALIBRATION_ANNOTATIONS_STORE = "scene-calibration-annotations";
 const SHOT_GROUPS_STORE = "shot-groups";
 const RECOVERY_SNAPSHOTS_STORE = "recovery-snapshots";
 
@@ -164,6 +166,11 @@ function openDatabase(): Promise<IDBDatabase> {
       if (oldVersion < 14) {
         request.transaction?.objectStore(AUTO_SHOT_RUNS_STORE).clear();
       }
+      if (!database.objectStoreNames.contains(CALIBRATION_ANNOTATIONS_STORE)) {
+        const annotations = database.createObjectStore(CALIBRATION_ANNOTATIONS_STORE, { keyPath: "annotationId" });
+        annotations.createIndex("projectId", "projectId", { unique: false });
+        annotations.createIndex("projectMediaIdentity", ["projectId", "mediaIdentity.mediaIdentityDigest"], { unique: true });
+      }
       if (!database.objectStoreNames.contains(SHOT_GROUPS_STORE)) {
         const groups = database.createObjectStore(SHOT_GROUPS_STORE, { keyPath: "id" });
         groups.createIndex("projectId", "projectId", { unique: false });
@@ -234,6 +241,21 @@ function assertAutoShotTaskRecord(task: AutoShotTaskRecord): void {
   }
   if (task.checkpoint && (task.checkpoint.schemaVersion !== 1 || !task.checkpoint.engineVersion || !task.checkpoint.configHash || !(task.checkpoint.coreState instanceof ArrayBuffer))) {
     throw new Error("自动分镜 checkpoint schema、engine version 或 config hash 无效。");
+  }
+}
+
+function assertCalibrationAnnotationRecord(annotation: CalibrationAnnotationRecord): void {
+  if (!annotation.annotationId || !annotation.projectId || !annotation.fixtureId) {
+    throw new Error("标定记录缺少项目或标识。");
+  }
+  if (!annotation.mediaIdentity || annotation.mediaIdentity.identitySchema !== "aisenlens-auto-shot-media-identity" || annotation.mediaIdentity.schemaVersion !== 1 || !/^[0-9a-f]{64}$/.test(annotation.mediaIdentity.mediaIdentityDigest)) {
+    throw new Error("标定记录缺少有效强媒体身份。");
+  }
+  if (!Array.isArray(annotation.hardCuts) || !Array.isArray(annotation.uncertainRanges) || !annotation.candidateReviews || typeof annotation.candidateReviews !== "object") {
+    throw new Error("标定记录结构无效。");
+  }
+  if (Object.values(annotation.candidateReviews).some((status) => status !== "accepted" && status !== "rejected")) {
+    throw new Error("标定候选判定状态无效。");
   }
 }
 
@@ -355,7 +377,7 @@ export function createProjectRepository(): ProjectRepository {
 
     async deleteProject(projectId: string) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE], "readwrite");
       const mediaAssets = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as ProjectRecord | undefined;
       mediaAssets?.mediaAssets.forEach((asset) => {
         transaction.objectStore(MEDIA_ASSET_HANDLES_STORE).delete(asset.id);
@@ -394,6 +416,7 @@ export function createProjectRepository(): ProjectRepository {
         cursor.delete();
         cursor.continue();
       };
+      deleteProjectRecords(transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(SHOT_GROUPS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE), projectId);
       await transactionResult(transaction);
@@ -592,6 +615,37 @@ export function createProjectRepository(): ProjectRepository {
         cursor.delete();
         cursor.continue();
       };
+      await transactionResult(transaction);
+    },
+
+    async getCalibrationAnnotation(projectId: string, mediaIdentity: AutoShotMediaIdentity) {
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_ANNOTATIONS_STORE, "readonly");
+      const annotation = await requestResult(transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE).index("projectMediaIdentity").get([projectId, mediaIdentity.mediaIdentityDigest])) as CalibrationAnnotationRecord | undefined;
+      if (!annotation) return null;
+      try {
+        assertCalibrationAnnotationRecord(annotation);
+      } catch {
+        return null;
+      }
+      return sameAutoShotMediaIdentity(annotation.mediaIdentity, mediaIdentity) ? annotation : null;
+    },
+
+    async saveCalibrationAnnotation(annotation: CalibrationAnnotationRecord) {
+      assertCalibrationAnnotationRecord(annotation);
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_ANNOTATIONS_STORE, "readwrite");
+      const store = transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE);
+      const existing = await requestResult(store.index("projectMediaIdentity").get([annotation.projectId, annotation.mediaIdentity.mediaIdentityDigest])) as CalibrationAnnotationRecord | undefined;
+      if (existing && existing.annotationId !== annotation.annotationId) store.delete(existing.annotationId);
+      store.put({ ...annotation, updatedAt: new Date().toISOString() });
+      await transactionResult(transaction);
+    },
+
+    async deleteCalibrationAnnotation(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_ANNOTATIONS_STORE, "readwrite");
+      await deleteProjectRecordsAndWait(transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE), projectId);
       await transactionResult(transaction);
     },
 

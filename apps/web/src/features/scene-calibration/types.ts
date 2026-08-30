@@ -6,6 +6,7 @@ import type { ResolvedAutoShotConfiguration } from "../auto-shot/config/types";
 export type CalibrationSplit = "search" | "holdout";
 export type CalibrationReviewStatus = "unreviewed" | "reviewed" | "disputed";
 export type CalibrationBoundaryConfidence = "confirmed" | "uncertain";
+export type CalibrationCandidateReviewStatus = "accepted" | "rejected";
 
 export interface CalibrationSource {
   workId: string;
@@ -60,6 +61,7 @@ export interface CalibrationRunSnapshot {
 export interface CalibrationAnnotationRecord {
   schemaVersion: 1;
   annotationId: string;
+  projectId: string;
   fixtureId: string;
   split: CalibrationSplit;
   source: CalibrationSource;
@@ -70,6 +72,8 @@ export interface CalibrationAnnotationRecord {
   reviewer: string | null;
   reviewStatus: CalibrationReviewStatus;
   hardCuts: CalibrationHardCut[];
+  /** Candidate disposition is kept separately from truth, so rejected candidates remain auditable. */
+  candidateReviews: Record<string, CalibrationCandidateReviewStatus>;
   uncertainRanges: CalibrationUncertainRange[];
   researchRun: CalibrationRunSnapshot | null;
   updatedAt: string;

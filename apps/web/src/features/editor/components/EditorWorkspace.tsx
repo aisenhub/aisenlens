@@ -101,7 +101,7 @@ import { listPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
 import CalibrationWorkbench from "../../scene-calibration/components/CalibrationWorkbench"
-import { addUncertainRange, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
+import { addUncertainRange, attachCalibrationResearchRun, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
 import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
@@ -467,27 +467,39 @@ export default function EditorWorkspace({
       setCalibrationAnnotation(null)
       return
     }
-    const annotation = createCalibrationAnnotation({
+    let cancelled = false
+    const fallback = createCalibrationAnnotation({
+      projectId,
       fixtureId: `${projectId}:${autoShotRun.mediaIdentity.mediaIdentityDigest.slice(0, 16)}`,
       source: media.source,
       mediaIdentity: autoShotRun.mediaIdentity,
       frameRate: media.metadata?.frameRate ?? FPS,
     })
-    if (autoShotRun.controlSnapshot) {
-      annotation.researchRun = {
+    const researchRun = autoShotRun.controlSnapshot ? {
         presetId: autoShotRun.controlSnapshot.preset.id,
         presetVersion: autoShotRun.controlSnapshot.preset.version,
-        catalog: "research",
+        catalog: "research" as const,
         detail: autoShotRun.controlSnapshot.detail,
         config: structuredClone(autoShotRun.config),
         canonicalConfig: canonicalizeSceneDetectionConfig(autoShotRun.config),
         configHash: autoShotRun.configHash ?? "",
         engineVersion: autoShotRun.engineVersion ?? autoShotRun.candidates[0]?.engineVersion ?? "unknown",
         candidateIds: autoShotRun.candidates.map((candidate) => candidate.id),
-      }
+      } : null
+
+    void projectRepository.getCalibrationAnnotation(projectId, autoShotRun.mediaIdentity)
+      .then((stored) => {
+        if (cancelled) return
+        const annotation = attachCalibrationResearchRun(stored ?? fallback, researchRun)
+        setCalibrationAnnotation(annotation)
+      })
+      .catch(() => {
+        if (!cancelled) setCalibrationAnnotation(attachCalibrationResearchRun(fallback, researchRun))
+      })
+    return () => {
+      cancelled = true
     }
-    setCalibrationAnnotation(annotation)
-  }, [autoShotRun?.id, media.metadata?.frameRate, media.source, projectId])
+  }, [autoShotRun?.id, autoShotRun?.status, autoShotRun?.engineVersion, autoShotRun?.configHash, autoShotRun?.candidates.length, media.metadata?.frameRate, media.source, projectId])
 
   useMultiTrackAudioPreview({
     mediaAssets: mediaProject.mediaAssets,
@@ -1333,7 +1345,14 @@ export default function EditorWorkspace({
   }
 
   const updateCalibration = (updater: (current: CalibrationAnnotationRecord) => CalibrationAnnotationRecord) => {
-    setCalibrationAnnotation((current) => current ? updater(current) : current)
+    setCalibrationAnnotation((current) => {
+      if (!current) return current
+      const next = updater(current)
+      void projectRepository.saveCalibrationAnnotation(next).catch((error) => {
+        toast.error(error instanceof Error ? error.message : "标定数据保存失败，请稍后重试。")
+      })
+      return next
+    })
   }
 
   const exportCalibrationAnnotation = () => {
@@ -1360,6 +1379,31 @@ export default function EditorWorkspace({
     const endUs = Math.min(Math.max(startUs + 100_000, startUs + 1_000_000), Math.max(startUs + 1, Math.round(durationSeconds * 1_000_000)))
     if (endUs <= startUs) return
     updateCalibration((current) => addUncertainRange(current, { startUs, endUs, reason: "待人工确认" }))
+  }
+
+  const moveCalibrationBoundaryToPlayhead = (boundaryId: string) => {
+    const frameRate = media.metadata?.frameRate ?? FPS
+    updateCalibration((current) => updateHardCutAnnotation(current, "move", {
+      id: boundaryId,
+      timestampUs: Math.round(currentTime * 1_000_000),
+      frame: Math.max(1, Math.round(currentTime * frameRate)),
+    }))
+  }
+
+  const deleteCalibrationBoundary = (boundaryId: string) => {
+    updateCalibration((current) => updateHardCutAnnotation(current, "delete", { id: boundaryId }))
+  }
+
+  const deleteCalibrationUncertainRange = (rangeId: string) => {
+    updateCalibration((current) => ({
+      ...current,
+      uncertainRanges: current.uncertainRanges.filter((range) => range.id !== rangeId),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  const locateCalibrationBoundary = (timestampUs: number) => {
+    setCurrentTime(Math.min(Math.max(timestampUs / 1_000_000, 0), durationSeconds))
   }
 
   const applyAutoShotCuts = async () => {
@@ -2971,9 +3015,13 @@ export default function EditorWorkspace({
                         annotation={calibrationAnnotation}
                         candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
                         onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
-                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { id: `candidate:${candidateId}` }))}
+                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { candidateId }))}
                         onAddBoundary={addCalibrationBoundaryAtPlayhead}
+                        onMoveBoundaryToPlayhead={moveCalibrationBoundaryToPlayhead}
+                        onDeleteBoundary={deleteCalibrationBoundary}
+                        onLocateBoundary={locateCalibrationBoundary}
                         onMarkUncertain={markCalibrationUncertainAtPlayhead}
+                        onDeleteUncertainRange={deleteCalibrationUncertainRange}
                         onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
                         onExport={exportCalibrationAnnotation}
                       />

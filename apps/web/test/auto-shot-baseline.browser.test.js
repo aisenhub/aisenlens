@@ -259,6 +259,17 @@ test(
       )
       assert.equal(migration.projectTaskUnique, true, JSON.stringify(migration))
       assert.equal(migration.taskDeletion, true, JSON.stringify(migration))
+      assert.equal(migration.calibrationRoundTrip, true, JSON.stringify(migration))
+      assert.equal(
+        migration.calibrationMediaIdentityMismatchInvalidated,
+        true,
+        JSON.stringify(migration),
+      )
+      assert.equal(
+        migration.calibrationPreservedAcrossRecovery,
+        true,
+        JSON.stringify(migration),
+      )
       assert.equal(migration.recoveryRestored, true, JSON.stringify(migration))
       assert.equal(
         migration.recoverySnapshotRetention,
