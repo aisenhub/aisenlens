@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import SurfaceCard from "../../../components/ui/surface-card";
-import { getCurrentSession, updatePassword } from "../../../services/supabase/auth";
+import { getCurrentSession, updatePassword } from "../../../services/auth/auth";
 
 export default function PasswordResetPage() {
   const [password, setPassword] = useState(""); const [passwordConfirmation, setPasswordConfirmation] = useState(""); const [isCheckingSession, setIsCheckingSession] = useState(true); const [isSubmitting, setIsSubmitting] = useState(false); const [errorMessage, setErrorMessage] = useState(""); const [isComplete, setIsComplete] = useState(false);

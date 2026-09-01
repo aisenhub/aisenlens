@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import ModalShell from "../../../components/ui/modal-shell";
-import { requestPasswordReset, signInWithEmail, signUpWithEmail } from "../../../services/supabase/auth";
+import { requestPasswordReset, signInWithEmail, signUpWithEmail } from "../../../services/auth/auth";
 
 interface AuthModalProps { onClose: () => void; onComplete: () => void; }
 type AuthMode = "login" | "register" | "recovery";

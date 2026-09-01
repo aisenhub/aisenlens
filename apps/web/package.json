@@ -21,7 +21,8 @@
     "test:editor-history": "node --experimental-strip-types --test test/editor-history-state.test.ts",
     "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
-    "test:video-export": "node --test test/video-export.browser.test.js"
+    "test:video-export": "node --test test/video-export.browser.test.js",
+    "test:platform-integration": "node --experimental-strip-types --test test/platform-integration.test.ts"
   },
   "dependencies": {
     "@aisenlens/scene-engine": "workspace:*",
