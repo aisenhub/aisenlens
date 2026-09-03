@@ -1,6 +1,6 @@
 const LOGS = [
   {
-    version: "v1.0.0",
+    version: "v0.3.0",
     date: "2026-08-30",
     tag: "自动分镜",
     tagColor: "text-accent border-accent/30 bg-accent/10",
