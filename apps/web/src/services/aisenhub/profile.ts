@@ -9,7 +9,7 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
     getPlatformSession(),
     getCurrentUser(),
   ])
-  if (!platformSession.data.authenticated || !user?.email) return null
+  if (!platformSession.data.authenticated || !platformSession.data.identity || !user?.email) return null
 
   const access = await checkAisenLensAccess(
     AISENLENS_FEATURES.supporterFeedback,

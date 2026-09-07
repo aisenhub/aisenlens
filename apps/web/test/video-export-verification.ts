@@ -190,7 +190,7 @@ export async function runVideoExportBrowserVerification() {
       projectId: project.id,
       order: 0,
       startFrame: 0,
-      endFrame: durationFrames - 1,
+      endFrame: durationFrames,
       status: "confirmed",
       detection: { runId: null, kind: "manual", confidence: null },
       primaryScreenshotId: null,

@@ -91,5 +91,5 @@ export default function useEditorSaveState({ projectId, save, autoSaveDelay = 40
     };
   }, [saveNow]);
 
-  return { status, markDirty, requestAutoSave, saveNow };
+  return { status, isDirty: status !== "saved", markDirty, requestAutoSave, saveNow };
 }

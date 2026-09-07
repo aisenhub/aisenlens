@@ -18,6 +18,7 @@ test("AisenLens platform adapters do not depend on product tables or legacy role
     .map((name) => readFileSync(join(adapterRoot, name), "utf8"))
     .join("\n");
 
-  assert.match(source, /@aisenhub\/platform-client/);
+  assert.match(source, /fetch\(/);
+  assert.doesNotMatch(source, /AisenHub-platform|@aisenhub\/platform-client/);
   assert.doesNotMatch(source, /supabase|user_entitlements|supporter.*role|redeem_support_code/i);
 });

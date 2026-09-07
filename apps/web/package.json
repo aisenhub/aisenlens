@@ -7,6 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "lint": "eslint src --max-warnings=0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "postbuild": "node ../../scripts/prerender-public-routes.mjs",
     "preview": "vite preview",
     "format": "oxfmt",
@@ -22,6 +23,7 @@
     "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
     "test:video-export": "node --test test/video-export.browser.test.js",
+    "test:video-export-boundary": "node --experimental-strip-types --test test/video-export-boundary.test.ts",
     "test:platform-integration": "node --experimental-strip-types --test test/platform-integration.test.ts"
   },
   "dependencies": {

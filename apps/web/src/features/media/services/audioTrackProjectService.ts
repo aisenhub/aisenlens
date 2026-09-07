@@ -29,12 +29,11 @@ export async function importAudioTrack(project: ProjectRecord, frameRate: number
   const asset = createLinkedAudioAsset(project.id, inspectedAudio.source!, inspectedAudio.metadata!);
   if (selectedAudio.handle) await projectRepository.saveMediaAssetHandle(asset.id, selectedAudio.handle);
   else await projectRepository.saveMediaAssetBlob(asset.id, selectedAudio.file);
-  const nextProject = appendAudioAsset({ ...project, mediaAssets: [...project.mediaAssets, asset] }, asset.id, asset.metadata!.durationSeconds, frameRate, startFrame, asset.name);
-  return projectRepository.updateProject(nextProject);
+  return projectRepository.updateProjectAtomically(project.id, (latestProject) => appendAudioAsset({ ...latestProject, mediaAssets: [...latestProject.mediaAssets, asset] }, asset.id, asset.metadata!.durationSeconds, frameRate, startFrame, asset.name));
 }
 
 export async function saveAudioTracks(project: ProjectRecord, audioTracks: AudioTrack[]): Promise<ProjectRecord> {
-  return projectRepository.updateProject({ ...project, audioTracks: audioTracks.map((track, order) => ({ ...track, order })) });
+  return projectRepository.updateProjectAtomically(project.id, (latestProject) => ({ ...latestProject, audioTracks: audioTracks.map((track, order) => ({ ...track, order })) }));
 }
 
 export function splitAudioTrackAtFrame(track: AudioTrack, frame: number): AudioTrack {

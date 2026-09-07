@@ -4,9 +4,9 @@ import type { ProjectRecoverySnapshot } from "../types";
 const SNAPSHOT_INTERVAL_MS = 30_000;
 
 export async function createProjectRecoverySnapshot(projectId: string) {
-  const [project, shots, groups, markers, template] = await Promise.all([projectRepository.getProject(projectId), projectRepository.listProjectShots(projectId), projectRepository.listProjectShotGroups(projectId), projectRepository.listProjectAnnotationMarkers(projectId), projectRepository.getProjectTemplate(projectId)]);
-  if (!project) return null;
-  const snapshot: ProjectRecoverySnapshot = { id: crypto.randomUUID(), projectId, createdAt: new Date().toISOString(), project, shots, groups, markers, template };
+  const state = await projectRepository.readProjectEditorState(projectId);
+  if (!state) return null;
+  const snapshot: ProjectRecoverySnapshot = { id: crypto.randomUUID(), projectId, createdAt: new Date().toISOString(), ...state };
   await projectRepository.saveProjectRecoverySnapshot(snapshot);
   return snapshot;
 }

@@ -18,6 +18,7 @@ supabase/    Supabase migrations and functions
 corepack pnpm install
 corepack pnpm dev
 corepack pnpm build
+corepack pnpm verify:web
 corepack pnpm scene-engine:verify:core
 corepack pnpm scene-engine:verify:web-preview
 corepack pnpm dev:desktop
@@ -39,6 +40,10 @@ another repository-local video with `AISENLENS_SCENE_FIXTURE`, for example
 Current feature validation scope is Web; Desktop and Mobile remain optional
 platform checks.
 
+`verify:web` is the release gate for the Web application. It runs TypeScript
+checking, lint, core logic tests, platform adapter checks, the exclusive-frame
+export boundary test, and the production build in one command.
+
 ## Deployment
 
 Vercel deploys the Web application from the repository root with `pnpm --filter @aisenlens/web build`. Keep the Vercel project Root Directory empty and use `apps/web/dist` as its output directory.
@@ -46,6 +51,7 @@ Vercel deploys the Web application from the repository root with `pnpm --filter 
 ## Documentation
 
 - [Project architecture](docs/PROJECT_ARCHITECTURE.md)
+- [Web audit and remediation record](docs/WEB_AUDIT_2026-09-07.md)
 - [Operations and Supabase constraints](docs/OPERATIONS.md)
 - [AisenShot documentation index](docs/auto-shot/README.md)
 - [AisenShot Scene Engine architecture](docs/auto-shot/ARCHITECTURE.md)

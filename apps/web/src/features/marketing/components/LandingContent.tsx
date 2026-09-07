@@ -17,11 +17,11 @@ const AI_TABS = [
 const AI_CONTENT: Record<string, { title: string; desc: string }> = {
   cut: {
     title: "智能分割镜头+手动精准调整",
-    desc:  "镜头切换点识别误差小于 2 帧，一键生成可编辑的分镜结构，支持手动拖拽边界精准修正，节省 80% 人工整理时间。",
+    desc:  "自动生成可编辑的分镜结构，支持手动拖拽边界逐帧修正，减少重复整理工作。",
   },
   frame: {
     title: "精准到帧，捕捉每一个导演决策",
-    desc:  "逐帧回放、批注标记、构图辅助线一键叠加，让你看得更快、分析得更深，最低支持 0.01× 超慢速播放。",
+    desc:  "逐帧回放、批注标记、构图辅助线一键叠加，让你看得更快、分析得更深，支持 0.25× 慢速播放。",
   },
   report: {
     title: "一键导出多种格式拉片分析报告",
@@ -34,7 +34,7 @@ const AI_CONTENT: Record<string, { title: string; desc: string }> = {
 };
 
 const PRO_FEATURES = [
-  { id: "playback", icon: "▶", label: "逐帧回放",   desc: "支持 0.01× 超慢速播放，精准定格任意帧，方便观察演员微表情与摄影机运动细节。" },
+  { id: "playback", icon: "▶", label: "逐帧回放",   desc: "支持 0.25× 慢速播放，精准定格任意帧，方便观察演员微表情与摄影机运动细节。" },
   { id: "annot",    icon: "✦", label: "多维度批注",  desc: "覆盖景别、运动、色调、声音、节奏、叙事功能共六大维度，建立结构化分析体系。" },
   { id: "rhythm",   icon: "≡", label: "节奏图谱",   desc: "将镜头时长映射为节奏曲线，与音乐 BPM 对齐，直观感受剪辑呼吸与情绪节拍。" },
   { id: "mark",     icon: "◈", label: "时间线标记",  desc: "在任意时间点插入书签与批注，支持颜色分类，快速跳转到关键镜头。" },

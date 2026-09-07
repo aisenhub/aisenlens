@@ -40,8 +40,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
-        "@aisenhub/contracts": path.resolve(__dirname, "../../../AisenHub-platform/packages/contracts/src"),
-        "@aisenhub/platform-client": path.resolve(__dirname, "../../../AisenHub-platform/packages/platform-client/src"),
         "@aisenlens/scene-engine": path.resolve(__dirname, "../../packages/scene-engine/src"),
         "@aisenlens/scene-engine-wasm-module": path.resolve(__dirname, "../../packages/scene-engine/dist/wasm/scene-engine.js"),
         "@aisenlens/scene-engine-wasm": path.resolve(__dirname, "../../packages/scene-engine/dist/wasm/scene-engine.wasm"),

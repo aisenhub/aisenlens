@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef, useEffect } from "react"
+import { lazy, Suspense, useCallback, useMemo, useState, useRef, useEffect } from "react"
 import { toast } from "sonner"
 import {
   Bookmark,
@@ -35,6 +35,7 @@ import VideoPreviewCanvas, {
 import useVideoPlayback from "../hooks/useVideoPlayback"
 import useEditorHistory from "../hooks/useEditorHistory"
 import useEditorSaveState from "../hooks/useEditorSaveState"
+import useEditorPersistence from "../hooks/useEditorPersistence"
 import {
   loadScreenshotUrl,
   captureVideoFrameScreenshot,
@@ -57,11 +58,8 @@ import {
 } from "../../../components/ui/dialog"
 import type { MediaAsset } from "../../project/types"
 import type { ProjectRecord } from "../../project/types"
-import {
-  loadProjectShots,
-  saveProjectShots,
-} from "../../shot/services/shotService"
-import type { ShotDetectionMeta, ShotRecord } from "../../shot/types"
+import { loadProjectShots } from "../../shot/services/shotService"
+import type { ShotDetectionMeta } from "../../shot/types"
 import {
   mergeAdjacentShotRanges,
   moveSharedShotBoundary,
@@ -99,9 +97,9 @@ import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
 import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
 import { listFrontendPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
-import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
-import AdvancedSettings from "../../auto-shot/components/AdvancedSettings"
-import CalibrationWorkbench from "../../scene-calibration/components/CalibrationWorkbench"
+const AutoShotControlPanel = lazy(() => import("../../auto-shot/components/AutoShotControlPanel"))
+const AdvancedSettings = lazy(() => import("../../auto-shot/components/AdvancedSettings"))
+const CalibrationWorkbench = lazy(() => import("../../scene-calibration/components/CalibrationWorkbench"))
 import { addUncertainRange, attachCalibrationResearchRun, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
 import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
@@ -113,13 +111,12 @@ import {
   getShotGroupIndexes,
   loadProjectShotGroups,
   reconcileShotGroups,
-  saveProjectShotGroups,
 } from "../../group/services/groupService"
 import type { ShotGroupKind, ShotGroupRecord } from "../../group/types"
-import ReportExportDialog from "../../export/components/ReportExportDialog"
+const ReportExportDialog = lazy(() => import("../../export/components/ReportExportDialog"))
 import { downloadReport } from "../../export/services/reportExportService"
 import type { ExportFormat } from "../../export/types"
-import VideoExportDialog from "../../export/components/VideoExportDialog"
+const VideoExportDialog = lazy(() => import("../../export/components/VideoExportDialog"))
 import {
   startVideoExport,
   type VideoExportJob,
@@ -257,6 +254,7 @@ export default function EditorWorkspace({
   const [activeShot, setActiveShot] = useState(0)
   const [panel, setPanel] = useState<Panel>("frame")
   const [activeTool, setActiveTool] = useState<PanelToolId>(null)
+  const [mobilePanel, setMobilePanel] = useState<"shots" | "analysis" | null>(null)
   const [calibrationModeEnabled, setCalibrationModeEnabled] = useState(false)
   const [advancedDetectionEnabled, setAdvancedDetectionEnabled] = useState(false)
   const [maskOn, setMaskOn] = useState(false)
@@ -350,6 +348,8 @@ export default function EditorWorkspace({
   const [shotDims, setShotDims] =
     useState<Record<string, Record<string, AnalysisFieldValue>>>({})
   const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null)
+  const [editorLoadError, setEditorLoadError] = useState<string | null>(null)
+  const [dataLoadRevision, setDataLoadRevision] = useState(0)
   const [template, setTemplate] = useState<ProjectTemplateSnapshot | null>(null)
   const [isTemplateEditorOpen, setIsTemplateEditorOpen] = useState(false)
   const [annotationMarkers, setAnnotationMarkers] =
@@ -392,6 +392,7 @@ export default function EditorWorkspace({
   const historyInputActiveRef = useRef(false)
   const videoExportJobRef = useRef<VideoExportJob | null>(null)
   const videoExportCancelledRef = useRef(false)
+  const editorLoadRequestRef = useRef(0)
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const {
@@ -501,6 +502,7 @@ export default function EditorWorkspace({
     frameRate: media.metadata?.frameRate ?? FPS,
     currentTime,
     isPlaying: playing,
+    playbackRate: speed,
   })
 
   const stopReversePlayback = useCallback(() => {
@@ -727,117 +729,103 @@ export default function EditorWorkspace({
     onProjectUpdatedRef.current = onProjectUpdated
   }, [onProjectUpdated])
 
-  const saveCurrentProject = useCallback(async () => {
-    if (
-      loadedProjectId !== projectId ||
-      loadedShotGroupProjectId !== projectId ||
-      !template
-    )
-      return
-    const frameRate = media.metadata?.frameRate ?? FPS
-    const now = new Date().toISOString()
-    const records: ShotRecord[] = shots.map((shot, index) => {
-      const frames = shotFrames[shot.id] ?? {
-        first: Math.round(shot.start * frameRate),
-        last: Math.max(
-          0,
-          Math.round((shot.start + shot.duration) * frameRate) - 1,
-        ),
-      }
-      const description = shotNotes[shot.id]?.content ?? ""
-      const analysisFields = normalizeShotAnalysisFields(
-        template.fields,
-        shotDims[shot.id] ?? {},
-      )
-      const completeness = getShotAnalysisCompleteness(
-        template.fields,
-        analysisFields,
-        description,
-      )
-      const boundaryScreenshots = shotBoundaryScreenshotIds[shot.id] ?? {
-        first: null,
-        last: null,
-      }
-      return {
-        id: shot.id,
-        projectId,
-        order: index,
-        startFrame: frames.first,
-        endFrame: frames.last + 1,
-        status: completeness.missingRequiredFields.length
-          ? "draft"
-          : "confirmed",
-        detection: autoShotDetectionRef.current[shot.id] ?? { source: "manual" },
-        primaryScreenshotId: primaryShotScreenshotIds[shot.id] ?? null,
-        screenshotIds: shotScreenshotIds[shot.id] ?? [],
-        firstFrameScreenshotId: boundaryScreenshots.first,
-        lastFrameScreenshotId: boundaryScreenshots.last,
-        analysisFields,
-        description,
-        notes: shotNotes[shot.id]?.analysis ?? "",
-        createdAt: now,
-        updatedAt: now,
-      }
-    })
-    const reconciledGroups = reconcileShotGroups(
-      shotGroups,
-      shots.map((shot) => shot.id),
-    )
-    const updatedProject = await projectRepository.updateProject({
-      ...project,
-      compositionOverlay,
-      contentOverlay,
-    })
-    await Promise.all([
-      saveProjectShotGroups(projectId, reconciledGroups),
-      projectRepository.replaceProjectAnnotationMarkers(
-        projectId,
-        annotationMarkers,
-      ),
-      projectRepository.saveProjectTemplate(template),
-    ])
-    const projectWithShotCount = await saveProjectShots(projectId, records)
-    onProjectUpdatedRef.current({ ...updatedProject, ...projectWithShotCount })
-  }, [
-    annotationMarkers,
+  const saveCurrentProject = useEditorPersistence({
+    projectId,
+    projectTitle,
     compositionOverlay,
     contentOverlay,
+    frameRate: media.metadata?.frameRate ?? FPS,
+    shots,
+    shotFrames,
+    shotScreenshotIds,
+    primaryShotScreenshotIds,
+    shotBoundaryScreenshotIds,
+    shotNotes,
+    shotDims,
+    shotGroups,
+    annotationMarkers,
+    template,
     loadedProjectId,
     loadedShotGroupProjectId,
-    media.metadata?.frameRate,
-    primaryShotScreenshotIds,
-    project,
-    projectId,
-    shotBoundaryScreenshotIds,
-    shotDims,
-    shotFrames,
-    shotGroups,
-    shotNotes,
-    shotScreenshotIds,
-    shots,
-    template,
-  ])
+    autoShotDetection: autoShotDetectionRef.current,
+    onProjectUpdated: (updatedProject) => onProjectUpdatedRef.current(updatedProject),
+  })
 
   const {
     status: saveStatus,
+    isDirty,
     markDirty,
     saveNow,
   } = useEditorSaveState({ projectId, save: saveCurrentProject })
-  const saveDataSignature = JSON.stringify({
-    title: projectTitle,
-    shots,
-    shotFrames,
-    shotScreenshotIds,
-    primaryShotScreenshotIds,
-    shotBoundaryScreenshotIds,
-    shotNotes,
-    shotDims,
-    annotationMarkers,
-    shotGroups,
-    template,
-    compositionOverlay,
-    contentOverlay,
-  })
+
+  const leaveEditor = useCallback(async () => {
+    try {
+      await saveNow()
+      onNavigate(2)
+    } catch (error) {
+      toast.error(error instanceof Error ? `保存失败：${error.message}` : "保存失败，请留在编辑器重试。")
+    }
+  }, [onNavigate, saveNow])
+
+  const navigationGuardRef = useRef(false)
+  const historyGuardInstalledRef = useRef(false)
+  const allowNextPopRef = useRef(false)
+  useEffect(() => {
+    if (!historyGuardInstalledRef.current) {
+      window.history.pushState({ aisenlensEditorGuard: true }, "", window.location.href)
+      historyGuardInstalledRef.current = true
+    }
+    const handleBrowserBack = () => {
+      if (allowNextPopRef.current) {
+        allowNextPopRef.current = false
+        return
+      }
+      if (navigationGuardRef.current) return
+      navigationGuardRef.current = true
+      if (!isDirty) {
+        allowNextPopRef.current = true
+        window.history.back()
+        navigationGuardRef.current = false
+        return
+      }
+      void leaveEditor().finally(() => { navigationGuardRef.current = false })
+    }
+    window.addEventListener("popstate", handleBrowserBack)
+    return () => window.removeEventListener("popstate", handleBrowserBack)
+  }, [isDirty, leaveEditor])
+
+  const saveDataSignature = useMemo(
+    () => JSON.stringify({
+      title: projectTitle,
+      shots,
+      shotFrames,
+      shotScreenshotIds,
+      primaryShotScreenshotIds,
+      shotBoundaryScreenshotIds,
+      shotNotes,
+      shotDims,
+      annotationMarkers,
+      shotGroups,
+      template,
+      compositionOverlay,
+      contentOverlay,
+    }),
+    [
+      annotationMarkers,
+      compositionOverlay,
+      contentOverlay,
+      primaryShotScreenshotIds,
+      projectTitle,
+      shotBoundaryScreenshotIds,
+      shotDims,
+      shotFrames,
+      shotGroups,
+      shotNotes,
+      shotScreenshotIds,
+      shots,
+      template,
+    ],
+  )
   const savedDataSignatureRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -875,6 +863,9 @@ export default function EditorWorkspace({
   }, [projectId])
 
   useEffect(() => {
+    const requestId = ++editorLoadRequestRef.current
+    const isCurrent = () => requestId === editorLoadRequestRef.current
+    setEditorLoadError(null)
     editorHistory.reset()
     setLoadedProjectId(null)
     setShots([])
@@ -898,6 +889,7 @@ export default function EditorWorkspace({
     setIsSelectingGroupShots(false)
     setAnnotationMarkers([])
     void loadProjectShots(projectId).then((savedShots) => {
+      if (!isCurrent()) return
       if (savedShots.length) {
         const frameRate = media.metadata?.frameRate ?? FPS
         setShots(
@@ -973,6 +965,7 @@ export default function EditorWorkspace({
           ),
         )
           .then((items) => {
+            if (!isCurrent()) return
             setScreenshotFrames(
               Object.fromEntries(
                 items.flatMap(([id, resource]) =>
@@ -1012,7 +1005,12 @@ export default function EditorWorkspace({
               ),
             )
           })
-          .finally(() => setHasLoadedScreenshotFrames(true))
+          .catch((error) => {
+            if (isCurrent()) setEditorLoadError(error instanceof Error ? error.message : "截图数据读取失败，请重试。")
+          })
+          .finally(() => {
+            if (isCurrent()) setHasLoadedScreenshotFrames(true)
+          })
         setShotDims(
           Object.fromEntries(
             savedShots.map((shot) => [shot.id, shot.analysisFields]),
@@ -1027,25 +1025,43 @@ export default function EditorWorkspace({
           ),
         )
       } else setHasLoadedScreenshotFrames(true)
-      setLoadedProjectId(projectId)
+      if (isCurrent()) setLoadedProjectId(projectId)
+    }).catch((error) => {
+      if (isCurrent()) setEditorLoadError(error instanceof Error ? error.message : "分镜数据读取失败，请重试。")
     })
-  }, [editorHistory.reset, projectId, videoUrl, media.metadata?.frameRate])
+    return () => {
+      editorLoadRequestRef.current += 1
+    }
+  }, [dataLoadRevision, editorHistory.reset, projectId, videoUrl, media.metadata?.frameRate])
 
   useEffect(() => {
-    void loadProjectAnnotationMarkers(projectId).then(setAnnotationMarkers)
-  }, [projectId])
+    let active = true
+    void loadProjectAnnotationMarkers(projectId)
+      .then((markers) => { if (active) setAnnotationMarkers(markers) })
+      .catch((error) => { if (active) setEditorLoadError(error instanceof Error ? error.message : "时间线标记读取失败，请重试。") })
+    return () => { active = false }
+  }, [dataLoadRevision, projectId])
 
   useEffect(() => {
-    void loadProjectShotGroups(projectId).then((groups) => {
-      setShotGroups(groups)
-      setLoadedShotGroupProjectId(projectId)
-    })
-  }, [projectId])
+    let active = true
+    void loadProjectShotGroups(projectId)
+      .then((groups) => {
+        if (!active) return
+        setShotGroups(groups)
+        setLoadedShotGroupProjectId(projectId)
+      })
+      .catch((error) => { if (active) setEditorLoadError(error instanceof Error ? error.message : "分组数据读取失败，请重试。") })
+    return () => { active = false }
+  }, [dataLoadRevision, projectId])
 
   useEffect(() => {
+    let active = true
     setTemplate(null)
-    void loadOrCreateProjectTemplate(projectId).then(setTemplate)
-  }, [projectId])
+    void loadOrCreateProjectTemplate(projectId)
+      .then((nextTemplate) => { if (active) setTemplate(nextTemplate) })
+      .catch((error) => { if (active) setEditorLoadError(error instanceof Error ? error.message : "分析模板读取失败，请重试。") })
+    return () => { active = false }
+  }, [dataLoadRevision, projectId])
 
   useEffect(() => {
     const source = media.source
@@ -1055,6 +1071,7 @@ export default function EditorWorkspace({
       return
     }
     let active = true
+    const controller = new AbortController()
     setWaveformPeaks(null)
     setWaveformUnavailable(false)
     const loadWaveform = () => {
@@ -1063,6 +1080,7 @@ export default function EditorWorkspace({
         sourceUrl: videoUrl,
         mediaFingerprint: source,
         durationSeconds,
+        signal: controller.signal,
       })
         .then((peaks) => {
           if (active) setWaveformPeaks(peaks)
@@ -1081,6 +1099,7 @@ export default function EditorWorkspace({
       : null
     return () => {
       active = false
+      controller.abort()
       if (idleCallbackId !== undefined) idleWindow.cancelIdleCallback?.(idleCallbackId)
       if (timeoutId !== null) window.clearTimeout(timeoutId)
     }
@@ -2032,7 +2051,7 @@ export default function EditorWorkspace({
       const index = shots.findIndex((shot) => shot.id === marker.shotId)
       if (index >= 0) setActiveShot(index)
     }
-    setActiveTool("video")
+    setActiveTool("shot")
   }
 
   const toggleMarkerCategory = (category: AnnotationMarkerCategory) =>
@@ -2595,14 +2614,14 @@ export default function EditorWorkspace({
   })
 
   return (
-    <div className="h-screen flex flex-col bg-bg overflow-hidden select-none">
+    <div className="editor-workspace relative flex h-screen flex-col overflow-hidden bg-bg select-none" data-mobile-panel={mobilePanel ?? "none"}>
       {/* ══ Topbar ══ */}
       <header className="flex items-center px-4 h-11 border-b border-border bg-bg-nav shrink-0 gap-3">
         <Button
           type="button"
           variant="ghost"
           size="xs"
-          onClick={() => onNavigate(2)}
+          onClick={() => void leaveEditor()}
           className="text-text-muted hover:bg-transparent hover:text-white"
         >
           ← 项目列表
@@ -2677,6 +2696,16 @@ export default function EditorWorkspace({
           )}
           {saveButton.label}
         </Button>
+        {editorLoadError && (
+          <div role="alert" className="flex min-w-0 items-center gap-2 rounded-md border border-red-400/30 bg-red-500/10 px-2 py-1 text-xs text-red-200">
+            <span className="max-w-56 truncate">{editorLoadError}</span>
+            <Button type="button" variant="ghost" size="xs" onClick={() => setDataLoadRevision((revision) => revision + 1)} className="shrink-0 px-1.5 text-red-100 hover:bg-red-500/15 hover:text-white">重试读取</Button>
+          </div>
+        )}
+        <div className="editor-mobile-panel-switcher ml-1 hidden items-center gap-1">
+          <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "shots" ? null : "shots")} aria-pressed={mobilePanel === "shots"} className={mobilePanel === "shots" ? "bg-accent/15 text-accent" : "text-text-muted"}>分镜</Button>
+          <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "analysis" ? null : "analysis")} aria-pressed={mobilePanel === "analysis"} className={mobilePanel === "analysis" ? "bg-accent/15 text-accent" : "text-text-muted"}>分析</Button>
+        </div>
       </header>
 
       {/* ══ Main body ══ */}
@@ -2689,7 +2718,7 @@ export default function EditorWorkspace({
               type="button"
               variant="ghost"
               size="icon-lg"
-              onClick={() => onNavigate(2)}
+              onClick={() => void leaveEditor()}
               aria-label="返回项目列表"
               className="h-12 w-14 text-text-muted hover:bg-white/6 hover:text-white"
             >
@@ -2738,7 +2767,7 @@ export default function EditorWorkspace({
 
           {/* Expandable detail panel */}
           {activeTool !== null && (
-            <div className="w-52 border-l border-border bg-bg-panel flex flex-col overflow-hidden">
+            <div className="editor-tool-panel w-52 border-l border-border bg-bg-panel flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
                 <span className="editor-heading font-mono text-text-muted">
                   {activeTool === "settings"
@@ -2944,33 +2973,37 @@ export default function EditorWorkspace({
                       />
                     </label>
                     {advancedDetectionEnabled && autoShotControl.settings && (
-                      <AdvancedSettings
-                        settings={autoShotControl.settings}
-                        baseHardCut={autoShotControl.resolved?.engineConfig.hardCut}
-                        disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
-                        onChange={autoShotControl.updateSettings}
-                      />
+                      <Suspense fallback={null}>
+                        <AdvancedSettings
+                          settings={autoShotControl.settings}
+                          baseHardCut={autoShotControl.resolved?.engineConfig.hardCut}
+                          disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
+                          onChange={autoShotControl.updateSettings}
+                        />
+                      </Suspense>
                     )}
                     {!calibrationModeEnabled ? (
                       <p className="rounded-lg bg-bg-input/25 px-2.5 py-2 text-[10px] leading-4 text-text-dim">
                         标定模式已关闭。普通自动分镜不会显示标定内容。
                       </p>
                     ) : autoShotRun?.status === "completed" && calibrationAnnotation ? (
-                      <CalibrationWorkbench
-                        annotation={calibrationAnnotation}
-                        candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
-                        onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
-                        onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { candidateId }))}
-                        onCorrectCandidate={correctCalibrationCandidateAtPlayhead}
-                        onAddBoundary={addCalibrationBoundaryAtPlayhead}
-                        onMoveBoundaryToPlayhead={moveCalibrationBoundaryToPlayhead}
-                        onDeleteBoundary={deleteCalibrationBoundary}
-                        onLocateBoundary={locateCalibrationBoundary}
-                        onMarkUncertain={markCalibrationUncertainAtPlayhead}
-                        onDeleteUncertainRange={deleteCalibrationUncertainRange}
-                        onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
-                        onExport={exportCalibrationAnnotation}
-                      />
+                      <Suspense fallback={null}>
+                        <CalibrationWorkbench
+                          annotation={calibrationAnnotation}
+                          candidates={autoShotRun.candidates.filter((candidate) => candidate.kind === "hard-cut")}
+                          onAcceptCandidate={(candidate) => updateCalibration((current) => updateHardCutAnnotation(current, "accept", { candidate }))}
+                          onRejectCandidate={(candidateId) => updateCalibration((current) => updateHardCutAnnotation(current, "reject", { candidateId }))}
+                          onCorrectCandidate={correctCalibrationCandidateAtPlayhead}
+                          onAddBoundary={addCalibrationBoundaryAtPlayhead}
+                          onMoveBoundaryToPlayhead={moveCalibrationBoundaryToPlayhead}
+                          onDeleteBoundary={deleteCalibrationBoundary}
+                          onLocateBoundary={locateCalibrationBoundary}
+                          onMarkUncertain={markCalibrationUncertainAtPlayhead}
+                          onDeleteUncertainRange={deleteCalibrationUncertainRange}
+                          onAnnotatorChange={(annotator) => updateCalibration((current) => ({ ...current, annotator: annotator.trim() || "未填写", updatedAt: new Date().toISOString() }))}
+                          onExport={exportCalibrationAnnotation}
+                        />
+                      </Suspense>
                     ) : (
                       <p className="rounded-lg bg-bg-input/25 px-2.5 py-2 text-[10px] leading-4 text-text-dim">
                         请先在分镜面板完成一次自动分镜，完成后这里会出现候选标注和真值编辑工具。
@@ -2982,6 +3015,7 @@ export default function EditorWorkspace({
                 {/* ── 分镜 ── */}
                 {activeTool === "shot" && (
                   <div className="flex flex-col gap-4">
+                    <Suspense fallback={null}>
                     <AutoShotControlPanel
                       settings={autoShotControl.settings}
                       resolved={autoShotControl.resolved}
@@ -3008,6 +3042,7 @@ export default function EditorWorkspace({
                         }
                       }}
                     />
+                    </Suspense>
                     <ShotGroupPanel
                         isSelecting={isSelectingGroupShots}
                         selectedShotCount={
@@ -3321,6 +3356,7 @@ export default function EditorWorkspace({
         </div>
 
         <ShotList
+          className="editor-shot-list"
           shots={shots}
           groups={shotGroups}
           collapsedGroupIds={collapsedGroupIds}
@@ -3369,7 +3405,7 @@ export default function EditorWorkspace({
         />
 
         {/* ── Right: analysis panel ── */}
-        <aside className="w-64 border-l border-border flex flex-col bg-bg-panel shrink-0 overflow-hidden">
+        <aside className="editor-analysis-panel w-64 border-l border-border flex flex-col bg-bg-panel shrink-0 overflow-hidden">
           <Tabs
             value={panel}
             onValueChange={(value) => setPanel(value as Panel)}
@@ -3626,46 +3662,50 @@ export default function EditorWorkspace({
         />
       )}
       {isExportDialogOpen && (
-        <ReportExportDialog
-          input={{
-            projectTitle,
-            shots: shots.map((shot) => ({
-              ...shot,
-              description: shotNotes[shot.id]?.content ?? "",
-              notes: shotNotes[shot.id]?.analysis ?? "",
-              analysisFields: shotDims[shot.id] ?? {},
-              screenshotId:
-                primaryShotScreenshotIds[shot.id] ??
-                shotBoundaryScreenshotIds[shot.id]?.first ??
-                null,
-            })),
-            groups: shotGroups,
-            fields: template?.fields ?? [],
-            screenshotUrls: shotScreenshotUrls,
-          }}
-          isExporting={isExporting}
-          onClose={() => setIsExportDialogOpen(false)}
-          onExport={(format) => void exportReport(format)}
-          onOpenVideoExport={() => {
-            setIsExportDialogOpen(false)
-            setVideoExportError(null)
-            setIsVideoExportDialogOpen(true)
-          }}
-        />
+        <Suspense fallback={null}>
+          <ReportExportDialog
+            input={{
+              projectTitle,
+              shots: shots.map((shot) => ({
+                ...shot,
+                description: shotNotes[shot.id]?.content ?? "",
+                notes: shotNotes[shot.id]?.analysis ?? "",
+                analysisFields: shotDims[shot.id] ?? {},
+                screenshotId:
+                  primaryShotScreenshotIds[shot.id] ??
+                  shotBoundaryScreenshotIds[shot.id]?.first ??
+                  null,
+              })),
+              groups: shotGroups,
+              fields: template?.fields ?? [],
+              screenshotUrls: shotScreenshotUrls,
+            }}
+            isExporting={isExporting}
+            onClose={() => setIsExportDialogOpen(false)}
+            onExport={(format) => void exportReport(format)}
+            onOpenVideoExport={() => {
+              setIsExportDialogOpen(false)
+              setVideoExportError(null)
+              setIsVideoExportDialogOpen(true)
+            }}
+          />
+        </Suspense>
       )}
       {isVideoExportDialogOpen && (
-        <VideoExportDialog
-          sourceWidth={media.metadata?.width ?? 1920}
-          sourceHeight={media.metadata?.height ?? 1080}
-          frameRate={media.metadata?.frameRate ?? FPS}
-          durationSeconds={media.metadata?.durationSeconds ?? durationSeconds}
-          isExporting={isVideoExporting}
-          progress={videoExportProgress}
-          error={videoExportError}
-          onClose={closeVideoExportDialog}
-          onStart={(settings) => void exportAnalysisVideo(settings)}
-          onCancel={cancelAnalysisVideoExport}
-        />
+        <Suspense fallback={null}>
+          <VideoExportDialog
+            sourceWidth={media.metadata?.width ?? 1920}
+            sourceHeight={media.metadata?.height ?? 1080}
+            frameRate={media.metadata?.frameRate ?? FPS}
+            durationSeconds={media.metadata?.durationSeconds ?? durationSeconds}
+            isExporting={isVideoExporting}
+            progress={videoExportProgress}
+            error={videoExportError}
+            onClose={closeVideoExportDialog}
+            onStart={(settings) => void exportAnalysisVideo(settings)}
+            onCancel={cancelAnalysisVideoExport}
+          />
+        </Suspense>
       )}
       <Dialog open={pendingAutoShotApply !== null} onOpenChange={(open) => { if (!open) setPendingAutoShotApply(null) }}>
         <DialogContent className="border border-border bg-bg-card text-text-base sm:max-w-md">

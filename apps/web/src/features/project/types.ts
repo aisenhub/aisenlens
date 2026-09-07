@@ -175,6 +175,14 @@ export interface ProjectRecoverySnapshot {
   template: ProjectTemplateSnapshotRecord | null;
 }
 
+export interface ProjectEditorState {
+  project: ProjectRecord;
+  shots: StoredShotRecord[];
+  groups: ShotGroupRecord[];
+  markers: AnnotationMarker[];
+  template: ProjectTemplateSnapshotRecord | null;
+}
+
 export interface CreateProjectInput {
   title?: string;
   folderId?: string | null;
@@ -185,6 +193,9 @@ export interface ProjectRepository {
   getProject: (projectId: string) => Promise<ProjectRecord | null>;
   createProject: (input?: CreateProjectInput) => Promise<ProjectRecord>;
   updateProject: (project: ProjectRecord) => Promise<ProjectRecord>;
+  updateProjectAtomically: (projectId: string, update: (project: ProjectRecord) => ProjectRecord) => Promise<ProjectRecord>;
+  readProjectEditorState: (projectId: string) => Promise<ProjectEditorState | null>;
+  saveProjectEditorState: (state: ProjectEditorState, expectedUpdatedAt?: string) => Promise<ProjectRecord>;
   deleteProject: (projectId: string) => Promise<void>;
   saveMediaAssetHandle: (assetId: string, handle: FileSystemFileHandle) => Promise<void>;
   getMediaAssetHandle: (assetId: string) => Promise<FileSystemFileHandle | null>;

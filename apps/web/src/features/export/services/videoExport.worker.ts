@@ -2,6 +2,7 @@
 
 import { renderVideoOverlayCanvas } from "../../video/services/videoOverlayCanvasRenderer";
 import type { VideoExportOverlaySegment, VideoExportWorkerMessage, VideoExportWorkerRequest, VideoExportWorkerResponse } from "./videoExportProtocol";
+import { selectVideoExportOverlaySegment } from "./videoExportBoundary";
 
 let cancelled = false;
 let nextStreamWriteRequestId = 0;
@@ -20,7 +21,7 @@ function formatTimecode(seconds: number): string {
 }
 
 function selectedContentOverlay(segments: VideoExportOverlaySegment[], frame: number, frameRate: number): VideoExportOverlaySegment["contentOverlay"] {
-  const segment = segments.find((item) => frame >= item.startFrame && frame <= item.endFrame);
+  const segment = selectVideoExportOverlaySegment(segments, frame);
   if (!segment?.contentOverlay) return null;
   return {
     ...segment.contentOverlay,

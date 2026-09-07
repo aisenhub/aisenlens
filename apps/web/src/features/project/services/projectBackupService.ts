@@ -2,10 +2,12 @@ import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { ShotRecord } from "../../shot/types";
 import projectRepository from "./projectRepository";
-import type { ProjectRecord, ProjectTemplateSnapshotRecord, ScreenshotRecord } from "../types";
+import type { ProjectRecord, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 
 const FORMAT = "aisenlens-project-backup";
 const VERSION = 2;
+const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
+const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -35,6 +37,7 @@ function createZip(files: Array<{ path: string; data: Uint8Array }>) {
 }
 
 function parseZip(input: Uint8Array) {
+  if (input.byteLength > MAX_BACKUP_BYTES) throw new Error("备份文件超过 512 MB 安全上限。");
   const view = new DataView(input.buffer, input.byteOffset, input.byteLength);
   let end = -1;
   for (let index = input.length - 22; index >= Math.max(0, input.length - 65_557); index--) if (view.getUint32(index, true) === 0x06054b50) { end = index; break; }
@@ -43,19 +46,26 @@ function parseZip(input: Uint8Array) {
   let offset = view.getUint32(end + 16, true);
   const entries = new Map<string, Uint8Array>();
   for (let index = 0; index < count; index++) {
+    if (offset < 0 || offset + 46 > input.length) throw new Error("备份目录越界。");
     if (view.getUint32(offset, true) !== 0x02014b50) throw new Error("备份目录损坏。");
     const method = view.getUint16(offset + 10, true);
+    const checksum = view.getUint32(offset + 16, true);
+    const compressedSize = view.getUint32(offset + 20, true);
     const size = view.getUint32(offset + 24, true);
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
     const localOffset = view.getUint32(offset + 42, true);
+    if (offset + 46 + nameLength + extraLength + commentLength > input.length || localOffset + 30 > input.length) throw new Error("备份目录条目越界。");
     const name = decoder.decode(input.slice(offset + 46, offset + 46 + nameLength));
     if (!name || name.startsWith("/") || name.includes("..") || method !== 0 || view.getUint32(localOffset, true) !== 0x04034b50) throw new Error("备份包含不安全或不受支持的资源。");
     const localNameLength = view.getUint16(localOffset + 26, true);
     const localExtraLength = view.getUint16(localOffset + 28, true);
     const dataStart = localOffset + 30 + localNameLength + localExtraLength;
-    entries.set(name, input.slice(dataStart, dataStart + size));
+    if (compressedSize !== size || dataStart + size > input.length || entries.has(name)) throw new Error("备份资源大小或名称校验失败。");
+    const data = input.slice(dataStart, dataStart + size);
+    if (crc32(data) !== checksum) throw new Error(`备份资源校验失败：${name}`);
+    entries.set(name, data);
     offset += 46 + nameLength + extraLength + commentLength;
   }
   return entries;
@@ -65,7 +75,21 @@ function validate(value: unknown): asserts value is ProjectBackup {
   if (!value || typeof value !== "object") throw new Error("备份清单无效。");
   const backup = value as Partial<ProjectBackup>;
   if (backup.format !== FORMAT || backup.version !== VERSION) throw new Error("不支持的 AisenLens 备份版本。");
-  if (!backup.project || typeof backup.project.title !== "string" || !Array.isArray(backup.shots) || !Array.isArray(backup.groups) || !Array.isArray(backup.markers) || !Array.isArray(backup.screenshots)) throw new Error("备份缺少必要的项目数据。");
+  if (!backup.project || typeof backup.project.title !== "string" || !Array.isArray(backup.project.mediaAssets) || !Array.isArray(backup.project.audioTracks) || !Array.isArray(backup.shots) || !Array.isArray(backup.groups) || !Array.isArray(backup.markers) || !Array.isArray(backup.screenshots)) throw new Error("备份缺少必要的项目数据。");
+  const screenshotIds = new Set(backup.screenshots.map(({ screenshot }) => screenshot?.id).filter((id): id is string => typeof id === "string"));
+  if (screenshotIds.size !== backup.screenshots.length) throw new Error("备份包含重复或无效的截图引用。");
+  const assetIds = new Set(backup.project.mediaAssets.map((asset) => asset?.id).filter((id): id is string => typeof id === "string"));
+  if (assetIds.size !== backup.project.mediaAssets.length || (backup.project.primaryVideoAssetId !== null && !assetIds.has(backup.project.primaryVideoAssetId)) || (backup.project.coverScreenshotId !== null && !screenshotIds.has(backup.project.coverScreenshotId))) throw new Error("备份包含失效的项目素材或封面引用。");
+  if (backup.project.audioTracks.some((track) => !track || !Array.isArray(track.clips) || track.clips.some((clip) => !assetIds.has(clip.assetId)))) throw new Error("备份包含失效的音轨素材引用。");
+  const shotIds = new Set<string>();
+  for (const shot of backup.shots) {
+    if (!shot || typeof shot.id !== "string" || !Number.isInteger(shot.startFrame) || !Number.isInteger(shot.endFrame) || shot.endFrame <= shot.startFrame || !Array.isArray(shot.screenshotIds)) throw new Error("备份包含无效的分镜范围。");
+    if (shotIds.has(shot.id)) throw new Error("备份包含重复的分镜 ID。");
+    shotIds.add(shot.id);
+    if ([shot.primaryScreenshotId, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId].some((id) => id !== null && !screenshotIds.has(id)) || shot.screenshotIds.some((id) => !screenshotIds.has(id))) throw new Error("备份包含失效的分镜截图引用。");
+  }
+  for (const group of backup.groups) if (!group || !Array.isArray(group.shotIds) || group.shotIds.some((id) => !shotIds.has(id))) throw new Error("备份包含失效的分组引用。");
+  for (const marker of backup.markers) if (!marker || (marker.shotId !== null && !shotIds.has(marker.shotId))) throw new Error("备份包含失效的标记引用。");
 }
 
 function filename(title: string) { return `${title.trim().replace(/[\\/:*?"<>|]/g, "-") || "AisenLens-项目备份"}.aisenlens-backup.zip`; }
@@ -94,10 +118,13 @@ export async function importProjectBackup(file: File) {
   const entries = parseZip(new Uint8Array(await file.arrayBuffer()));
   const manifest = entries.get("manifest.json");
   if (!manifest) throw new Error("备份缺少 manifest.json。");
+  if (manifest.byteLength > MAX_MANIFEST_BYTES) throw new Error("备份清单超过安全上限。");
   let value: unknown;
   try { value = JSON.parse(decoder.decode(manifest)); } catch { throw new Error("备份清单无法读取。"); }
   validate(value);
   const backup = value;
+  const expectedResourcePaths = new Set(backup.screenshots.map(({ path }) => path));
+  if (expectedResourcePaths.size !== backup.screenshots.length || backup.screenshots.some(({ path }) => !/^resources\/screenshots\/[^/]+\.jpg$/.test(path) || !entries.has(path))) throw new Error("备份截图资源缺失或路径无效。");
   const now = new Date().toISOString();
   const screenshotIdMap = new Map<string, string>(backup.screenshots.map(({ screenshot }) => [screenshot.id, crypto.randomUUID()]));
   const shotIdMap = new Map<string, string>(backup.shots.map((shot) => [shot.id, crypto.randomUUID()]));
@@ -116,13 +143,13 @@ export async function importProjectBackup(file: File) {
     updatedAt: now,
     coverScreenshotId: backup.project.coverScreenshotId ? screenshotIdMap.get(backup.project.coverScreenshotId) ?? null : null,
   };
-  await projectRepository.updateProject(project);
   try {
     for (const { screenshot, path } of backup.screenshots) { const bytes = entries.get(path); if (!bytes) throw new Error("备份截图资源缺失。"); await projectRepository.saveScreenshot({ ...screenshot, id: screenshotIdMap.get(screenshot.id)!, projectId: created.id, capturedAt: now }, new Blob([new Uint8Array(bytes)], { type: screenshot.mimeType })); }
-    await projectRepository.replaceProjectShots(created.id, backup.shots.map((shot, order) => ({ ...shot, id: shotIdMap.get(shot.id)!, projectId: created.id, order, primaryScreenshotId: shot.primaryScreenshotId ? screenshotIdMap.get(shot.primaryScreenshotId) ?? null : null, screenshotIds: shot.screenshotIds.map((id) => screenshotIdMap.get(id)).filter((id): id is string => Boolean(id)), firstFrameScreenshotId: shot.firstFrameScreenshotId ? screenshotIdMap.get(shot.firstFrameScreenshotId) ?? null : null, lastFrameScreenshotId: shot.lastFrameScreenshotId ? screenshotIdMap.get(shot.lastFrameScreenshotId) ?? null : null, createdAt: now, updatedAt: now })));
-    await projectRepository.replaceProjectShotGroups(created.id, backup.groups.map((group) => ({ ...group, id: crypto.randomUUID(), projectId: created.id, shotIds: group.shotIds.map((id) => shotIdMap.get(id)).filter((id): id is string => Boolean(id)), createdAt: now, updatedAt: now })));
-    await Promise.all(backup.markers.map((marker) => projectRepository.saveProjectAnnotationMarker({ ...marker, id: crypto.randomUUID(), projectId: created.id, shotId: marker.shotId ? shotIdMap.get(marker.shotId) ?? null : null, createdAt: now, updatedAt: now })));
-    if (backup.template) await projectRepository.saveProjectTemplate({ ...backup.template, id: crypto.randomUUID(), projectId: created.id, createdAt: now, updatedAt: now });
+    const shots: StoredShotRecord[] = backup.shots.map((shot, order) => ({ ...shot, id: shotIdMap.get(shot.id)!, projectId: created.id, order, primaryScreenshotId: shot.primaryScreenshotId ? screenshotIdMap.get(shot.primaryScreenshotId) ?? null : null, screenshotIds: shot.screenshotIds.map((id) => screenshotIdMap.get(id)).filter((id): id is string => Boolean(id)), firstFrameScreenshotId: shot.firstFrameScreenshotId ? screenshotIdMap.get(shot.firstFrameScreenshotId) ?? null : null, lastFrameScreenshotId: shot.lastFrameScreenshotId ? screenshotIdMap.get(shot.lastFrameScreenshotId) ?? null : null, createdAt: now, updatedAt: now }));
+    const groups = backup.groups.map((group) => ({ ...group, id: crypto.randomUUID(), projectId: created.id, shotIds: group.shotIds.map((id) => shotIdMap.get(id)!), createdAt: now, updatedAt: now }));
+    const markers = backup.markers.map((marker) => ({ ...marker, id: crypto.randomUUID(), projectId: created.id, shotId: marker.shotId ? shotIdMap.get(marker.shotId) ?? null : null, createdAt: now, updatedAt: now }));
+    const template = backup.template ? { ...backup.template, id: crypto.randomUUID(), projectId: created.id, createdAt: now, updatedAt: now } : null;
+    await projectRepository.saveProjectEditorState({ project, shots, groups, markers, template });
     return project;
   } catch (error) { await projectRepository.deleteProject(created.id).catch(() => undefined); throw error; }
 }

@@ -1,4 +1,4 @@
-import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
@@ -114,8 +114,23 @@ function openDatabase(): Promise<IDBDatabase> {
 
   databasePromise = new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    request.onerror = () => reject(request.error ?? new Error("无法打开本地项目仓库。"));
-    request.onsuccess = () => resolve(request.result);
+    const fail = (error: Error) => {
+      databasePromise = null;
+      reject(error);
+    };
+    request.onerror = () => fail(request.error ?? new Error("无法打开本地项目仓库。"));
+    request.onblocked = () => fail(new Error("本地项目仓库正在被其他标签页占用，请关闭其他 AisenLens 标签页后重试。"));
+    request.onsuccess = () => {
+      const database = request.result;
+      database.onversionchange = () => {
+        database.close();
+        databasePromise = null;
+      };
+      database.onclose = () => {
+        databasePromise = null;
+      };
+      resolve(database);
+    };
     request.onupgradeneeded = (event) => {
       const database = request.result;
       const oldVersion = event.oldVersion;
@@ -371,6 +386,63 @@ export function createProjectRepository(): ProjectRepository {
       const database = await openDatabase();
       const transaction = database.transaction(PROJECTS_STORE, "readwrite");
       transaction.objectStore(PROJECTS_STORE).put(updatedProject);
+      await transactionResult(transaction);
+      return updatedProject;
+    },
+
+    async updateProjectAtomically(projectId, update) {
+      const database = await openDatabase();
+      const transaction = database.transaction(PROJECTS_STORE, "readwrite");
+      const store = transaction.objectStore(PROJECTS_STORE);
+      const current = await requestResult(store.get(projectId)) as ProjectRecord | undefined;
+      if (!current) throw new Error("项目不存在或已删除。");
+      const updatedProject: ProjectRecord = { ...normalizeProject(update(normalizeProject(current))), id: projectId, updatedAt: new Date().toISOString() };
+      store.put(updatedProject);
+      await transactionResult(transaction);
+      return updatedProject;
+    },
+
+    async readProjectEditorState(projectId) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readonly");
+      const [project, shots, groups, markers, template] = await Promise.all([
+        requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as Promise<ProjectRecord | undefined>,
+        requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
+        requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
+        requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnnotationMarker[]>,
+        requestResult(transaction.objectStore(PROJECT_TEMPLATES_STORE).index("projectId").get(projectId)) as Promise<ProjectTemplateSnapshotRecord | undefined>,
+      ]);
+      await transactionResult(transaction);
+      if (!project) return null;
+      return {
+        project: normalizeProject(project),
+        shots: shots.sort((left, right) => left.order - right.order),
+        groups: groups.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+        markers: markers.sort((left, right) => left.frame - right.frame || left.createdAt.localeCompare(right.createdAt)),
+        template: template ?? null,
+      } satisfies ProjectEditorState;
+    },
+
+    async saveProjectEditorState(state, expectedUpdatedAt) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readwrite");
+      const projectStore = transaction.objectStore(PROJECTS_STORE);
+      const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
+      if (!current) throw new Error("项目不存在或已删除。");
+      if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开后再保存。");
+      const now = new Date().toISOString();
+      const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
+      projectStore.put(updatedProject);
+      await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
+      await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
+      const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
+      const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
+      if (existingTemplate) templateStore.delete(existingTemplate.id);
+      state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
+      state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
+      state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
+      if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
       await transactionResult(transaction);
       return updatedProject;
     },

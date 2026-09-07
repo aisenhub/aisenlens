@@ -27,7 +27,7 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       };
-      return <EditorWorkspace {...editorProps} project={project} projectTitle={project.title} setProjectTitle={onRenameProject} videoUrl={videoUrl} projectId={project.id} media={primaryVideoAsset ?? emptyMediaAsset} isSelectingVideo={isSelectingVideo} onImportVideo={onImportVideo} coverScreenshotId={project.coverScreenshotId} onProjectUpdated={onProjectLoaded} />;
+      return <EditorWorkspace key={project.id} {...editorProps} project={project} projectTitle={project.title} setProjectTitle={onRenameProject} videoUrl={videoUrl} projectId={project.id} media={primaryVideoAsset ?? emptyMediaAsset} isSelectingVideo={isSelectingVideo} onImportVideo={onImportVideo} coverScreenshotId={project.coverScreenshotId} onProjectUpdated={onProjectLoaded} />;
     }}
   </ProjectMediaGate>;
 }

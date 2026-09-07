@@ -111,17 +111,23 @@ function createOverlaySegments(project: ProjectRecord, shots: StoredShotRecord[]
         analysis: shot.notes,
         shotIndex: index,
         currentTimecode: formatTimecode(shot.startFrame / settings.frameRate),
-        durationSeconds: (shot.endFrame - shot.startFrame + 1) / settings.frameRate,
+        durationSeconds: (shot.endFrame - shot.startFrame) / settings.frameRate,
       }),
     },
   }));
 }
 
-async function decodeAudioBuffer(context: AudioContext, asset: MediaAsset): Promise<AudioBuffer> {
-  return context.decodeAudioData(await (await loadMediaAssetBlob(asset)).arrayBuffer());
+async function decodeAudioBuffer(context: AudioContext, asset: MediaAsset, signal?: AbortSignal): Promise<AudioBuffer> {
+  signal?.throwIfAborted();
+  const blob = await loadMediaAssetBlob(asset);
+  signal?.throwIfAborted();
+  const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+  signal?.throwIfAborted();
+  return buffer;
 }
 
-async function prepareAudio(project: ProjectRecord, primaryVideo: MediaAsset, settings: VideoExportSettings, durationSeconds: number, report: (phase: VideoExportPhase) => void): Promise<VideoExportAudioData | null> {
+async function prepareAudio(project: ProjectRecord, primaryVideo: MediaAsset, settings: VideoExportSettings, durationSeconds: number, report: (phase: VideoExportPhase) => void, signal?: AbortSignal): Promise<VideoExportAudioData | null> {
+  signal?.throwIfAborted();
   if (!settings.includeAudio) return null;
   const clips = resolveAudioMixClips(project.audioTracks, project.mediaAssets, settings.frameRate);
   const shouldIncludePrimaryAudio = settings.includeOriginalAudio && primaryVideo.metadata?.hasAudio === true;
@@ -137,14 +143,15 @@ async function prepareAudio(project: ProjectRecord, primaryVideo: MediaAsset, se
       if (cached) return cached;
       const asset = project.mediaAssets.find((item) => item.id === assetId);
       if (!asset) throw new Error("音频素材不存在。");
-      const buffer = await decodeAudioBuffer(context, asset);
+      const buffer = await decodeAudioBuffer(context, asset, signal);
       decoded.set(assetId, buffer);
       return buffer;
     };
     const primaryAudio = shouldIncludePrimaryAudio ? await decodeAsset(primaryVideo.id) : null;
+    signal?.throwIfAborted();
     const sampleRate = primaryAudio?.sampleRate ?? 48_000;
     const channelCount = Math.min(2, Math.max(1, primaryAudio?.numberOfChannels ?? 2));
-    const mixed = await mixAudioOffline({ durationSeconds, sampleRate, channelCount, clips, primaryAudio, decodeAsset });
+    const mixed = await mixAudioOffline({ durationSeconds, sampleRate, channelCount, clips, primaryAudio, decodeAsset, signal });
     return {
       channels: Array.from({ length: mixed.numberOfChannels }, (_, index) => mixed.getChannelData(index).slice()),
       sampleRate: mixed.sampleRate,
@@ -158,6 +165,7 @@ async function prepareAudio(project: ProjectRecord, primaryVideo: MediaAsset, se
 export function startVideoExport({ project, settings: settingsInput, onProgress, writable }: StartVideoExportInput): VideoExportJob {
   let worker: Worker | null = null;
   let cancelled = false;
+  const abortController = new AbortController();
   const streamWriter = writable?.getWriter();
   const result = (async (): Promise<VideoExportResult> => {
     const primaryVideo = requirePrimaryVideo(project);
@@ -171,7 +179,7 @@ export function startVideoExport({ project, settings: settingsInput, onProgress,
       projectRepository.getProjectTemplate(project.id),
     ]);
     if (cancelled) throw new Error("导出已取消。");
-    const audio = await prepareAudio(project, primaryVideo, settings, durationSeconds, (phase) => onProgress?.({ phase, completedFrames: 0, totalFrames: durationFrames }));
+    const audio = await prepareAudio(project, primaryVideo, settings, durationSeconds, (phase) => onProgress?.({ phase, completedFrames: 0, totalFrames: durationFrames }), abortController.signal);
     if (cancelled) throw new Error("导出已取消。");
     const overlaySegments = createOverlaySegments(project, shots, template, settings);
 
@@ -243,6 +251,7 @@ export function startVideoExport({ project, settings: settingsInput, onProgress,
     result,
     cancel: () => {
       cancelled = true;
+      abortController.abort(new Error("导出已取消。"));
       void streamWriter?.abort("导出已取消。").catch(() => undefined);
       worker?.postMessage({ type: "cancel" });
     },

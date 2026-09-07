@@ -14,27 +14,14 @@ import PasswordResetPage from "../features/auth/components/PasswordResetPage"
 
 import UserCenterModal from "../features/auth/components/UserCenterModal"
 
-import type { UserProfile } from "../features/auth/types"
-
 import LiteSettingsModal from "../features/editor/components/LiteSettingsModal"
 
 import type { ProjectRecord } from "../features/project/types"
 
 import useLocalStorage from "../hooks/useLocalStorage"
 
-import {
-  getCurrentSession,
-  onAuthStateChange,
-  signOut,
-} from "../services/auth/auth"
-import {
-  aisenHubClient,
-  clearPlatformSession,
-  exchangePlatformSession,
-  getPlatformSession,
-} from "../services/aisenhub/client"
-import { getCurrentProfile } from "../services/aisenhub/profile"
 import type { AppTheme } from "../types/theme"
+import useAppSession from "../features/auth/hooks/useAppSession"
 
 import SeoContentPage from "../features/marketing/components/SeoContentPage"
 
@@ -89,9 +76,7 @@ export default function App() {
 
   const [page, setPage] = useState(() => getPageForPath(location.pathname))
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-
-  const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null)
+  const { isLoggedIn, currentProfile, setIsLoggedIn, setCurrentProfile, handleSignOut } = useAppSession()
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
@@ -124,56 +109,6 @@ export default function App() {
   }, [location.pathname])
 
   useEffect(() => {
-    let isMounted = true
-
-    void getCurrentSession()
-      .then(async (authSession) => {
-        if (!isMounted) return
-        const platformSession = authSession
-          ? await exchangePlatformSession(authSession.access_token)
-          : await getPlatformSession()
-        if (!isMounted) return
-        setIsLoggedIn(platformSession.data.authenticated)
-        if (platformSession.data.authenticated) {
-          void getCurrentProfile().then((profile) => {
-            if (isMounted) setCurrentProfile(profile)
-          })
-        }
-      })
-      .catch(() => {
-        if (isMounted) setIsLoggedIn(false)
-      })
-
-    const {
-      data: { subscription },
-    } = onAuthStateChange((session) => {
-      if (!session) {
-        clearPlatformSession()
-        setCurrentProfile(null)
-        setIsLoggedIn(false)
-        return
-      }
-      void exchangePlatformSession(session.access_token)
-        .then(() => getCurrentProfile())
-        .then((profile) => {
-          if (isMounted) {
-            setIsLoggedIn(Boolean(profile))
-            setCurrentProfile(profile)
-          }
-        })
-        .catch(() => {
-          if (isMounted) setIsLoggedIn(false)
-        })
-    })
-
-    return () => {
-      isMounted = false
-
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  useEffect(() => {
     document.documentElement.dataset.theme = theme
 
     return () => {
@@ -189,17 +124,6 @@ export default function App() {
       )
     else window.sessionStorage.removeItem("aisenlens:active-project-id")
   }, [activeProjectId])
-
-  const handleSignOut = async () => {
-    try {
-      await Promise.allSettled([signOut(), aisenHubClient.logout()])
-    } finally {
-      clearPlatformSession()
-      setIsLoggedIn(false)
-
-      setCurrentProfile(null)
-    }
-  }
 
   const handleNavigate = (nextPage: number) => {
     const path = PAGE_PATHS[nextPage]

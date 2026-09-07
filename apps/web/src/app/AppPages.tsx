@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ReactNode } from "react";
+import AppErrorBoundary from "./AppErrorBoundary";
 import type { AppTheme } from "../types/theme";
 import type { ProjectRecord } from "../features/project/types";
 
@@ -61,5 +62,5 @@ export default function AppPages({
   if (page === 9) content = <UserAgreementPage />;
   if (page === 10) content = <PrivacyPolicyPage />;
 
-  return <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center font-mono text-sm text-text-muted">正在加载页面…</div>}>{content}</Suspense>;
+  return <AppErrorBoundary key={page} onNavigate={onNavigate}><Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center font-mono text-sm text-text-muted">正在加载页面…</div>}>{content}</Suspense></AppErrorBoundary>;
 }
