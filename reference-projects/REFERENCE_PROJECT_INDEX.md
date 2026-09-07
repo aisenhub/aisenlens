@@ -28,6 +28,12 @@
 | --- | --- | --- | --- |
 | 内容预设是否需要按视频类型拆分 | PySceneDetect 官方 `ContentDetector`、`AdaptiveDetector`、`ThresholdDetector` 文档与 CLI；PySceneDetect `benchmark/README.md`、`benchmark/SWEEP_REPORT.md`；OpenReel `cloud-job-types.ts`、`ai-kinds.config.ts`、`AIPanel.tsx`；OpenCut `scenes-view.tsx`、`scenes-manager.ts`；AisenLens `researchPresetRegistry.ts`、`resolveAutoShotConfig.ts` | PySceneDetect 将检测器语义与阈值、窗口、最短场景长度独立配置；BBC、AutoShot、ClipShots 的最优参数不同，不能用一个全局灵敏度覆盖。OpenReel 只把场景检测作为一种分析任务，OpenCut 只提供场景管理交互，均没有可复用的内容类型预设体系。 | 普通 UI 合并“通用视频”和“电影 / 剧集”为“通用/影视”，因为两者均为 Adaptive 且差异主要是默认最短时长与转场选择；转场继续独立控制。保留“短视频”（快节奏/较短镜头）、“访谈 / Vlog”（人物动作与曝光更保守）和“动画 / 游戏”（Content 检测器）三个预设。不得因 UI 合并而混淆 Adaptive 与 Content 的引擎语义；合并后的参数需重新用 search/holdout 标定。 |
 
+## 2026-08-31 AisenHub 多产品平台后端
+
+| 当前模块 | 查阅文件与项目 | 已确认结论 | AisenLens / AisenHub 决定 |
+| --- | --- | --- | --- |
+| 统一账号、多产品商品、买断权益、兑换码、API 与审计 | OpenReel `apps/web/src/config/api-endpoints.ts`、`apps/web/src/services/api-proxy.ts`、`apps/web/functions/api/proxy/[[catchall]].ts`；OpenCut `apps/web/src/auth/{server,client,rate-limit}.ts`、`apps/web/src/db/schema.ts`、`apps/web/src/app/api/{auth/[...all],feedback}/route.ts`；GitHub `supabase/supabase`、`polarsource/polar`、`getlago/lago`、`unkeyed/unkey`、`openfga/openfga` 及其官方文档 | OpenReel 将端点、生产代理、允许来源、路径白名单、请求体上限和上游超时集中管理；OpenCut 将服务端会话、Redis 限流、输入校验和 API 路由分开。Polar 将一次性购买/订阅商品与 License Key 等 Benefit 分离；Lago 将 Feature、Entitlement 与 Billing 分离；Unkey 对密钥采用摘要、作用域、限流和审计；OpenFGA 将授权模型、关系和授权检查分离并提供模型测试。Supabase 已提供 Auth、PostgreSQL、RLS、Edge Functions 和自定义 API 域名，足以承载初期平台。 | 建立独立 AisenHub Platform 仓库，采用 Supabase/PostgreSQL 模块化单体，不引入新的认证、计费或授权服务。用应用、功能、商品、不可变商品版本、权益授予、兑换批次、兑换记录、订单和审计组成通用模型；AisenLens（`lens.aisenhub.com`）成为第一个客户端。平台 API 使用精确 Origin、Host-only API Cookie、CSRF、幂等和受控数据库事务；产品前端通过共享 SDK 接入。当前无生产数据，直接废弃旧 `supporter` 和专用兑换模型，不保留兼容层。详见 AisenHub-platform `docs/AISENHUB_PLATFORM_BACKEND_ARCHITECTURE.md`。 |
+
 ## 2026-08-29 自动分镜人工标定与数据导出
 
 | 当前模块 | 查阅文件 | 已确认结论 | AisenLens 决定 |

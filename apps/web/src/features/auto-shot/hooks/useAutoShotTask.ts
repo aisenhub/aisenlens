@@ -11,7 +11,7 @@ import type { ResolvedAutoShotConfiguration } from "../config/types";
 
 interface UseAutoShotTaskInput {
   projectId: string;
-  sourceUrl: string;
+  sourceUrl: string | null;
   mediaFingerprint: MediaSourceFingerprint | null;
   durationSeconds: number;
   frameRate: number;

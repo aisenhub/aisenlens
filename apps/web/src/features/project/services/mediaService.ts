@@ -316,29 +316,6 @@ export function createLinkedAudioAsset(
   };
 }
 
-export async function createRecordedAudioAsset(projectId: string, recording: Blob, name = `录音-${new Date().toISOString()}.webm`): Promise<{ asset: MediaAsset; blob: Blob }> {
-  const file = new File([recording], name, { type: recording.type || "audio/webm" });
-  const inspectedAudio = await inspectLocalAudio({ file, handle: null });
-  const now = new Date().toISOString();
-  return {
-    asset: {
-      id: crypto.randomUUID(),
-      projectId,
-      kind: "audio",
-      origin: "recorded",
-      name,
-      status: "linked",
-      source: inspectedAudio.source,
-      metadata: inspectedAudio.metadata,
-      linkedAt: now,
-      relinkedAt: null,
-      createdAt: now,
-      updatedAt: now,
-    },
-    blob: recording,
-  };
-}
-
 export async function verifyLinkedMedia(
   handle: FileSystemFileHandle,
   expectedSource: MediaSourceFingerprint,

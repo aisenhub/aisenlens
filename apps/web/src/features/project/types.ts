@@ -10,7 +10,7 @@ import type { CalibrationAnnotationRecord } from "../scene-calibration/types";
 
 export type MediaAssetStatus = "unlinked" | "linked" | "missing" | "unsupported";
 export type MediaAssetKind = "video" | "audio";
-export type MediaAssetOrigin = "imported" | "recorded";
+export type MediaAssetOrigin = "imported";
 
 export interface MediaSourceFingerprint {
   name: string;

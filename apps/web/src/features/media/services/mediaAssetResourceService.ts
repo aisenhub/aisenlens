@@ -9,8 +9,6 @@ export async function loadMediaAssetBlob(asset: MediaAsset): Promise<Blob> {
   if (asset.status !== "linked") throw new Error("媒体素材当前不可用。");
   const storedBlob = await projectRepository.getMediaAssetBlob(asset.id);
   if (storedBlob) return storedBlob;
-  if (asset.origin === "recorded") throw new Error("录音素材文件缺失。");
-
   const handle = await projectRepository.getMediaAssetHandle(asset.id);
   if (!handle) throw new Error("导入的媒体文件需要重新关联。");
   const permission = await (handle as FileSystemHandleWithPermission).queryPermission({ mode: "read" });

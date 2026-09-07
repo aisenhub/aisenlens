@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type VideoPlaybackStatus = "loading" | "ready" | "seeking" | "playing" | "paused" | "ended" | "error";
 
 interface UseVideoPlaybackOptions {
-  source: string;
+  source: string | null;
   initialDurationSeconds: number;
 }
 
@@ -14,7 +14,7 @@ export default function useVideoPlayback({ source, initialDurationSeconds }: Use
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMuted, setIsMutedState] = useState(false);
-  const [status, setStatus] = useState<VideoPlaybackStatus>("loading");
+  const [status, setStatus] = useState<VideoPlaybackStatus>(source ? "loading" : "paused");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const syncCurrentTime = useCallback((time: number) => setCurrentTimeState(time), []);
@@ -66,7 +66,7 @@ export default function useVideoPlayback({ source, initialDurationSeconds }: Use
     const video = videoRef.current;
     if (!video) return;
     setErrorMessage(null);
-    setStatus("loading");
+    setStatus(source ? "loading" : "paused");
     video.load();
   }, []);
 

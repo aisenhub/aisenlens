@@ -10,7 +10,7 @@ interface ProjectMediaGateProps {
   projectId: string | null;
   onNavigate: (page: number) => void;
   onProjectLoaded: (project: ProjectRecord) => void;
-  children: (project: ProjectRecord, videoUrl: string, primaryVideoAsset: MediaAsset, onRenameProject: (title: string) => void) => ReactNode;
+  children: (project: ProjectRecord, videoUrl: string | null, primaryVideoAsset: MediaAsset | null, onRenameProject: (title: string) => void, onImportVideo: () => void, isSelectingVideo: boolean) => ReactNode;
 }
 
 type LoadState = "loading" | "ready" | "not-found" | "unlinked" | "missing" | "needs-permission" | "error";
@@ -173,7 +173,9 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
   };
 
   const primaryVideoAsset = project?.mediaAssets.find((asset) => asset.id === project.primaryVideoAssetId && asset.kind === "video") ?? null;
-  if (loadState === "ready" && project && videoUrl && primaryVideoAsset) return <>{children(project, videoUrl, primaryVideoAsset, renameProject)}</>;
+  const canOpenEditor = loadState === "ready" && project && videoUrl && primaryVideoAsset;
+  const canOpenEmptyEditor = loadState === "unlinked" && project && (!primaryVideoAsset || !primaryVideoAsset.source);
+  if (project && (canOpenEditor || canOpenEmptyEditor)) return <>{children(project, videoUrl, primaryVideoAsset, renameProject, () => void connectVideo(), isSelectingVideo)}</>;
 
   const isMissing = loadState === "missing";
   const needsPermission = loadState === "needs-permission";

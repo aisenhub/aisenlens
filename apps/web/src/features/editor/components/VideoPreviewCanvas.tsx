@@ -1,4 +1,4 @@
-import { AlertCircle, LoaderCircle, RotateCw } from "lucide-react";
+import { AlertCircle, FileVideo, LoaderCircle, RotateCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import type { VideoPlaybackStatus } from "../hooks/useVideoPlayback";
@@ -31,7 +31,7 @@ interface VideoPreviewCanvasProps {
   onActivate: () => void;
   sourceWidth: number;
   sourceHeight: number;
-  videoUrl: string;
+  videoUrl: string | null;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   status: VideoPlaybackStatus;
   errorMessage: string | null;
@@ -160,7 +160,7 @@ export default function VideoPreviewCanvas({ showCompositionGrid, compositionOve
       <div ref={viewportRef} className={`absolute inset-0 overflow-hidden ${canPan ? "cursor-grab" : ""}`} onPointerDown={handlePanPointerDown} onPointerMove={handlePanPointerMove} onPointerUp={handlePanPointerUp} onPointerCancel={handlePanPointerUp}>
         <div className="absolute left-1/2 top-1/2" style={{ width: canvasSize.width, height: canvasSize.height, transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))` }}>
           <div className="relative h-full w-full" style={{ backgroundColor: canvasBackground }}>
-            <video ref={videoRef} src={videoUrl} className="absolute inset-0 h-full w-full object-contain" controls={false} preload="metadata" onLoadedMetadata={onLoadedMetadata} onTimeUpdate={onTimeUpdate} onPlay={onPlay} onPause={onPause} onEnded={onEnded} onSeeking={onSeeking} onSeeked={onSeeked} onWaiting={onWaiting} onCanPlay={onCanPlay} onError={onError} />
+            <video ref={videoRef} src={videoUrl ?? undefined} className="absolute inset-0 h-full w-full object-contain" controls={false} preload="metadata" onLoadedMetadata={onLoadedMetadata} onTimeUpdate={onTimeUpdate} onPlay={onPlay} onPause={onPause} onEnded={onEnded} onSeeking={onSeeking} onSeeked={onSeeked} onWaiting={onWaiting} onCanPlay={onCanPlay} onError={onError} />
             {contentOverlay.enabled && <div className="pointer-events-none absolute left-1/2 top-1/2" style={{ width: videoFrame.width, height: videoFrame.height, transform: "translate(-50%, -50%)" }}><ContentOverlay layout={contentOverlay.layout} model={contentOverlayModel} showBackground={contentOverlay.showBackground} backgroundOpacity={contentOverlay.backgroundOpacity} /></div>}
             <div className={`absolute inset-0 ${isCompositionOverlayEditing ? "" : "pointer-events-none"}`}>
               {showCompositionGrid && <div className="absolute inset-0 opacity-25" style={{ backgroundImage: "linear-gradient(rgba(59,130,246,0.8) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.8) 1px,transparent 1px)", backgroundSize: "33.33% 33.33%" }} />}
@@ -169,7 +169,8 @@ export default function VideoPreviewCanvas({ showCompositionGrid, compositionOve
           </div>
         </div>
       </div>
-      {isLoading && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/25"><div className="flex items-center gap-2 rounded-full border border-white/10 bg-bg-deep/80 px-3 py-1.5 font-mono editor-meta text-text-dim backdrop-blur"><LoaderCircle className="size-3.5 animate-spin text-accent" />正在加载视频</div></div>}
+      {isLoading && videoUrl && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/25"><div className="flex items-center gap-2 rounded-full border border-white/10 bg-bg-deep/80 px-3 py-1.5 font-mono editor-meta text-text-dim backdrop-blur"><LoaderCircle className="size-3.5 animate-spin text-accent" />正在加载视频</div></div>}
+      {!videoUrl && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-bg-deep/90"><div className="flex flex-col items-center text-center"><FileVideo className="size-8 text-text-muted" /><p className="mt-3 editor-heading font-medium text-white">暂无视频素材</p><p className="mt-1 editor-meta text-text-muted">请在左侧“素材”中导入视频</p></div></div>}
       {status === "error" && <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg-deep/90 p-6"><div className="flex max-w-xs flex-col items-center text-center"><AlertCircle className="size-6 text-red-300" /><p className="mt-3 editor-heading font-medium text-white">视频无法播放</p><p className="mt-1 editor-meta text-text-muted">{errorMessage}</p><Button type="button" variant="outline" size="sm" onClick={onRetry} className="mt-4 h-7 editor-body font-normal border-border text-text-dim hover:text-white"><RotateCw className="size-3" />重新加载</Button></div></div>}
     </div>
   </div>;

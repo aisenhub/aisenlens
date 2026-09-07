@@ -2,13 +2,11 @@ import { useCallback, useMemo, useState, useRef, useEffect } from "react"
 import { toast } from "sonner"
 import {
   Bookmark,
-  Clapperboard,
   Code2,
   FileVideo,
   Grid3X3,
   Keyboard,
   LoaderCircle,
-  Music2,
   Scissors,
   Settings2,
   TriangleAlert,
@@ -23,7 +21,6 @@ import {
   PanelToolId,
   ShotData,
   SHOT_TYPES,
-  SPEEDS,
 } from "../constants/editorData"
 import AnalysisDimensionCard from "./AnalysisDimensionCard"
 import AnalysisFieldInput from "./AnalysisFieldInput"
@@ -163,10 +160,12 @@ interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
   projectTitle: string
   setProjectTitle: (t: string) => void
-  videoUrl: string
+  videoUrl: string | null
   projectId: string
   project: ProjectRecord
   media: MediaAsset
+  isSelectingVideo: boolean
+  onImportVideo: () => void
   coverScreenshotId: string | null
   onProjectUpdated: (project: ProjectRecord) => void
 }
@@ -236,19 +235,6 @@ const DIM_REFS: Record<string, { val: string; hint: string }[]> = {
 }
 
 const FPS = FRAMES_PER_SECOND
-const CANVAS_BACKGROUND_SWATCHES = [
-  "#000000",
-  "#FFFFFF",
-  "#1E1E1E",
-  "#2563EB",
-  "#DC2626",
-  "#16A34A",
-  "#F59E0B",
-  "#9333EA",
-  "#DB2777",
-  "#0EA5E9",
-]
-
 /* ─────────────────────────────────────────────
    EDITOR
 ───────────────────────────────────────────── */
@@ -260,6 +246,8 @@ export default function EditorWorkspace({
   videoUrl,
   projectId,
   media,
+  isSelectingVideo,
+  onImportVideo,
   coverScreenshotId,
   onProjectUpdated,
 }: EditorWorkspaceProps) {
@@ -2216,29 +2204,25 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / shot / videoinfo / template / video / mask / shortcuts / developer */
+  /* Toolbar order: home / material / shot / template / mask / markers / shortcuts / developer */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
     label: string
     short: string
   }[] = [
+    { id: "material", icon: "◎", label: "素材", short: "素材" },
     { id: "shot", icon: "◉", label: "分镜", short: "分镜" },
-    { id: "videoinfo", icon: "▤", label: "视频信息", short: "信息" },
     { id: "template", icon: "◫", label: "拉片模板", short: "模板" },
-    { id: "video", icon: "◎", label: "视频", short: "视频" },
     { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
-    { id: "shortcuts", icon: "▧", label: "快捷键", short: "快捷" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
-    { id: "audio", icon: "", label: "音频", short: "音频" },
+    { id: "shortcuts", icon: "▧", label: "快捷键", short: "快捷" },
     { id: "developer", icon: "", label: "开发者", short: "开发" },
   ]
 
   const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
-    videoinfo: FileVideo,
     settings: Settings2,
-    video: Clapperboard,
-    audio: Music2,
+    material: FileVideo,
     markers: Bookmark,
     mask: Grid3X3,
     shot: Scissors,
@@ -2775,146 +2759,71 @@ export default function EditorWorkspace({
               </div>
 
               <div className="flex-1 overflow-y-auto p-3">
-                {/* ── 视频 (speed + zoom) ── */}
-                {activeTool === "video" && (
+                {/* ── 素材 (video + audio) ── */}
+                {activeTool === "material" && (
                   <div className="flex flex-col gap-4">
-                    <div>
-                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
-                        播放倍速
-                      </p>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {SPEEDS.map((s) => (
-                          <Button
-                            key={s}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSpeed(s)}
-                            className={`h-7 font-mono editor-body font-normal ${
-                              speed === s
-                                ? "border-accent/50 bg-accent/15 text-accent"
-                                : "border-border text-text-muted hover:border-border-mid hover:text-white"
-                            }`}
-                          >
-                            {s}×
-                          </Button>
-                        ))}
+                    <div className="rounded-xl border border-border bg-bg-deep p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="editor-heading font-mono text-text-muted">
+                            视频文件
+                          </p>
+                          <p className="mt-1 editor-meta leading-relaxed text-text-muted">
+                            选择视频素材并导入当前项目
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isSelectingVideo}
+                          onClick={onImportVideo}
+                          className="h-7 shrink-0 border-border text-text-muted"
+                        >
+                          <FileVideo />
+                          {isSelectingVideo ? "正在导入…" : "导入视频"}
+                        </Button>
                       </div>
-                      <p className="editor-meta text-text-muted mt-2">
-                        当前：
-                        <span className="text-accent font-mono">{speed}×</span>
+                      <p className="mt-2 editor-micro text-text-faint">
+                        视频只关联到当前项目，不会复制或上传
                       </p>
                     </div>
                     <div className="h-px bg-border" />
-                    <div>
-                      <p className="mb-2 font-mono editor-heading tracking-wider text-text-muted">
-                        画布背景
+                    <div className="flex flex-col gap-1">
+                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
+                        当前素材信息
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => setCanvasBackgroundColor(null)}
-                        className={`flex w-full items-center gap-2 rounded px-1.5 py-1.5 text-left editor-body ${
-                          canvasBackgroundColor === null
-                            ? "bg-accent/15 text-accent"
-                            : "text-text-dim hover:bg-white/6 hover:text-white"
-                        }`}
-                      >
-                        <span
-                          className="size-3 rounded-sm border border-white/20"
-                          style={{
-                            backgroundColor:
-                              document.documentElement.dataset.theme === "light"
-                                ? "#eeede9"
-                                : "#050505",
-                          }}
-                        />
-                        主题默认
-                      </button>
-                      <div className="mt-2 grid grid-cols-5 gap-1.5">
-                        {CANVAS_BACKGROUND_SWATCHES.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            aria-label={`画布背景 ${color}`}
-                            onClick={() => setCanvasBackgroundColor(color)}
-                            className={`size-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                              canvasBackgroundColor?.toLowerCase() ===
-                              color.toLowerCase()
-                                ? "border-accent scale-110"
-                                : "border-white/20"
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                      <label className="mt-3 flex items-center justify-between border-t border-border pt-2 editor-meta text-text-muted">
-                        自定义颜色
-                        <input
-                          type="color"
-                          aria-label="自定义画布背景色"
-                          value={
-                            canvasBackgroundColor ??
-                            (document.documentElement.dataset.theme === "light"
-                              ? "#eeede9"
-                              : "#050505")
-                          }
-                          onChange={(event) =>
-                            setCanvasBackgroundColor(event.target.value)
-                          }
-                          className="editor-color-input size-6 cursor-pointer p-0"
-                        />
-                      </label>
+                      {videoInfo.map((row) => (
+                        <div
+                          key={row.label}
+                          className="flex items-center justify-between gap-3 border-b border-border/40 py-1.5 last:border-0"
+                        >
+                          <span className="editor-meta text-text-muted">
+                            {row.label}
+                          </span>
+                          <span className="editor-meta max-w-[9rem] truncate text-right font-mono text-text-dim">
+                            {row.val}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="hidden">
-                      <p className="text-xs text-text-muted mb-2 font-mono tracking-wider">
-                        画面比例
+                    <div className="h-px bg-border" />
+                    <div>
+                      <p className="editor-heading font-mono tracking-wider text-text-muted">
+                        音频轨道
                       </p>
-                      {(["16:9", "4:3", "2.39:1", "1:1", "9:16"] as const).map(
-                        (ratio) => (
-                          <Button
-                            key={ratio}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mb-1 h-auto w-full justify-start gap-3 whitespace-normal border-border px-3 py-2 text-left text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white"
-                          >
-                            <span className="text-xs font-mono w-14 shrink-0">
-                              {ratio}
-                            </span>
-                            <div className="flex-1 flex items-center">
-                              <div
-                                className="h-3 bg-border-mid rounded-sm"
-                                style={{
-                                  width:
-                                    ratio === "16:9"
-                                      ? 40
-                                      : ratio === "4:3"
-                                        ? 30
-                                        : ratio === "2.39:1"
-                                          ? 48
-                                          : ratio === "1:1"
-                                            ? 20
-                                            : 12,
-                                }}
-                              />
-                            </div>
-                          </Button>
-                        ),
-                      )}
+                      <div className="mt-3">
+                        <AudioTrackPanel
+                          project={mediaProject}
+                          frameRate={media.metadata?.frameRate ?? FPS}
+                          currentFrame={Math.round(
+                            currentTime * (media.metadata?.frameRate ?? FPS),
+                          )}
+                          onProjectUpdated={handleMediaProjectUpdated}
+                        />
+                      </div>
                     </div>
                   </div>
-                )}
-
-                {/* ── 拉片模板 ── */}
-                {activeTool === "audio" && (
-                  <AudioTrackPanel
-                    project={mediaProject}
-                    frameRate={media.metadata?.frameRate ?? FPS}
-                    currentFrame={Math.round(
-                      currentTime * (media.metadata?.frameRate ?? FPS),
-                    )}
-                    onProjectUpdated={handleMediaProjectUpdated}
-                  />
                 )}
 
                 {activeTool === "markers" && (
@@ -3132,28 +3041,6 @@ export default function EditorWorkspace({
                   </div>
                 )}
 
-                {/* ── 视频信息 ── */}
-                {activeTool === "videoinfo" && (
-                  <div className="flex flex-col gap-1">
-                    <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
-                      当前项目视频信息
-                    </p>
-                    {videoInfo.map((row) => (
-                      <div
-                        key={row.label}
-                        className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0"
-                      >
-                        <span className="editor-meta text-text-muted">
-                          {row.label}
-                        </span>
-                        <span className="editor-meta font-mono text-text-dim">
-                          {row.val}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {/* ── 设置 (theme + cache) ── */}
                 {activeTool === "settings" && (
                   <div className="flex flex-col gap-3">
@@ -3358,6 +3245,8 @@ export default function EditorWorkspace({
                   playbackStatus === "loading" || playbackStatus === "error"
                 }
                 isMuted={isMuted}
+                speed={speed}
+                canvasBackgroundColor={canvasBackgroundColor}
                 zoom={previewZoom}
                 aspectPreset={previewAspectPreset}
                 showSafeMargins={compositionOverlay.showSafeMargins}
@@ -3375,6 +3264,8 @@ export default function EditorWorkspace({
                 onCurrentTimeChange={setCurrentTime}
                 onPlayingChange={playViewRange}
                 onMutedChange={setMuted}
+                onSpeedChange={setSpeed}
+                onCanvasBackgroundColorChange={setCanvasBackgroundColor}
                 onZoomChange={setPreviewZoom}
                 onAspectPresetChange={setPreviewAspectPreset}
                 onSafeMarginsChange={(visible) =>
@@ -3402,7 +3293,7 @@ export default function EditorWorkspace({
             durationSeconds={durationSeconds}
             frameRate={media.metadata?.frameRate ?? FPS}
             mediaFingerprint={media.source}
-            sourceUrl={videoUrl}
+            sourceUrl={videoUrl ?? ""}
             projectId={projectId}
             onActiveShotChange={setActiveShot}
             onCurrentTimeChange={setCurrentTime}

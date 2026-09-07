@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Mic, Music2, Plus, Scissors, Trash2, Volume2, VolumeX } from "lucide-react";
+import { ChevronDown, ChevronUp, Music2, Plus, Scissors, Trash2, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
 import type { AudioTrack, ProjectRecord } from "../../project/types";
-import { importAudioTrack, saveAudioTracks, saveRecordedAudioTrack, splitAudioTrackAtFrame, startAudioRecording, type AudioRecordingSession } from "../services/audioTrackProjectService";
+import { importAudioTrack, saveAudioTracks, splitAudioTrackAtFrame } from "../services/audioTrackProjectService";
 
 interface AudioTrackPanelProps {
   project: ProjectRecord;
@@ -15,8 +15,6 @@ interface AudioTrackPanelProps {
 export default function AudioTrackPanel({ project, frameRate, currentFrame, onProjectUpdated }: AudioTrackPanelProps) {
   const [tracks, setTracks] = useState(project.audioTracks);
   const [isImporting, setIsImporting] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const recordingRef = useRef<AudioRecordingSession | null>(null);
   const projectRef = useRef(project);
   const tracksRef = useRef(project.audioTracks);
 
@@ -25,7 +23,6 @@ export default function AudioTrackPanel({ project, frameRate, currentFrame, onPr
     tracksRef.current = project.audioTracks;
     setTracks(project.audioTracks);
   }, [project]);
-  useEffect(() => () => recordingRef.current?.cancel(), []);
 
   const updateTracks = (nextTracks: AudioTrack[]) => {
     tracksRef.current = nextTracks;
@@ -76,34 +73,9 @@ export default function AudioTrackPanel({ project, frameRate, currentFrame, onPr
     });
   };
 
-  const toggleRecording = async () => {
-    if (!isRecording) {
-      try {
-        recordingRef.current = await startAudioRecording();
-        setIsRecording(true);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "无法使用麦克风。");
-      }
-      return;
-    }
-    const recording = recordingRef.current;
-    recordingRef.current = null;
-    setIsRecording(false);
-    if (!recording) return;
-    try {
-      const updatedProject = await saveRecordedAudioTrack(projectRef.current, await recording.stop(), frameRate, currentFrame);
-      projectRef.current = updatedProject;
-      onProjectUpdated(updatedProject);
-      toast.success("录音已添加到时间线。");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "保存录音失败。");
-    }
-  };
-
   return <div className="flex flex-col gap-3">
-    <div className="grid grid-cols-2 gap-1.5">
-      <Button type="button" variant="outline" size="sm" disabled={isImporting || isRecording} onClick={() => void importTrack()} className="h-8 border-border text-text-dim hover:border-border-mid hover:text-white"><Plus />导入音频</Button>
-      <Button type="button" variant="outline" size="sm" disabled={isImporting} onClick={() => void toggleRecording()} className={`h-8 border-border ${isRecording ? "border-red-400/60 bg-red-500/10 text-red-300 hover:text-red-200" : "text-text-dim hover:border-border-mid hover:text-white"}`}><Mic className={isRecording ? "animate-pulse" : undefined} />{isRecording ? "结束录音" : "录制音频"}</Button>
+    <div className="grid grid-cols-1 gap-1.5">
+      <Button type="button" variant="outline" size="sm" disabled={isImporting} onClick={() => void importTrack()} className="h-8 border-border text-text-dim hover:border-border-mid hover:text-white"><Plus />导入音频</Button>
     </div>
     {!tracks.length && <p className="editor-meta rounded-lg border border-dashed border-border bg-bg-deep px-2.5 py-3 text-center text-text-muted">导入音乐、旁白或环境音；每次导入会新增一条音频轨。</p>}
     {tracks.map((track, index) => <div key={track.id} className="rounded-lg border border-border/70 bg-bg-deep p-2.5">
