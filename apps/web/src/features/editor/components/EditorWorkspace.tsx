@@ -3504,6 +3504,7 @@ export default function EditorWorkspace({
           isSelectingVideo={isSelectingVideo}
           onImportVideo={onImportVideo}
           onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
+          onGoToCalibrate={() => onWorkflowNavigate?.("calibrate", "candidates")}
           onOpenSettings={() => setIsTemplateEditorOpen(true)}
           settings={autoShotControl.settings}
           resolved={autoShotControl.resolved}
@@ -3511,15 +3512,10 @@ export default function EditorWorkspace({
           record={autoShotRun}
           isActive={autoShotTask.isActive}
           error={autoShotTask.error ?? autoShotControl.error?.message ?? null}
-          excludedCandidateIds={excludedAutoShotCandidateIds}
           onChange={autoShotControl.updateSettings}
           onStart={() => void startAutoShotDetection()}
           onPause={() => void autoShotTask.pause()}
           onRestart={() => void startAutoShotDetection(true)}
-          onPreview={() => {
-            previewAutoShotCuts()
-          }}
-          onToggleCandidate={(candidateId, included) => setExcludedAutoShotCandidateIds((current) => included ? current.filter((id) => id !== candidateId) : [...new Set([...current, candidateId])])}
         />
       ) : workflowStage === "overview" ? (
         <OverviewView

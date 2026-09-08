@@ -1,22 +1,18 @@
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import type { AutoShotTaskRecord } from "../types";
-import ResultReview from "./ResultReview";
 
 interface RunStatusProps {
   record: AutoShotTaskRecord | null;
   isActive: boolean;
   error: string | null;
-  excludedCandidateIds: string[];
   disabled?: boolean;
   onStart: () => void;
   onPause: () => void;
   onRestart: () => void;
-  onPreview: () => void;
-  onToggleCandidate: (candidateId: string, included: boolean) => void;
 }
 
-export default function RunStatus({ record, isActive, error, excludedCandidateIds, disabled = false, onStart, onPause, onRestart, onPreview, onToggleCandidate }: RunStatusProps) {
+export default function RunStatus({ record, isActive, error, disabled = false, onStart, onPause, onRestart }: RunStatusProps) {
   const progress = record ? Math.round((record.progress.processedUs / Math.max(1, record.progress.durationUs)) * 100) : 0;
   const completed = record?.status === "completed";
   const paused = record?.status === "paused";
@@ -32,7 +28,6 @@ export default function RunStatus({ record, isActive, error, excludedCandidateId
       {completed && (
         <div className="rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
           检测到 <span className="font-mono text-green-300">{record.candidates.filter((candidate) => candidate.kind !== "tail").length}</span> 个边界，生成 <span className="font-mono text-green-300">{record.candidates.length}</span> 段候选。
-          <ResultReview candidates={record.candidates} excludedCandidateIds={excludedCandidateIds} onToggle={onToggleCandidate} />
         </div>
       )}
       {(error || record?.status === "failed") && <p className="editor-meta text-red-300">{error ?? record?.error?.message ?? "自动分镜失败。"}</p>}
@@ -40,7 +35,6 @@ export default function RunStatus({ record, isActive, error, excludedCandidateId
         {paused ? <><Play className="size-3" /> 继续扫描</> : canRestart ? <><RotateCcw className="size-3" /> 重新扫描</> : <><Play className="size-3" /> 开始自动分镜</>}
       </Button>
       {record?.status === "running" && <Button type="button" variant="ghost" size="sm" onClick={onPause} className="h-7 w-full text-text-muted hover:text-white"><Pause className="size-3" /> 暂停扫描</Button>}
-      {completed && <Button type="button" size="sm" onClick={onPreview} className="h-8 w-full">应用候选分镜</Button>}
     </div>
   );
 }

@@ -11,16 +11,13 @@ interface AutoShotControlPanelProps {
   record: AutoShotTaskRecord | null;
   isActive: boolean;
   error: string | null;
-  excludedCandidateIds: string[];
   onChange: (patch: Partial<AutoShotControlSettings>) => void;
   onStart: () => void;
   onPause: () => void;
   onRestart: () => void;
-  onPreview: () => void;
-  onToggleCandidate: (candidateId: string, included: boolean) => void;
 }
 
-export default function AutoShotControlPanel({ settings, resolved, presets, record, isActive, error, excludedCandidateIds, onChange, onStart, onPause, onRestart, onPreview, onToggleCandidate }: AutoShotControlPanelProps) {
+export default function AutoShotControlPanel({ settings, resolved, presets, record, isActive, error, onChange, onStart, onPause, onRestart }: AutoShotControlPanelProps) {
   const disabled = isActive || record?.status === "running";
   const selectedPreset = settings ? presets.find((preset) => preset.id === settings.presetId) : undefined;
   return (
@@ -34,7 +31,7 @@ export default function AutoShotControlPanel({ settings, resolved, presets, reco
         <>
           <PresetSelector presets={presets} value={settings.presetId} disabled={disabled} onChange={(presetId) => onChange({ presetId })} />
           <BasicSettings settings={settings} presetDefaultMinimumSceneDurationSeconds={selectedPreset?.defaultMinimumSceneDurationSeconds} disabled={disabled} onChange={onChange} />
-          <RunStatus record={record} isActive={isActive} error={error} excludedCandidateIds={excludedCandidateIds} disabled={!resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} onPreview={onPreview} onToggleCandidate={onToggleCandidate} />
+          <RunStatus record={record} isActive={isActive} error={error} disabled={!resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} />
         </>
       )}
     </div>
