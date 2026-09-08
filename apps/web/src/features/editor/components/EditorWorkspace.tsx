@@ -3723,7 +3723,7 @@ export default function EditorWorkspace({
           isSelectingVideo={isSelectingVideo}
           onImportVideo={onImportVideo}
           onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
-          onOpenSettings={() => onWorkflowNavigate?.("analyze", "scenes")}
+          onOpenSettings={() => setIsTemplateEditorOpen(true)}
           settings={autoShotControl.settings}
           resolved={autoShotControl.resolved}
           presets={autoShotPresets}
