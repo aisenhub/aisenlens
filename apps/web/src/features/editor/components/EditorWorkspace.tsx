@@ -165,6 +165,7 @@ interface EditorWorkspaceProps {
   onImportVideo: () => void
   coverScreenshotId: string | null
   onProjectUpdated: (project: ProjectRecord) => void
+  isActive?: boolean
 }
 
 interface EditorHistorySnapshot {
@@ -247,6 +248,7 @@ export default function EditorWorkspace({
   onImportVideo,
   coverScreenshotId,
   onProjectUpdated,
+  isActive = true,
 }: EditorWorkspaceProps) {
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
@@ -424,6 +426,10 @@ export default function EditorWorkspace({
     source: videoUrl,
     initialDurationSeconds: media.metadata?.durationSeconds ?? 0,
   })
+
+  useEffect(() => {
+    if (!isActive) setPlaying(false)
+  }, [isActive, setPlaying])
 
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
@@ -2612,7 +2618,11 @@ export default function EditorWorkspace({
   })
 
   return (
-    <div className="editor-workspace relative flex h-screen flex-col overflow-hidden bg-bg select-none" data-mobile-panel={mobilePanel ?? "none"}>
+    <div
+      className={`${isActive ? "" : "hidden"} editor-workspace relative flex h-screen flex-col overflow-hidden bg-bg select-none`}
+      data-mobile-panel={mobilePanel ?? "none"}
+      aria-hidden={isActive ? undefined : true}
+    >
       {/* ══ Topbar ══ */}
       <header className="flex items-center px-4 h-11 border-b border-border bg-bg-nav shrink-0 gap-3">
         <Button
