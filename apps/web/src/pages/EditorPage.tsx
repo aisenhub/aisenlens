@@ -57,6 +57,7 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
                 onProjectUpdated={onProjectLoaded}
             isActive
             workflowStage={workflow.stage}
+            workflowView={workflow.view}
             onWorkflowNavigate={workflow.goTo}
           />
             </ProjectWorkspaceShell>

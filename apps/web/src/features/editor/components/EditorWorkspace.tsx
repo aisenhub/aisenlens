@@ -156,6 +156,7 @@ import { useProjectSession } from "../session/ProjectSessionProvider"
 import type { WorkflowStage, WorkflowView } from "../../workflow/types.ts"
 import PrepareView from "../../workflow/components/PrepareView"
 import CalibrateView from "../../workflow/components/CalibrateView"
+import OverviewView from "../../overview/components/OverviewView"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -171,6 +172,7 @@ interface EditorWorkspaceProps {
   onProjectUpdated: (project: ProjectRecord) => void
   isActive?: boolean
   workflowStage?: WorkflowStage
+  workflowView?: WorkflowView
   onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView) => void
 }
 
@@ -256,6 +258,7 @@ export default function EditorWorkspace({
   onProjectUpdated,
   isActive = true,
   workflowStage = "analyze",
+  workflowView = "scenes",
   onWorkflowNavigate,
 }: EditorWorkspaceProps) {
   const setSessionSelection = useProjectSession((state) => state.setSelection)
@@ -3729,6 +3732,33 @@ export default function EditorWorkspace({
             previewAutoShotCuts()
           }}
           onToggleCandidate={(candidateId, included) => setExcludedAutoShotCandidateIds((current) => included ? current.filter((id) => id !== candidateId) : [...new Set([...current, candidateId])])}
+        />
+      ) : workflowStage === "overview" ? (
+        <OverviewView
+          view={workflowView}
+          shots={shots}
+          shotFrames={shotFrames}
+          groups={shotGroups}
+          markers={annotationMarkers}
+          durationSeconds={durationSeconds}
+          frameRate={media.metadata?.frameRate ?? null}
+          onViewChange={(view) => onWorkflowNavigate?.("overview", view)}
+          onSelectShot={(index) => {
+            setActiveShot(index)
+            setCurrentTime(shots[index]?.start ?? 0)
+            onWorkflowNavigate?.("analyze", "scenes")
+          }}
+          onOpenScene={(group) => {
+            setSelectedGroupId(group.id)
+            const firstIndex = shots.findIndex((shot) => shot.id === group.shotIds[0])
+            if (firstIndex >= 0) setActiveShot(firstIndex)
+            onWorkflowNavigate?.("analyze", "scenes")
+          }}
+          onStartSelection={() => {
+            setSelectedShotIds([])
+            setIsSelectingGroupShots(true)
+            onWorkflowNavigate?.("analyze", "scenes")
+          }}
         />
       ) : (
         <CalibrateView
