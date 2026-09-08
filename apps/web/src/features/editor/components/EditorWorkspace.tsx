@@ -3,7 +3,6 @@ import { toast } from "sonner"
 import {
   Bookmark,
   Code2,
-  FileVideo,
   Grid3X3,
   Keyboard,
   LoaderCircle,
@@ -148,7 +147,6 @@ import {
 } from "../../content-overlay/types"
 import { EDITOR_SHORTCUT_DEFINITIONS } from "../shortcuts/definitions"
 import useEditorShortcuts from "../shortcuts/useEditorShortcuts"
-import AudioTrackPanel from "../../media/components/AudioTrackPanel"
 import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPreview"
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
 import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
@@ -1299,46 +1297,6 @@ export default function EditorWorkspace({
     workflowView,
   ])
 
-  const safeDuration = Math.max(durationSeconds, 1)
-  const playhead = (currentTime / safeDuration) * 100
-  const detectedFrameRate = media.metadata?.frameRate ?? null
-  const frameRateLabel = detectedFrameRate
-    ? `${
-        Number.isInteger(detectedFrameRate)
-          ? detectedFrameRate
-          : detectedFrameRate.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")
-      } fps`
-    : "读取中"
-  const videoInfo = [
-    { label: "文件名", val: media.source?.name ?? "—" },
-    {
-      label: "分辨率",
-      val:
-        media.metadata?.width && media.metadata.height
-          ? `${media.metadata.width} × ${media.metadata.height}`
-          : "读取中",
-    },
-    { label: "帧率", val: frameRateLabel },
-    { label: "时长", val: formatTimecode(durationSeconds) },
-    {
-      label: "音频",
-      val:
-        media.metadata?.hasAudio === null ||
-        media.metadata?.hasAudio === undefined
-          ? "读取中"
-          : media.metadata.hasAudio
-            ? "有音轨"
-            : "无音轨",
-    },
-    { label: "格式", val: media.source?.mimeType || "浏览器未提供" },
-    {
-      label: "文件大小",
-      val: media.source
-        ? `${(media.source.size / 1024 / 1024).toFixed(1)} MB`
-        : "—",
-    },
-  ]
-
   const commitTitle = () => {
     const t = titleDraft.trim() || projectTitle
     setProjectTitle(t)
@@ -2231,14 +2189,13 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / material / shot / mask / markers */
+  /* Toolbar order: home / shot / mask / markers */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
     label: string
     short: string
   }[] = [
-    { id: "material", icon: "◎", label: "素材", short: "素材" },
     { id: "shot", icon: "◉", label: "分镜", short: "分镜" },
     { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
@@ -2246,7 +2203,6 @@ export default function EditorWorkspace({
 
   const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
     settings: Settings2,
-    material: FileVideo,
     markers: Bookmark,
     mask: Grid3X3,
     shot: Scissors,
@@ -2823,73 +2779,6 @@ export default function EditorWorkspace({
               </div>
 
               <div className="flex-1 overflow-y-auto p-3">
-                {/* ── 素材 (video + audio) ── */}
-                {activeTool === "material" && (
-                  <div className="flex flex-col gap-4">
-                    <div className="rounded-xl border border-border bg-bg-deep p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="editor-heading font-mono text-text-muted">
-                            视频文件
-                          </p>
-                          <p className="mt-1 editor-meta leading-relaxed text-text-muted">
-                            选择视频素材并导入当前项目
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isSelectingVideo}
-                          onClick={onImportVideo}
-                          className="h-7 shrink-0 border-border text-text-muted"
-                        >
-                          <FileVideo />
-                          {isSelectingVideo ? "正在导入…" : "导入视频"}
-                        </Button>
-                      </div>
-                      <p className="mt-2 editor-micro text-text-faint">
-                        视频只关联到当前项目，不会复制或上传
-                      </p>
-                    </div>
-                    <div className="h-px bg-border" />
-                    <div className="flex flex-col gap-1">
-                      <p className="editor-heading text-text-muted mb-2 font-mono tracking-wider">
-                        当前素材信息
-                      </p>
-                      {videoInfo.map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex items-center justify-between gap-3 border-b border-border/40 py-1.5 last:border-0"
-                        >
-                          <span className="editor-meta text-text-muted">
-                            {row.label}
-                          </span>
-                          <span className="editor-meta max-w-[9rem] truncate text-right font-mono text-text-dim">
-                            {row.val}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="h-px bg-border" />
-                    <div>
-                      <p className="editor-heading font-mono tracking-wider text-text-muted">
-                        音频轨道
-                      </p>
-                      <div className="mt-3">
-                        <AudioTrackPanel
-                          project={mediaProject}
-                          frameRate={media.metadata?.frameRate ?? FPS}
-                          currentFrame={Math.round(
-                            currentTime * (media.metadata?.frameRate ?? FPS),
-                          )}
-                          onProjectUpdated={handleMediaProjectUpdated}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {activeTool === "markers" && (
                   <div>
                     <div className="flex items-center justify-center gap-2">
