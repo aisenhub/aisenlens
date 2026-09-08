@@ -3,7 +3,6 @@ import EditorWorkspace from "../features/editor/components/EditorWorkspace";
 import ProjectMediaGate from "../features/project/components/ProjectMediaGate";
 import type { MediaAsset, ProjectRecord } from "../features/project/types";
 import ProjectWorkspaceShell from "../features/workflow/components/ProjectWorkspaceShell";
-import WorkflowPlaceholder from "../features/workflow/components/WorkflowPlaceholder";
 import useWorkflowNavigation from "../features/workflow/hooks/useWorkflowNavigation";
 import ProjectSessionProvider from "../features/editor/session/ProjectSessionProvider";
 import ProjectSessionRuntime from "../features/editor/session/ProjectSessionRuntime";
@@ -43,7 +42,7 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
         <ProjectSessionProvider projectId={project.id}>
           <ProjectSessionRuntime isLoading={false} hasError={false}>
             <ProjectWorkspaceShell activeStage={workflow.stage} onStageChange={workflow.goTo}>
-              <EditorWorkspace
+          <EditorWorkspace
                 key={project.id}
                 {...editorProps}
                 project={project}
@@ -56,14 +55,10 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
                 onImportVideo={onImportVideo}
                 coverScreenshotId={project.coverScreenshotId}
                 onProjectUpdated={onProjectLoaded}
-                isActive={workflow.stage === "analyze"}
-              />
-              {workflow.stage !== "analyze" && (
-                <WorkflowPlaceholder
-                  stage={workflow.stage}
-                  onGoToAnalyze={() => workflow.goTo("analyze", "scenes")}
-                />
-              )}
+            isActive
+            workflowStage={workflow.stage}
+            onWorkflowNavigate={workflow.goTo}
+          />
             </ProjectWorkspaceShell>
           </ProjectSessionRuntime>
         </ProjectSessionProvider>

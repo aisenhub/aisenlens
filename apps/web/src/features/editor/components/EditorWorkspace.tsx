@@ -153,6 +153,9 @@ import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPrevi
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
 import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
 import { useProjectSession } from "../session/ProjectSessionProvider"
+import type { WorkflowStage, WorkflowView } from "../../workflow/types.ts"
+import PrepareView from "../../workflow/components/PrepareView"
+import CalibrateView from "../../workflow/components/CalibrateView"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -167,6 +170,8 @@ interface EditorWorkspaceProps {
   coverScreenshotId: string | null
   onProjectUpdated: (project: ProjectRecord) => void
   isActive?: boolean
+  workflowStage?: WorkflowStage
+  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView) => void
 }
 
 interface EditorHistorySnapshot {
@@ -250,6 +255,8 @@ export default function EditorWorkspace({
   coverScreenshotId,
   onProjectUpdated,
   isActive = true,
+  workflowStage = "analyze",
+  onWorkflowNavigate,
 }: EditorWorkspaceProps) {
   const setSessionSelection = useProjectSession((state) => state.setSelection)
   const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
@@ -470,11 +477,13 @@ export default function EditorWorkspace({
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
   const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])
   const [pendingAutoShotApply, setPendingAutoShotApply] = useState<{ taskId: string; output: AutoShotApplyOutput } | null>(null)
+  const [selectedAutoShotCandidateId, setSelectedAutoShotCandidateId] = useState<string | null>(null)
   const [calibrationAnnotation, setCalibrationAnnotation] = useState<CalibrationAnnotationRecord | null>(null)
 
   useEffect(() => {
     setExcludedAutoShotCandidateIds(autoShotRun?.review.excludedCandidateIds ?? [])
     setPendingAutoShotApply(null)
+    setSelectedAutoShotCandidateId(autoShotRun?.candidates[0]?.id ?? null)
     if (!autoShotRun) {
       setCalibrationAnnotation(null)
       return
@@ -2728,6 +2737,7 @@ export default function EditorWorkspace({
       </header>
 
       {/* ══ Main body ══ */}
+      {workflowStage === "analyze" ? (
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* ── Far left: tool column ── */}
         <div className="flex shrink-0 border-r border-border">
@@ -3695,6 +3705,46 @@ export default function EditorWorkspace({
           )}
         </aside>
       </div>
+      ) : workflowStage === "prepare" ? (
+        <PrepareView
+          project={project}
+          media={media}
+          videoUrl={videoUrl}
+          isSelectingVideo={isSelectingVideo}
+          onImportVideo={onImportVideo}
+          onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
+          onOpenSettings={() => onWorkflowNavigate?.("analyze", "scenes")}
+          settings={autoShotControl.settings}
+          resolved={autoShotControl.resolved}
+          presets={autoShotPresets}
+          record={autoShotRun}
+          isActive={autoShotTask.isActive}
+          error={autoShotTask.error ?? autoShotControl.error?.message ?? null}
+          excludedCandidateIds={excludedAutoShotCandidateIds}
+          onChange={autoShotControl.updateSettings}
+          onStart={() => void startAutoShotDetection()}
+          onPause={() => void autoShotTask.pause()}
+          onRestart={() => void startAutoShotDetection(true)}
+          onPreview={() => {
+            previewAutoShotCuts()
+          }}
+          onToggleCandidate={(candidateId, included) => setExcludedAutoShotCandidateIds((current) => included ? current.filter((id) => id !== candidateId) : [...new Set([...current, candidateId])])}
+        />
+      ) : (
+        <CalibrateView
+          record={autoShotRun}
+          excludedCandidateIds={excludedAutoShotCandidateIds}
+          selectedCandidate={autoShotRun?.candidates.find((candidate) => candidate.id === selectedAutoShotCandidateId) ?? null}
+          frameRate={media.metadata?.frameRate ?? FPS}
+          onSelectCandidate={(candidate) => {
+            setSelectedAutoShotCandidateId(candidate.id)
+            setCurrentTime(candidate.startFrame / (media.metadata?.frameRate ?? FPS))
+          }}
+          onToggleCandidate={(candidateId, included) => setExcludedAutoShotCandidateIds((current) => included ? current.filter((id) => id !== candidateId) : [...new Set([...current, candidateId])])}
+          onPreviewApply={previewAutoShotCuts}
+          onBackToPrepare={() => onWorkflowNavigate?.("prepare", "media")}
+        />
+      )}
       {isTemplateEditorOpen && template && (
         <TemplateEditorModal
           template={template}

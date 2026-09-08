@@ -173,9 +173,8 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
   };
 
   const primaryVideoAsset = project?.mediaAssets.find((asset) => asset.id === project.primaryVideoAssetId && asset.kind === "video") ?? null;
-  const canOpenEditor = loadState === "ready" && project && videoUrl && primaryVideoAsset;
-  const canOpenEmptyEditor = loadState === "unlinked" && project && (!primaryVideoAsset || !primaryVideoAsset.source);
-  if (project && (canOpenEditor || canOpenEmptyEditor)) return <>{children(project, videoUrl, primaryVideoAsset, renameProject, () => void connectVideo(), isSelectingVideo)}</>;
+  const canRenderProject = Boolean(project && loadState !== "loading" && loadState !== "not-found" && loadState !== "error");
+  if (canRenderProject && project) return <>{children(project, videoUrl, primaryVideoAsset, renameProject, () => void connectVideo(), isSelectingVideo)}</>;
 
   const isMissing = loadState === "missing";
   const needsPermission = loadState === "needs-permission";
