@@ -1,5 +1,17 @@
 # 参考项目索引
 
+## 2026-09-08 Workflow 重构规划（正式产品，排除废弃预览）
+
+先复核 React Router useSearchParams、Zustand createStore、WAI Window Splitter、wavesurfer Regions 官方资料，再提出“既有栈导航 + 项目作用域会话 + 复用领域能力”的初案；随后按 OpenReel → OpenCut 顺序检查以下文件。本轮只写规划，没有修改生产代码，也不把参考项目功能当作 AisenLens 已有能力。
+
+| 当前模块 | 本轮实际查阅文件 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| Workflow Shell、Viewer / Inspector、Marker 命令边界 | OpenReel `openreel-video-main/apps/web/src/components/editor/EditorInterface.tsx`、`InspectorPanel.tsx`、`apps/web/src/stores/project/marker-slice.ts` | EditorInterface 分别引入 Toolbar、Preview、Inspector、Timeline 和项目/UI/引擎 store；Inspector 有独立 section/tab 组件；Marker slice 通过 actionExecutor 执行更新。 | 采纳稳定项目生命周期、视图/命令分离及分区布局；保持 AisenLens 现有播放器、Timeline、Marker。只读这些相关片段，不复制完整编辑器、Chat 或云服务。 |
+| Scene 导航、Structure 显示、时间线视口 | OpenCut `opencut-classic-main/apps/web/src/components/editor/scenes-view.tsx`、`core/managers/scenes-manager.ts`、`timeline/hooks/use-timeline-zoom.ts` | ScenesView 经 editor.scenes 调用管理操作，manager 使用 command 执行创建/删除/改名；缩放 hook 将行为委托 ZoomController 并负责订阅/清理。 | 只采纳按需场景导航和命令/视口边界。OpenCut 编辑序列不等同 AisenLens 叙事 Scene；保留当前至少两镜、连续、跨类别不重叠的 Group 规则，不做假嵌套树。 |
+| Sound、Learn 和未来能力边界 | 上述工作区/Inspector 片段；wavesurfer 官方 Regions 文档；AisenLens 自身 media、shot、group、template 源码 | 区间UI模式不能证明具备语音识别；AisenLens 已有多轨/波形和原笔记，但无独立 Pattern/Technique 实体。 | Sound 复用现有音轨，语义轨显示未开放；Learn 首轮只聚合真实 notes/summary，方法保存与 Create 保留 Coming Soon。未来新 Domain 另行按模块研究。 |
+
+最终计划：`docs/plans/aisenlens-workflow-redesign/00-master-plan.md`及01–08自包含阶段计划。用户已明确废弃Lensflow预览，本条不继承任何预览样式、数据或组件复用决定。
+
 ## 参考项目来源与本地获取
 
 参考项目不提交到 AisenLens 仓库；只有本索引随 Git 同步。设计或实现某个

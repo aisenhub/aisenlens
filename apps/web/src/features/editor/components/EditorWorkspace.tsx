@@ -2223,7 +2223,7 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / material / shot / template / mask / markers / shortcuts / developer */
+  /* Toolbar order: home / material / shot / template / mask / markers */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
@@ -2235,8 +2235,6 @@ export default function EditorWorkspace({
     { id: "template", icon: "◫", label: "拉片模板", short: "模板" },
     { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
-    { id: "shortcuts", icon: "▧", label: "快捷键", short: "快捷" },
-    { id: "developer", icon: "", label: "开发者", short: "开发" },
   ]
 
   const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
@@ -3124,6 +3122,32 @@ export default function EditorWorkspace({
                     >
                       恢复自动分镜默认设置
                     </Button>
+                    <div className="h-px bg-border" />
+                    <p className="editor-heading text-text-muted font-mono tracking-wider">
+                      辅助工具
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTool("shortcuts")}
+                        className="h-9 justify-start gap-2 border-border text-text-muted hover:text-text"
+                      >
+                        <Keyboard className="size-4" strokeWidth={1.7} />
+                        快捷键
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setActiveTool("developer")}
+                        className="h-9 justify-start gap-2 border-border text-text-muted hover:text-text"
+                      >
+                        <Code2 className="size-4" strokeWidth={1.7} />
+                        开发者工具
+                      </Button>
+                    </div>
                   </div>
                 )}
 
