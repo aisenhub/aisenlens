@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { FileVideo, FolderOpen, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
-import { createLinkedVideoAsset, inspectLocalVideo, isMatchingVideo, needsMediaMetadataRefresh, requestMediaPermission, selectLocalVideo, verifyLinkedMedia } from "../services/mediaService";
+import { createLinkedVideoAsset, getRememberedVideoAccess, inspectLocalVideo, isMatchingVideo, needsMediaMetadataRefresh, rememberVideoAccess, requestMediaPermission, selectLocalVideo, verifyLinkedMedia } from "../services/mediaService";
 import projectRepository from "../services/projectRepository";
 import type { MediaAsset, ProjectRecord } from "../types";
 
@@ -60,6 +60,14 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
 
     const handle = await projectRepository.getMediaAssetHandle(primaryVideoAsset.id);
     if (!isCurrentRequest()) return;
+    const rememberedAccess = !handle && primaryVideoAsset.source
+      ? getRememberedVideoAccess(nextProject.id, primaryVideoAsset.id, primaryVideoAsset.source)
+      : null;
+    if (rememberedAccess) {
+      setPreviewUrl(URL.createObjectURL(rememberedAccess.file));
+      setLoadState("ready");
+      return;
+    }
     if (!handle) {
       const missingProject = await projectRepository.updateProject({ ...nextProject, mediaAssets: nextProject.mediaAssets.map((asset) => asset.id === primaryVideoAsset.id ? { ...asset, status: "missing", updatedAt: new Date().toISOString() } : asset) });
       if (!isCurrentRequest()) return;
@@ -89,6 +97,7 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
 
     const file = await handle.getFile();
     if (!isCurrentRequest()) return;
+    rememberVideoAccess(nextProject.id, primaryVideoAsset.id, file, handle);
     setPreviewUrl(URL.createObjectURL(file));
     setLoadState("ready");
     if (needsMediaMetadataRefresh(primaryVideoAsset.metadata)) {
@@ -146,6 +155,7 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
       }
       const linkedVideoAsset = createLinkedVideoAsset(project.id, inspectedVideo.source!, inspectedVideo.metadata!, existingAsset?.status === "missing", existingAsset?.id);
       await projectRepository.saveMediaAssetHandle(linkedVideoAsset.id, selectedVideo.handle);
+      rememberVideoAccess(project.id, linkedVideoAsset.id, selectedVideo.file, selectedVideo.handle);
       const updatedProject = await projectRepository.updateProject({
         ...project,
         primaryVideoAssetId: linkedVideoAsset.id,

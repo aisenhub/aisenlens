@@ -49,6 +49,7 @@
 - 200% 等效视口：720×450 复测无页面级横向溢出，Analyze / Shots 的搜索框、镜头列表和 Inspector 均可见；原先只显示 Inspector 的固定多栏裁切已消除。真实浏览器缩放菜单仍未由 CUA 通道驱动。
 - 项目深链：编辑器初始化优先读取 URL 的 `project` 参数，直接打开 `?project=...&stage=analyze&view=shots` 可加载 `donghua03`，不再依赖同一会话先打开项目库。
 - 长片性能：Shots 不再预取 146 个镜头的全部截图元数据，也不在非 Scenes 视图后台生成边界截图；截图资源改为进入 Scenes 后按需加载。复测 `donghua03`（02:43:23、146 镜头）时 Shots 页面无错误且最终稳定展示 146 条记录，切回 Scenes 后首尾帧与时间线正常恢复。CUA 的部分点击等待仍有 1–5 秒输入通道抖动，不能将其全部归因于页面渲染耗时。
+- 视频关联：项目进入时优先复用已保存的 File System Access 句柄；在同一应用会话中若句柄暂时不可从仓库取回，则复用本会话刚选择的视频文件，避免阶段切换或离开项目页后重复导入。持久化句柄不存在于当前浏览器上下文时仍需重新授权/关联，这是浏览器本地文件安全边界。
 - 回归：本轮 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm build`、`corepack pnpm test:workflow`（10 项）和 `corepack pnpm test:workflow-browser`（1 项）均通过；故障注入的 19 项服务级结果保持通过。
 
 ## 未宣称通过的项目

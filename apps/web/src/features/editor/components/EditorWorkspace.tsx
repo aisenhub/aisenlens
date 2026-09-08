@@ -1111,6 +1111,7 @@ export default function EditorWorkspace({
   }, [durationSeconds, media.source, projectId, videoUrl])
 
   useEffect(() => {
+    if (workflowView !== "scenes") return
     let active = true
     const screenshotIds = [
       ...new Set([
@@ -1139,7 +1140,7 @@ export default function EditorWorkspace({
     return () => {
       active = false
     }
-  }, [shotScreenshotIds, shotBoundaryScreenshotIds])
+  }, [shotScreenshotIds, shotBoundaryScreenshotIds, workflowView])
 
   useEffect(() => {
     if (

@@ -10,6 +10,14 @@ export interface SelectedAudio {
   handle: FileSystemFileHandle | null;
 }
 
+interface SessionVideoAccess {
+  assetId: string;
+  file: File;
+  handle: FileSystemFileHandle;
+}
+
+const sessionVideoAccess = new Map<string, SessionVideoAccess>();
+
 interface WindowWithFilePicker extends Window {
   showOpenFilePicker?: (options: {
     multiple?: boolean;
@@ -51,6 +59,17 @@ function createFingerprint(file: File): MediaSourceFingerprint {
     lastModified: file.lastModified,
     mimeType: file.type || inferMimeTypeFromName(file.name),
   };
+}
+
+export function rememberVideoAccess(projectId: string, assetId: string, file: File, handle: FileSystemFileHandle) {
+  sessionVideoAccess.set(projectId, { assetId, file, handle });
+}
+
+export function getRememberedVideoAccess(projectId: string, assetId: string, expectedSource: MediaSourceFingerprint) {
+  const access = sessionVideoAccess.get(projectId);
+  return access && access.assetId === assetId && fingerprintsMatch(createFingerprint(access.file), expectedSource)
+    ? access
+    : null;
 }
 
 function fingerprintsMatch(left: MediaSourceFingerprint, right: MediaSourceFingerprint): boolean {
