@@ -1,0 +1,14 @@
+import { ArrowRight, Search } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Button } from "../../../components/ui/button"
+import { Input } from "../../../components/ui/input"
+import type { LearningSource } from "../services/deriveLearningSources"
+
+interface LearningSourceListProps { sources: LearningSource[]; onOpenSource: (source: LearningSource) => void }
+
+export default function LearningSourceList({ sources, onOpenSource }: LearningSourceListProps) {
+  const [query, setQuery] = useState("")
+  const [kind, setKind] = useState<"all" | "shot" | "group">("all")
+  const visible = useMemo(() => { const normalized = query.trim().toLowerCase(); return sources.filter((source) => (kind === "all" || source.kind === kind) && (!normalized || `${source.title} ${source.excerpt}`.toLowerCase().includes(normalized))) }, [kind, query, sources])
+  return <section><div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row"><div className="relative flex-1"><Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-text-muted" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索笔记内容或来源" aria-label="搜索学习笔记" className="h-8 border-border bg-bg-input pl-8 text-xs" /></div><div className="flex gap-1"><Button type="button" variant="ghost" size="sm" onClick={() => setKind("all")} className={kind === "all" ? "bg-accent/15 text-accent" : "text-text-muted"}>全部</Button><Button type="button" variant="ghost" size="sm" onClick={() => setKind("shot")} className={kind === "shot" ? "bg-accent/15 text-accent" : "text-text-muted"}>Shot</Button><Button type="button" variant="ghost" size="sm" onClick={() => setKind("group")} className={kind === "group" ? "bg-accent/15 text-accent" : "text-text-muted"}>Scene</Button></div></div>{!visible.length ? <div className="border border-dashed border-border p-8 text-center text-sm text-text-muted">没有匹配的真实笔记。</div> : <div className="divide-y divide-border border border-border">{visible.map((source) => <article key={`${source.kind}:${source.id}`} className="flex items-start gap-4 bg-bg-panel px-4 py-4"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-x-3 gap-y-1"><h3 className="text-sm font-medium text-text-base">{source.title}</h3><span className="font-mono text-[10px] text-text-muted">{source.rangeLabel}</span><span className="text-[10px] text-text-muted">{source.kind === "shot" ? "Shot · 我的笔记" : "Scene · 摘要"}</span></div><p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-text-dim">{source.excerpt}</p></div><Button type="button" variant="ghost" size="sm" onClick={() => onOpenSource(source)} className="shrink-0 gap-1 text-text-muted hover:text-accent">回到 Analyze<ArrowRight className="size-3.5" /></Button></article>)}</div>}</section>
+}

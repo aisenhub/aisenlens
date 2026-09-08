@@ -158,6 +158,9 @@ import PrepareView from "../../workflow/components/PrepareView"
 import CalibrateView from "../../workflow/components/CalibrateView"
 import OverviewView from "../../overview/components/OverviewView"
 import AnalyzeWorkspace from "../../analysis/components/AnalyzeWorkspace"
+import LearnView from "../../learn/components/LearnView"
+import CreateView from "../../workflow/components/CreateView"
+import type { LearningSource } from "../../learn/services/deriveLearningSources"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -3787,6 +3790,30 @@ export default function EditorWorkspace({
             onWorkflowNavigate?.("analyze", "scenes")
           }}
         />
+      ) : workflowStage === "learn" ? (
+        <LearnView
+          shots={shots}
+          groups={shotGroups}
+          notes={shotNotes}
+          onOpenSource={(source: LearningSource) => {
+            if (source.kind === "shot") {
+              const index = shots.findIndex((shot) => shot.id === source.id)
+              if (index >= 0) {
+                setActiveShot(index)
+                setCurrentTime(shots[index]?.start ?? 0)
+              }
+            } else {
+              setSelectedGroupId(source.id)
+              const index = shots.findIndex((shot) => shot.id === source.shotId)
+              if (index >= 0) setActiveShot(index)
+            }
+            onWorkflowNavigate?.("analyze", "scenes")
+          }}
+          onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
+          onGoToCreate={() => onWorkflowNavigate?.("create", "coming-soon")}
+        />
+      ) : workflowStage === "create" ? (
+        <CreateView onBackToLearn={() => onWorkflowNavigate?.("learn", "notes")} />
       ) : (
         <CalibrateView
           record={autoShotRun}
