@@ -26,7 +26,7 @@ export default function RunStatus({ record, isActive, error, disabled = false, o
         </div>
       )}
       {completed && (
-        <div className="rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 editor-meta text-text-dim">
+        <div className="rounded-lg border border-green-400/20 bg-green-400/5 px-2.5 py-2 text-center editor-meta text-text-dim">
           检测到 <span className="font-mono text-green-300">{record.candidates.filter((candidate) => candidate.kind !== "tail").length}</span> 个边界，生成 <span className="font-mono text-green-300">{record.candidates.length}</span> 段候选。
         </div>
       )}
