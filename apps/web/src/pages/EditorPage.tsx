@@ -5,6 +5,8 @@ import type { MediaAsset, ProjectRecord } from "../features/project/types";
 import ProjectWorkspaceShell from "../features/workflow/components/ProjectWorkspaceShell";
 import WorkflowPlaceholder from "../features/workflow/components/WorkflowPlaceholder";
 import useWorkflowNavigation from "../features/workflow/hooks/useWorkflowNavigation";
+import ProjectSessionProvider from "../features/editor/session/ProjectSessionProvider";
+import ProjectSessionRuntime from "../features/editor/session/ProjectSessionRuntime";
 
 interface Props {
   onNavigate: (page: number) => void;
@@ -38,29 +40,33 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
         updatedAt: project.updatedAt,
       };
       return (
-        <ProjectWorkspaceShell activeStage={workflow.stage} onStageChange={workflow.goTo}>
-          <EditorWorkspace
-            key={project.id}
-            {...editorProps}
-            project={project}
-            projectTitle={project.title}
-            setProjectTitle={onRenameProject}
-            videoUrl={videoUrl}
-            projectId={project.id}
-            media={primaryVideoAsset ?? emptyMediaAsset}
-            isSelectingVideo={isSelectingVideo}
-            onImportVideo={onImportVideo}
-            coverScreenshotId={project.coverScreenshotId}
-            onProjectUpdated={onProjectLoaded}
-            isActive={workflow.stage === "analyze"}
-          />
-          {workflow.stage !== "analyze" && (
-            <WorkflowPlaceholder
-              stage={workflow.stage}
-              onGoToAnalyze={() => workflow.goTo("analyze", "scenes")}
-            />
-          )}
-        </ProjectWorkspaceShell>
+        <ProjectSessionProvider projectId={project.id}>
+          <ProjectSessionRuntime isLoading={false} hasError={false}>
+            <ProjectWorkspaceShell activeStage={workflow.stage} onStageChange={workflow.goTo}>
+              <EditorWorkspace
+                key={project.id}
+                {...editorProps}
+                project={project}
+                projectTitle={project.title}
+                setProjectTitle={onRenameProject}
+                videoUrl={videoUrl}
+                projectId={project.id}
+                media={primaryVideoAsset ?? emptyMediaAsset}
+                isSelectingVideo={isSelectingVideo}
+                onImportVideo={onImportVideo}
+                coverScreenshotId={project.coverScreenshotId}
+                onProjectUpdated={onProjectLoaded}
+                isActive={workflow.stage === "analyze"}
+              />
+              {workflow.stage !== "analyze" && (
+                <WorkflowPlaceholder
+                  stage={workflow.stage}
+                  onGoToAnalyze={() => workflow.goTo("analyze", "scenes")}
+                />
+              )}
+            </ProjectWorkspaceShell>
+          </ProjectSessionRuntime>
+        </ProjectSessionProvider>
       );
     }}
   </ProjectMediaGate>;

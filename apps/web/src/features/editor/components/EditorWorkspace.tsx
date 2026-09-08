@@ -152,6 +152,7 @@ import AudioTrackPanel from "../../media/components/AudioTrackPanel"
 import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPreview"
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
 import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
+import { useProjectSession } from "../session/ProjectSessionProvider"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -250,6 +251,8 @@ export default function EditorWorkspace({
   onProjectUpdated,
   isActive = true,
 }: EditorWorkspaceProps) {
+  const setSessionSelection = useProjectSession((state) => state.setSelection)
+  const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
   const autoShotDetectionRef = useRef<Record<string, ShotDetectionMeta>>({})
@@ -430,6 +433,14 @@ export default function EditorWorkspace({
   useEffect(() => {
     if (!isActive) setPlaying(false)
   }, [isActive, setPlaying])
+
+  useEffect(() => {
+    setSessionPlaybackTime(currentTime)
+  }, [currentTime, setSessionPlaybackTime])
+
+  useEffect(() => {
+    setSessionSelection({ shotId: shots[activeShot]?.id ?? null })
+  }, [activeShot, setSessionSelection, shots])
 
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
