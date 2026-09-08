@@ -2231,7 +2231,7 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / material / shot / template / mask / markers */
+  /* Toolbar order: home / material / shot / mask / markers */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
@@ -2240,7 +2240,6 @@ export default function EditorWorkspace({
   }[] = [
     { id: "material", icon: "◎", label: "素材", short: "素材" },
     { id: "shot", icon: "◉", label: "分镜", short: "分镜" },
-    { id: "template", icon: "◫", label: "拉片模板", short: "模板" },
     { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
   ]
@@ -2252,7 +2251,6 @@ export default function EditorWorkspace({
     mask: Grid3X3,
     shot: Scissors,
     shortcuts: Keyboard,
-    template: Settings2,
     developer: Code2,
   }
 
@@ -2942,33 +2940,6 @@ export default function EditorWorkspace({
                         onSelect={selectAnnotationMarker}
                       />
                     </div>
-                  </div>
-                )}
-
-                {activeTool === "template" && (
-                  <div className="flex flex-col gap-2">
-                    {template && (
-                      <div className="rounded-xl border border-accent/25 bg-accent/5 p-3">
-                        <p className="font-mono editor-heading tracking-wider text-accent">
-                          项目模板
-                        </p>
-                        <p className="mt-1 truncate editor-body font-medium text-white">
-                          {template.name}
-                        </p>
-                        <p className="mt-1 editor-meta text-text-muted">
-                          {template.fields.length} 个字段，当前项目独立保存
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsTemplateEditorOpen(true)}
-                          className="mt-3 h-7 w-full editor-body font-normal border-accent/30 text-accent hover:bg-accent/10"
-                        >
-                          编辑模板
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 )}
 
