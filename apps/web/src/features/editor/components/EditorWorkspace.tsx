@@ -6,7 +6,6 @@ import {
   Grid3X3,
   Keyboard,
   LoaderCircle,
-  Scissors,
   Settings2,
   TriangleAlert,
 } from "lucide-react"
@@ -96,7 +95,6 @@ import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
 import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
 import { listFrontendPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
-const AutoShotControlPanel = lazy(() => import("../../auto-shot/components/AutoShotControlPanel"))
 const AdvancedSettings = lazy(() => import("../../auto-shot/components/AdvancedSettings"))
 const CalibrationWorkbench = lazy(() => import("../../scene-calibration/components/CalibrationWorkbench"))
 import { addUncertainRange, attachCalibrationResearchRun, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
@@ -1931,40 +1929,6 @@ export default function EditorWorkspace({
     toast.success("已在播放头位置分割当前分镜。")
   }
 
-  const resetShotsToWholeVideo = () => {
-    if (durationSeconds <= 0) return
-    const detectedFrameRate = media.metadata?.frameRate
-    const frameRate =
-      Number.isFinite(detectedFrameRate) && detectedFrameRate! > 0
-        ? detectedFrameRate!
-        : FPS
-    const wholeVideoShot: ShotData = {
-      id: crypto.randomUUID(),
-      start: 0,
-      duration: durationSeconds,
-      type: "未分析",
-      motion: "未分析",
-      color: "未分析",
-    }
-    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
-
-    editorHistory.commit()
-    setShots([wholeVideoShot])
-    autoShotDetectionRef.current = {}
-    setShotFrames({
-      [wholeVideoShot.id]: { first: 0, last: totalFrames - 1 },
-    })
-    setShotScreenshotIds({})
-    setPrimaryShotScreenshotIds({})
-    setShotBoundaryScreenshotIds({})
-    setShotNotes({})
-    setShotDims({})
-    setShotGroups([])
-    setSelectedShotIds([])
-    setSelectedGroupId(null)
-    setActiveShot(0)
-  }
-
   const toggleTool = (id: PanelToolId) =>
     setActiveTool((prev) => (prev === id ? null : id))
 
@@ -2017,7 +1981,7 @@ export default function EditorWorkspace({
       const index = shots.findIndex((shot) => shot.id === marker.shotId)
       if (index >= 0) setActiveShot(index)
     }
-    setActiveTool("shot")
+    setActiveTool("markers")
   }
 
   const toggleMarkerCategory = (category: AnnotationMarkerCategory) =>
@@ -2189,14 +2153,13 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / shot / mask / markers */
+  /* Toolbar order: home / mask / markers */
   const PANEL_TOOLS: {
     id: Exclude<PanelToolId, null>
     icon: string
     label: string
     short: string
   }[] = [
-    { id: "shot", icon: "◉", label: "分镜", short: "分镜" },
     { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
     { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
   ]
@@ -2205,7 +2168,6 @@ export default function EditorWorkspace({
     settings: Settings2,
     markers: Bookmark,
     mask: Grid3X3,
-    shot: Scissors,
     shortcuts: Keyboard,
     developer: Code2,
   }
@@ -2909,70 +2871,6 @@ export default function EditorWorkspace({
                   </div>
                 )}
 
-                {/* ── 分镜 ── */}
-                {activeTool === "shot" && (
-                  <div className="flex flex-col gap-4">
-                    <Suspense fallback={null}>
-                    <AutoShotControlPanel
-                      settings={autoShotControl.settings}
-                      resolved={autoShotControl.resolved}
-                      presets={autoShotPresets}
-                      record={autoShotRun}
-                      isActive={autoShotTask.isActive}
-                      error={autoShotTask.error}
-                      excludedCandidateIds={excludedAutoShotCandidateIds}
-                      onChange={autoShotControl.updateSettings}
-                      onStart={() => void startAutoShotDetection()}
-                      onPause={() => void autoShotTask.pause()}
-                      onRestart={() => void startAutoShotDetection(true)}
-                      onPreview={previewAutoShotCuts}
-                      onToggleCandidate={(candidateId, included) => {
-                        const next = included
-                          ? excludedAutoShotCandidateIds.filter((id) => id !== candidateId)
-                          : [...excludedAutoShotCandidateIds, candidateId]
-                        setExcludedAutoShotCandidateIds(next)
-                        if (autoShotRun) {
-                          void projectRepository.saveAutoShotTask({
-                            ...autoShotRun,
-                            review: { ...autoShotRun.review, excludedCandidateIds: next, updatedAt: new Date().toISOString() },
-                          })
-                        }
-                      }}
-                    />
-                    </Suspense>
-                    <ShotGroupPanel
-                        isSelecting={isSelectingGroupShots}
-                        selectedShotCount={
-                          getContiguousShotIds(
-                            shots.map((shot) => shot.id),
-                            selectedShotIds,
-                          ).length
-                        }
-                        kind={groupKindDraft}
-                        onKindChange={setGroupKindDraft}
-                        onStartSelection={() => {
-                          setSelectedShotIds([])
-                          setIsSelectingGroupShots(true)
-                        }}
-                        onCancelSelection={() => {
-                          setSelectedShotIds([])
-                          setIsSelectingGroupShots(false)
-                        }}
-                        onCreate={createCurrentShotGroup}
-                    />
-                    <div className="h-px bg-border" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={resetShotsToWholeVideo}
-                      className="h-7 w-full editor-body font-normal text-red-400 hover:text-red-400"
-                    >
-                      清除所有分镜
-                    </Button>
-                  </div>
-                )}
-
                 {/* ── 设置 (theme + cache) ── */}
                 {activeTool === "settings" && (
                   <div className="flex flex-col gap-3">
@@ -3278,54 +3176,77 @@ export default function EditorWorkspace({
           />
         </div>
 
-        <ShotList
-          className="editor-shot-list"
-          shots={shots}
-          groups={shotGroups}
-          collapsedGroupIds={collapsedGroupIds}
-          activeShotIndex={activeShot}
-          filters={shotSearchFilters}
-          onFiltersChange={setShotSearchFilters}
-          completionByShotId={completionByShotId}
-          selectedShotIds={selectedShotIds}
-          isSelectingShots={isSelectingGroupShots}
-          shotNotes={shotNotes}
-          shotFields={shotDims}
-          screenshotIdsByShotId={shotScreenshotIds}
-          primaryScreenshotIdsByShotId={primaryShotScreenshotIds}
-          markers={annotationMarkers}
-          onLocateShot={(index) => {
-            setActiveShot(index)
-            setCurrentTime(shots[index]?.start ?? 0)
-          }}
-          onSelectionChange={updateShotSelection}
-          onToggleGroup={(groupId) =>
-            setCollapsedGroupIds((current) =>
-              current.includes(groupId)
-                ? current.filter((id) => id !== groupId)
-                : [...current, groupId],
-            )
-          }
-          onSelectGroup={(groupId, firstShotIndex) => {
-            setSelectedGroupId(groupId)
-            setActiveShot(firstShotIndex)
-            setPanel("group")
-          }}
-          onPlayGroup={playShotGroup}
-          onDeleteGroup={(groupId) => {
-            editorHistory.commit()
-            setShotGroups((current) =>
-              current.filter((group) => group.id !== groupId),
-            )
-            setSelectedGroupId((current) =>
-              current === groupId ? null : current,
-            )
-          }}
-          onPlayShot={playShot}
-          onDeleteShot={handleMergeShotAtIndex}
-          manualSplitDisabledReason={manualSplitDisabledReason}
-          onSplitAtPlayhead={handleSplitShotAtPlayhead}
-        />
+        <div className="editor-shot-list flex min-h-0 shrink-0 flex-col">
+          {isSelectingGroupShots && (
+            <div className="shrink-0 border-b border-border bg-bg-panel px-3">
+              <ShotGroupPanel
+                isSelecting
+                selectedShotCount={
+                  getContiguousShotIds(
+                    shots.map((shot) => shot.id),
+                    selectedShotIds,
+                  ).length
+                }
+                kind={groupKindDraft}
+                onKindChange={setGroupKindDraft}
+                onStartSelection={() => undefined}
+                onCancelSelection={() => {
+                  setSelectedShotIds([])
+                  setIsSelectingGroupShots(false)
+                }}
+                onCreate={createCurrentShotGroup}
+              />
+            </div>
+          )}
+          <ShotList
+            className="min-h-0 flex-1"
+            shots={shots}
+            groups={shotGroups}
+            collapsedGroupIds={collapsedGroupIds}
+            activeShotIndex={activeShot}
+            filters={shotSearchFilters}
+            onFiltersChange={setShotSearchFilters}
+            completionByShotId={completionByShotId}
+            selectedShotIds={selectedShotIds}
+            isSelectingShots={isSelectingGroupShots}
+            shotNotes={shotNotes}
+            shotFields={shotDims}
+            screenshotIdsByShotId={shotScreenshotIds}
+            primaryScreenshotIdsByShotId={primaryShotScreenshotIds}
+            markers={annotationMarkers}
+            onLocateShot={(index) => {
+              setActiveShot(index)
+              setCurrentTime(shots[index]?.start ?? 0)
+            }}
+            onSelectionChange={updateShotSelection}
+            onToggleGroup={(groupId) =>
+              setCollapsedGroupIds((current) =>
+                current.includes(groupId)
+                  ? current.filter((id) => id !== groupId)
+                  : [...current, groupId],
+              )
+            }
+            onSelectGroup={(groupId, firstShotIndex) => {
+              setSelectedGroupId(groupId)
+              setActiveShot(firstShotIndex)
+              setPanel("group")
+            }}
+            onPlayGroup={playShotGroup}
+            onDeleteGroup={(groupId) => {
+              editorHistory.commit()
+              setShotGroups((current) =>
+                current.filter((group) => group.id !== groupId),
+              )
+              setSelectedGroupId((current) =>
+                current === groupId ? null : current,
+              )
+            }}
+            onPlayShot={playShot}
+            onDeleteShot={handleMergeShotAtIndex}
+            manualSplitDisabledReason={manualSplitDisabledReason}
+            onSplitAtPlayhead={handleSplitShotAtPlayhead}
+          />
+        </div>
 
         {/* ── Right: analysis panel ── */}
         <aside className="editor-analysis-panel w-64 border-l border-border flex flex-col bg-bg-panel shrink-0 overflow-hidden">

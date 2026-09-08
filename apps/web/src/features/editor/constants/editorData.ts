@@ -40,6 +40,6 @@ export const TEMPLATES = [
 export const VIDEO_INFO = [
   { label: "文件名", val: "2001_space.mp4" }, { label: "分辨率", val: "1920 × 1080" }, { label: "帧率", val: "24 fps" }, { label: "时长", val: "02:22:23" }, { label: "格式", val: "MPEG-4" }, { label: "视频编码", val: "H.264" }, { label: "音频编码", val: "AAC" }, { label: "文件大小", val: "8.4 GB" },
 ];
-export type PanelToolId = "shot" | "settings" | "mask" | "markers" | "shortcuts" | "developer" | null;
+export type PanelToolId = "settings" | "mask" | "markers" | "shortcuts" | "developer" | null;
 export type Panel = "frame" | "dims" | "notes" | "group";
 export const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 3] as const;
