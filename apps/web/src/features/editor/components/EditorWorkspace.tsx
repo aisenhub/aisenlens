@@ -157,6 +157,7 @@ import type { WorkflowStage, WorkflowView } from "../../workflow/types.ts"
 import PrepareView from "../../workflow/components/PrepareView"
 import CalibrateView from "../../workflow/components/CalibrateView"
 import OverviewView from "../../overview/components/OverviewView"
+import AnalyzeWorkspace from "../../analysis/components/AnalyzeWorkspace"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -2741,6 +2742,31 @@ export default function EditorWorkspace({
 
       {/* ══ Main body ══ */}
       {workflowStage === "analyze" ? (
+      <AnalyzeWorkspace
+        view={workflowView}
+        shots={shots}
+        groups={shotGroups}
+        activeShotIndex={activeShot}
+        notes={shotNotes}
+        project={mediaProject}
+        frameRate={media.metadata?.frameRate ?? FPS}
+        currentFrame={Math.round(currentTime * (media.metadata?.frameRate ?? FPS))}
+        onViewChange={(view) => onWorkflowNavigate?.("analyze", view)}
+        onLocateShot={(index) => {
+          setActiveShot(index)
+          setCurrentTime(shots[index]?.start ?? 0)
+        }}
+        onPlayShot={playShot}
+        onChangeNotes={(patch) => {
+          if (!activeShotId) return
+          markDirty()
+          setShotNotes((current) => ({
+            ...current,
+            [activeShotId]: { ...current[activeShotId], ...patch },
+          }))
+        }}
+        onProjectUpdated={handleMediaProjectUpdated}
+      >
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* ── Far left: tool column ── */}
         <div className="flex shrink-0 border-r border-border">
@@ -3708,6 +3734,7 @@ export default function EditorWorkspace({
           )}
         </aside>
       </div>
+      </AnalyzeWorkspace>
       ) : workflowStage === "prepare" ? (
         <PrepareView
           project={project}
