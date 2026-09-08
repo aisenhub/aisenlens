@@ -14,13 +14,17 @@ const commands = [
   ["test:auto-shot-contract"],
   ["test:platform-integration"],
   ["test:video-export-boundary"],
+  ["root:test:workflow"],
   ["build"],
 ];
 
 const executable = process.platform === "win32" ? "corepack.cmd" : "corepack";
 const root = fileURLToPath(new URL("..", import.meta.url));
 for (const [script] of commands) {
-  const result = spawnSync(executable, ["pnpm", "--filter", "@aisenlens/web", "run", script], {
+  const args = script.startsWith("root:")
+    ? ["pnpm", "run", script.slice("root:".length)]
+    : ["pnpm", "--filter", "@aisenlens/web", "run", script];
+  const result = spawnSync(executable, args, {
     cwd: root,
     stdio: "inherit",
     env: process.env,

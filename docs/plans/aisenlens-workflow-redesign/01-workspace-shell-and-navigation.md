@@ -1,6 +1,6 @@
 # P01 — Workspace Shell 与流程导航
 
-状态：可执行规划，未实施。依赖 main 基线 `bb93a017e350ea6750552a041811a24146782f38`。只交付 Web。开始先检查 git diff，不覆盖并行工作；Lensflow 废弃预览完全排除。新前端文件全部在 `apps/web/src/`。
+状态：已实施（Web；自动验证通过，人工矩阵见 `verification-record.md`）。阶段提交：`3dc7c46`。
 
 ## Scope
 

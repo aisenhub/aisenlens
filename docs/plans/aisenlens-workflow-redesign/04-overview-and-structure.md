@@ -1,6 +1,6 @@
 # P04 — Overview、Film Map 与结构
 
-状态：可执行规划，未实施。依赖P03，仅Web；当前Group规则是至少两个连续镜头、所有kind不可重叠，没有parentId。
+状态：已实施（Web；自动验证通过，人工矩阵见 `verification-record.md`）。阶段提交：`fb3ebc2`。当前Group规则是至少两个连续镜头、所有kind不可重叠，没有parentId。
 
 ## Scope
 

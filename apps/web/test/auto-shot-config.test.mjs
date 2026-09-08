@@ -38,8 +38,10 @@ test("研究 catalog 的所有 preset/detail/transition 组合都产生合法配
   }
 })
 
-test("production catalog 初始为空且不能解析 research preset", () => {
-  assert.throws(() => resolveAutoShotConfig(settings("general", "balanced", "hard-cuts"), "production"), (error) => error?.name === "AutoShotConfigError" && error.issue.code === "CATALOG_EMPTY")
+test("production catalog 只解析已晋升 preset，不能解析 research-only preset", () => {
+  const promoted = resolveAutoShotConfig(settings("general", "balanced", "hard-cuts"), "production")
+  assert.equal(promoted.settings.preset.catalog, "production")
+  assert.throws(() => resolveAutoShotConfig(settings("talking-head", "balanced", "hard-cuts"), "production"), (error) => error?.name === "AutoShotConfigError" && error.issue.code === "UNKNOWN_PRESET")
 })
 
 test("高级 hard-cut 覆盖会完整替换 detector 并改变 canonical hash", () => {

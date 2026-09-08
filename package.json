@@ -9,6 +9,8 @@
     "lint": "pnpm --filter @aisenlens/web lint",
     "typecheck": "pnpm --filter @aisenlens/web typecheck",
     "verify:web": "node scripts/verify-web.mjs",
+    "test:workflow": "node scripts/test-workflow.mjs",
+    "test:workflow-browser": "node --test tests/features/workflow/workflow-end-to-end.browser.test.js",
     "preview": "pnpm --filter @aisenlens/web preview",
     "format": "pnpm --filter @aisenlens/web format",
     "test:auto-shot-contract": "pnpm --filter @aisenlens/web test:auto-shot-contract",

@@ -1,6 +1,6 @@
 # P03 — Prepare 与 Calibrate
 
-状态：可执行规划，未实施。依赖P02单一项目会话完成，仅Web。不改AisenShot算法；保留candidate → review → apply → official shots语义。
+状态：已实施（Web；自动验证通过，人工矩阵见 `verification-record.md`）。阶段提交：`b899a6e`。不改AisenShot算法；保留candidate → review → apply → official shots语义。
 
 ## Scope
 

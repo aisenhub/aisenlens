@@ -1,6 +1,6 @@
 # P06 — Learn真实笔记与未来Create入口
 
-状态：可执行规划，未实施。依赖P05；仅Web。此阶段不建立Pattern/Technique数据模型。
+状态：已实施（Web；自动验证通过，人工矩阵见 `verification-record.md`）。阶段提交：`b7c6a82`。此阶段不建立Pattern/Technique数据模型。
 
 ## Scope
 

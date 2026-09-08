@@ -1,6 +1,6 @@
 # P05 — Analyze、Scene / Shot Inspector 与 Sound
 
-状态：可执行规划，未实施。依赖P04；仅Web。复用Scene/Shot/Timeline/截图/音频/模板现有能力，按用户理解过程重排。
+状态：已实施（Web；自动验证通过，人工矩阵见 `verification-record.md`）。阶段提交：`723d80b`。复用Scene/Shot/Timeline/截图/音频/模板现有能力，按用户理解过程重排。
 
 ## Scope
 

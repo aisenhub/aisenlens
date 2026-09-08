@@ -32,6 +32,12 @@
 - App 层只提供路由、全局 Provider、布局和必要的初始化编排。
 - 不为旧的 `App.tsx` 状态路径保留长期双轨或兼容层。
 
+## 3. Workflow 重构实施结果
+
+2026-09-08 已完成 Web 端 P01–P08 的首轮实施检查点：工作台阶段 URL、项目 Session owner、Prepare/Calibrate、Overview Film Map/Structure、Analyze Scenes/Shots/Sound、Learn 真实笔记、Cinema/Studio/System 主题与最终测试 runner 已接入。阶段视图只消费现有 Project/Shot/Group/Task 数据，没有新增 IndexedDB schema、示例 AI 数据或隐形知识库。
+
+仍需单独推进的能力：正式 Pattern/Technique、嵌套 Structure、ASR/OCR/语义声音轨、Storyboard/Prompt/节奏模板生成，以及真实浏览器长片性能与故障注入矩阵。它们保持 Coming Soon 或后续 Domain，不在本轮伪造完成。
+
 ## 4. Web 发布构建与加载优化（非阻塞）
 
 **背景**：2026-08-28 的 Vercel 生产部署已成功完成，Scene Engine 的
