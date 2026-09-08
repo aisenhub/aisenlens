@@ -18,10 +18,8 @@ import LiteSettingsModal from "../features/editor/components/LiteSettingsModal"
 
 import type { ProjectRecord } from "../features/project/types"
 
-import useLocalStorage from "../hooks/useLocalStorage"
-
-import type { AppTheme } from "../types/theme"
 import useAppSession from "../features/auth/hooks/useAppSession"
+import useAppTheme from "../hooks/useAppTheme"
 
 import SeoContentPage from "../features/marketing/components/SeoContentPage"
 
@@ -84,7 +82,7 @@ export default function App() {
 
   const [isLiteSettingsOpen, setIsLiteSettingsOpen] = useState(false)
 
-  const [theme, setTheme] = useLocalStorage<AppTheme>("aisenlens:theme", "dark")
+  const { preference: theme, resolvedTheme, setPreference: setTheme } = useAppTheme()
 
   const [projectTitle, setProjectTitle] = useState("《2001太空漫游》· 视觉分析")
 
@@ -109,12 +107,8 @@ export default function App() {
   }, [location.pathname])
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-
-    return () => {
-      delete document.documentElement.dataset.theme
-    }
-  }, [theme])
+    document.documentElement.dataset.theme = resolvedTheme
+  }, [resolvedTheme])
 
   useEffect(() => {
     if (activeProjectId)
@@ -141,7 +135,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <div data-theme={theme} className="bg-bg min-h-screen text-text-base">
+      <div data-theme={resolvedTheme} className="bg-bg min-h-screen text-text-base">
         {!isEditor && (
           <AppNavigation
             activePage={page}
@@ -195,9 +189,9 @@ export default function App() {
           />
         )}
         {isLiteSettingsOpen && (
-          <LiteSettingsModal onClose={() => setIsLiteSettingsOpen(false)} />
+          <LiteSettingsModal onClose={() => setIsLiteSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
         )}
-        <Toaster theme={theme} position="top-center" />
+        <Toaster theme={resolvedTheme} position="top-center" />
       </div>
     </TooltipProvider>
   )

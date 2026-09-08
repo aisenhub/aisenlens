@@ -12,8 +12,17 @@
   --color-bg-hover:  var(--app-bg-hover);
 
   /* Accent — single solid blue, no gradients */
-  --color-accent:    #3b82f6;
+  --color-accent:    var(--app-accent);
   --color-accent-dim: rgba(59,130,246,0.15);
+  --color-app-accent: var(--app-accent);
+  --color-app-selected-bg: var(--app-selected-bg);
+  --color-viewer-bg: var(--viewer-bg);
+  --color-playhead: var(--playhead);
+  --color-waveform: var(--waveform);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-ai: var(--ai);
 
   /* Typography */
   --color-text-base:  var(--app-text-base);
@@ -58,6 +67,15 @@
   --app-bg-panel: #0d0d0d;
   --app-bg-input: rgba(255,255,255,0.04);
   --app-bg-hover: rgba(255,255,255,0.04);
+  --app-accent: #3b82f6;
+  --app-selected-bg: rgba(59,130,246,0.15);
+  --viewer-bg: #050505;
+  --playhead: #ef4444;
+  --waveform: #64748b;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --ai: #a78bfa;
   --app-text-base: #f0f0f0;
   --app-text-dim: #888888;
   --app-text-muted: #8f8f8f;
@@ -92,19 +110,28 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --app-bg: #f4f3f0;
-  --app-bg-card: #fafaf8;
-  --app-bg-deep: #eeede9;
-  --app-bg-nav: #f0efe9;
-  --app-bg-panel: #edece8;
-  --app-bg-input: rgba(0,0,0,0.05);
-  --app-bg-hover: rgba(0,0,0,0.04);
-  --app-text-base: #1a1a18;
-  --app-text-dim: #4a4944;
-  --app-text-muted: #65635e;
-  --app-text-faint: #bdbab4;
-  --app-border: #d8d6d0;
-  --app-border-mid: #c8c6be;
+  --app-bg: #f1f1f1;
+  --app-bg-card: #ffffff;
+  --app-bg-deep: #e3e3e3;
+  --app-bg-nav: #e9e9e9;
+  --app-bg-panel: #f5f5f5;
+  --app-bg-input: rgba(0,0,0,0.04);
+  --app-bg-hover: rgba(0,0,0,0.05);
+  --app-accent: #2563eb;
+  --app-selected-bg: rgba(37,99,235,0.12);
+  --viewer-bg: #050505;
+  --playhead: #dc2626;
+  --waveform: #64748b;
+  --success: #047857;
+  --warning: #a16207;
+  --danger: #b91c1c;
+  --ai: #6d28d9;
+  --app-text-base: #20242b;
+  --app-text-dim: #475569;
+  --app-text-muted: #5b6675;
+  --app-text-faint: #94a3b8;
+  --app-border: #d2d6dc;
+  --app-border-mid: #b8c0ca;
   --timeline-shot: #dce4ef;
   --timeline-shot-played: #bed6f7;
   --timeline-shot-hover: #ccddf3;
@@ -212,7 +239,7 @@ html, body, #root {
 }
 
 /* ── Accent text — solid, no gradient ── */
-.text-accent { color: #3b82f6; }
+.text-accent { color: var(--app-accent); }
 
 .editor-timeline-shot {
   background: var(--timeline-shot);

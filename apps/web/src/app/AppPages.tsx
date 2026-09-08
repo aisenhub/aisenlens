@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import AppErrorBoundary from "./AppErrorBoundary";
-import type { AppTheme } from "../types/theme";
+import type { ThemePreference } from "../types/theme";
 import type { ProjectRecord } from "../features/project/types";
 
 const ChangelogPage = lazy(() => import("../pages/ChangelogPage"));
@@ -22,8 +22,8 @@ interface AppPagesProps {
   onProjectLoaded: (project: ProjectRecord) => void;
   isLoggedIn: boolean;
   onRequireAuth: () => void;
-  theme: AppTheme;
-  onThemeChange: (theme: AppTheme) => void;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
 }
 
 export default function AppPages({

@@ -3,8 +3,8 @@ import BrandLogo from "../branding/BrandLogo";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NAVIGATION_ITEMS } from "../../constants/navigation";
-import type { AppTheme } from "../../types/theme";
-import { Heart, Moon, Settings, Sun, UserRound } from "lucide-react";
+import type { ThemePreference } from "../../types/theme";
+import { Heart, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
 
 interface AppNavigationProps {
   activePage: number;
@@ -12,8 +12,8 @@ interface AppNavigationProps {
   userName?: string;
   userEmail?: string;
   onNavigate: (page: number) => void;
-  theme: AppTheme;
-  onThemeChange: (theme: AppTheme) => void;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
   onOpenAuth: () => void;
   onOpenLiteSettings: () => void;
   onOpenUserCenter: () => void;
@@ -69,7 +69,7 @@ export default function AppNavigation({
         <div className="ml-auto flex items-center gap-1.5">
           <Tooltip>
             <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" aria-label={nextThemeLabel} className="text-text-muted hover:bg-white/6 hover:text-white" />} onClick={() => onThemeChange(theme === "dark" ? "light" : "dark")}>
-              {theme === "dark" ? <Sun /> : <Moon />}
+              {theme === "dark" ? <Sun /> : theme === "light" ? <Moon /> : <Monitor />}
             </TooltipTrigger>
             <TooltipContent>{nextThemeLabel}</TooltipContent>
           </Tooltip>
