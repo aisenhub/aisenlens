@@ -228,11 +228,13 @@ html, body, #root {
 }
 
 @media (max-width: 640px) {
-  .editor-workspace header { padding-inline: 0.75rem; gap: 0.5rem; }
+  .editor-workspace header { padding-inline: 0.75rem; gap: 0.25rem; }
   .editor-workspace header > .flex-1 { min-width: 0; }
   .editor-workspace header > .flex-1 + .editor-mobile-panel-switcher { margin-left: 0; }
-  .editor-workspace .editor-page-title { max-width: 9rem; }
+  .editor-workspace .editor-page-title { max-width: 5rem; }
   .editor-workspace .editor-mobile-panel-switcher { margin-left: auto; }
+  .editor-workspace .editor-mobile-panel-switcher { gap: 0; }
+  .editor-workspace header > button { padding-inline: 0.5rem; }
   .editor-workspace .editor-mobile-panel-switcher button { min-width: 2.75rem; }
   .editor-workspace .editor-shot-list,
   .editor-workspace .editor-analysis-panel { width: calc(100vw - 4rem); }

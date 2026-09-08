@@ -10,10 +10,13 @@ interface ProjectWorkspaceShellProps {
 
 export default function ProjectWorkspaceShell({ activeStage, onStageChange, children }: ProjectWorkspaceShellProps) {
   return (
-    <div className="flex min-h-screen min-w-0 flex-col bg-bg text-text-base">
-      <div className="flex min-h-0 flex-1">
-        <WorkflowSidebar activeStage={activeStage} onStageChange={onStageChange} />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+    <div className="flex h-screen min-w-0 flex-col bg-bg text-text-base">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <WorkflowSidebar variant="mobile" activeStage={activeStage} onStageChange={onStageChange} />
+        <div className="flex min-h-0 flex-1">
+          <WorkflowSidebar variant="desktop" activeStage={activeStage} onStageChange={onStageChange} />
+          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        </div>
       </div>
     </div>
   )

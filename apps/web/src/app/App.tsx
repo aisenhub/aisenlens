@@ -67,6 +67,16 @@ function isPageReload() {
   return navigationEntry?.type === "reload"
 }
 
+function getInitialActiveProjectId() {
+  const projectIdFromLocation = new URLSearchParams(window.location.search).get(
+    "project",
+  )
+  if (projectIdFromLocation) return projectIdFromLocation
+  return isPageReload()
+    ? window.sessionStorage.getItem("aisenlens:active-project-id")
+    : null
+}
+
 export default function App() {
   const location = useLocation()
 
@@ -86,10 +96,8 @@ export default function App() {
 
   const [projectTitle, setProjectTitle] = useState("《2001太空漫游》· 视觉分析")
 
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(() =>
-    isPageReload()
-      ? window.sessionStorage.getItem("aisenlens:active-project-id")
-      : null,
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(
+    getInitialActiveProjectId,
   )
 
   const seoContentPage = getSeoContentPage(location.pathname)

@@ -975,75 +975,6 @@ export default function EditorWorkspace({
             ]),
           ),
         )
-        const savedScreenshotIds = [
-          ...new Set(
-            savedShots.flatMap((shot) =>
-              [
-                ...shot.screenshotIds,
-                shot.firstFrameScreenshotId,
-                shot.lastFrameScreenshotId,
-              ].filter((screenshotId): screenshotId is string =>
-                Boolean(screenshotId),
-              ),
-            ),
-          ),
-        ]
-        void Promise.all(
-          savedScreenshotIds.map(
-            async (screenshotId) =>
-              [
-                screenshotId,
-                await projectRepository.getScreenshot(screenshotId),
-              ] as const,
-          ),
-        )
-          .then((items) => {
-            if (!isCurrent()) return
-            setScreenshotFrames(
-              Object.fromEntries(
-                items.flatMap(([id, resource]) =>
-                  resource ? [[id, resource.screenshot.frame] as const] : [],
-                ),
-              ),
-            )
-            setScreenshotCompositionOverlayIncluded(
-              Object.fromEntries(
-                items.flatMap(([id, resource]) =>
-                  resource
-                    ? [
-                        [
-                          id,
-                          Boolean(
-                            resource.screenshot.compositionOverlayIncluded,
-                          ),
-                        ] as const,
-                      ]
-                    : [],
-                ),
-              ),
-            )
-            setScreenshotCompositionOverlaySignatures(
-              Object.fromEntries(
-                items.flatMap(([id, resource]) =>
-                  resource
-                    ? [
-                        [
-                          id,
-                          resource.screenshot.compositionOverlaySignature ??
-                            "none",
-                        ] as const,
-                      ]
-                    : [],
-                ),
-              ),
-            )
-          })
-          .catch((error) => {
-            if (isCurrent()) setEditorLoadError(error instanceof Error ? error.message : "截图数据读取失败，请重试。")
-          })
-          .finally(() => {
-            if (isCurrent()) setHasLoadedScreenshotFrames(true)
-          })
         setShotDims(
           Object.fromEntries(
             savedShots.map((shot) => [shot.id, shot.analysisFields]),
@@ -1066,6 +997,47 @@ export default function EditorWorkspace({
       editorLoadRequestRef.current += 1
     }
   }, [dataLoadRevision, editorHistory.reset, projectId, videoUrl, media.metadata?.frameRate])
+
+  useEffect(() => {
+    if (workflowView !== "scenes" || hasLoadedScreenshotFrames || !loadedProjectId || !shots.length) return
+    const requestId = ++editorLoadRequestRef.current
+    const isCurrent = () => requestId === editorLoadRequestRef.current
+    const savedScreenshotIds = [
+      ...new Set(
+        shots.flatMap((shot) =>
+          [
+            ...shotScreenshotIds[shot.id] ?? [],
+            shotBoundaryScreenshotIds[shot.id]?.first,
+            shotBoundaryScreenshotIds[shot.id]?.last,
+          ].filter((screenshotId): screenshotId is string => Boolean(screenshotId)),
+        ),
+      ),
+    ]
+    if (!savedScreenshotIds.length) {
+      setHasLoadedScreenshotFrames(true)
+      return
+    }
+    void Promise.all(
+      savedScreenshotIds.map(
+        async (screenshotId) => [screenshotId, await projectRepository.getScreenshot(screenshotId)] as const,
+      ),
+    )
+      .then((items) => {
+        if (!isCurrent()) return
+        setScreenshotFrames(Object.fromEntries(items.flatMap(([id, resource]) => resource ? [[id, resource.screenshot.frame] as const] : [])))
+        setScreenshotCompositionOverlayIncluded(Object.fromEntries(items.flatMap(([id, resource]) => resource ? [[id, Boolean(resource.screenshot.compositionOverlayIncluded)] as const] : [])))
+        setScreenshotCompositionOverlaySignatures(Object.fromEntries(items.flatMap(([id, resource]) => resource ? [[id, resource.screenshot.compositionOverlaySignature ?? "none"] as const] : [])))
+      })
+      .catch((error) => {
+        if (isCurrent()) setEditorLoadError(error instanceof Error ? error.message : "截图数据读取失败，请重试。")
+      })
+      .finally(() => {
+        if (isCurrent()) setHasLoadedScreenshotFrames(true)
+      })
+    return () => {
+      editorLoadRequestRef.current += 1
+    }
+  }, [hasLoadedScreenshotFrames, loadedProjectId, shotBoundaryScreenshotIds, shotScreenshotIds, shots, workflowView])
 
   useEffect(() => {
     let active = true
@@ -1216,6 +1188,7 @@ export default function EditorWorkspace({
   useEffect(() => {
     const frameRate = media.metadata?.frameRate ?? FPS
     if (
+      workflowView !== "scenes" ||
       !hasLoadedScreenshotFrames ||
       !videoUrl ||
       durationSeconds <= 0 ||
@@ -1322,6 +1295,7 @@ export default function EditorWorkspace({
     shotFrames,
     shots,
     videoUrl,
+    workflowView,
   ])
 
   const safeDuration = Math.max(durationSeconds, 1)
@@ -2646,7 +2620,7 @@ export default function EditorWorkspace({
 
   return (
     <div
-      className={`${isActive ? "" : "hidden"} editor-workspace relative flex h-screen flex-col overflow-hidden bg-bg select-none`}
+      className={`${isActive ? "" : "hidden"} editor-workspace relative flex h-full min-h-0 flex-col overflow-hidden bg-bg select-none`}
       data-mobile-panel={mobilePanel ?? "none"}
       aria-hidden={isActive ? undefined : true}
     >
@@ -2770,6 +2744,7 @@ export default function EditorWorkspace({
         }}
         onProjectUpdated={handleMediaProjectUpdated}
       >
+      {workflowView === "scenes" ? (
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* ── Far left: tool column ── */}
         <div className="flex shrink-0 border-r border-border">
@@ -3737,6 +3712,7 @@ export default function EditorWorkspace({
           )}
         </aside>
       </div>
+      ) : null}
       </AnalyzeWorkspace>
       ) : workflowStage === "prepare" ? (
         <PrepareView
