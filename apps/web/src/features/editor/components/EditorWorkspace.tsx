@@ -2668,7 +2668,7 @@ export default function EditorWorkspace({
 
       {/* ══ Main body ══ */}
       <Suspense fallback={<div className="flex min-h-0 flex-1 items-center justify-center text-sm text-text-muted">正在加载工作区…</div>}>
-      {workflowStage === "analyze" ? (
+      <div className={workflowStage === "analyze" ? "contents" : "hidden"}>
       <AnalyzeWorkspace
         view={workflowView}
         shots={shots}
@@ -3544,7 +3544,9 @@ export default function EditorWorkspace({
         </aside>
       </div>
       </AnalyzeWorkspace>
-      ) : workflowStage === "prepare" ? (
+      </div>
+      {workflowStage !== "analyze" ? (
+      workflowStage === "prepare" ? (
         <PrepareView
           project={project}
           media={media}
@@ -3720,7 +3722,8 @@ export default function EditorWorkspace({
           onApply={applyCalibrationDraftToEditor}
           onBackToPrepare={() => onWorkflowNavigate?.("prepare", "media")}
         />
-      )}
+      )
+      ) : null}
       </Suspense>
       {isTemplateEditorOpen && template && (
         <TemplateEditorModal

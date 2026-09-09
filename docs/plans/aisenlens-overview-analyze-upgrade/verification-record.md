@@ -28,7 +28,7 @@
 | --- | --- | --- | --- | --- |
 | O0 基线 | 已交付 | 基线、调用链、校准边界与受影响文件已核实 | `db55304` / `0440be5` | 已推送至 `origin/codex/overview-analyze-upgrade` |
 | O1 领域与存储 | 进行中 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验、按 target 串行写入与 revision 冲突检测已实现；IndexedDB故障/round-trip浏览器验证待补 | 本轮待提交 | 待推送 |
-| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 切换保留同一视频 DOM，Overview 跨 stage 保活仍待补 | 本轮待提交 | 待推送 |
+| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 与 Overview 跨 stage 均保留同一视频 DOM；真实媒体播放状态往返仍待浏览器验证 | 本轮待提交 | 待推送 |
 | O3 总览 | 进行中 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；新增空项目多视口浏览器导航验证，拖选预览与真实媒体矩阵待补 | 本轮待提交 | 待推送 |
 | O4 深拆 | 进行中 | Shot/Group/Range Inspector、问题/状态、证据引用、选段保存、Save & Next flush、音频范围引用、保存失败可见状态已实现；IME专项与真实媒体前后帧浏览器验证待补 | 本轮待提交 | 待推送 |
 | O5 连续性与恢复 | 进行中 | 校准应用事务会标记研究上下文待复核；研究数据进入备份/恢复边界；报告 CSV/HTML/XLSX 研究附录与 Learn Range 来源已接通；完整 lineage/backup round-trip 仍待补 | 本轮待提交 | 待推送 |
@@ -68,10 +68,10 @@
 
 | 尺寸 | Cinema | Studio | 核心操作/焦点 | 截图位置 |
 | --- | --- | --- | --- | --- |
-| 1440×900 | 未验证 | 未验证 | 未验证 | 无 |
-| 1280×720 | 未验证 | 未验证 | 未验证 | 无 |
-| 768×1024 | 未验证 | 未验证 | 未验证 | 无 |
-| 390×844 | 未验证 | 未验证 | 未验证 | 无 |
+| 1440×900 | 未验证 | 未验证 | 空项目 Overview→Analyze→Shots 导航已验证 | 无 |
+| 1280×720 | 未验证 | 未验证 | 空项目 Overview→Analyze→Shots 导航已验证 | 无 |
+| 768×1024 | 未验证 | 未验证 | 空项目 Overview→Analyze→Shots 导航已验证 | 无 |
+| 390×844 | 未验证 | 未验证 | 空项目 Overview→Analyze→Shots 导航已验证 | 无 |
 
 ## 5. GitHub交付记录
 
