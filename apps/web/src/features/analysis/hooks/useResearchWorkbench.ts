@@ -129,5 +129,12 @@ export default function useResearchWorkbench({ projectId }: UseResearchWorkbench
 
   const flush = useCallback(async () => { await Promise.all([...queueRef.current.values()]) }, [])
 
-  return { ranges, contexts, writeState, error, reload, saveRange, saveContext, updateRange, updateContext, createRangeForMedia, addEvidence, removeEvidence, flush }
+  const restore = useCallback((nextRanges: ResearchRange[], nextContexts: ResearchContext[]) => {
+    rangesRef.current = structuredClone(nextRanges)
+    contextsRef.current = structuredClone(nextContexts)
+    setRanges(rangesRef.current)
+    setContexts(contextsRef.current)
+  }, [])
+
+  return { ranges, contexts, writeState, error, reload, saveRange, saveContext, updateRange, updateContext, createRangeForMedia, addEvidence, removeEvidence, flush, restore }
 }

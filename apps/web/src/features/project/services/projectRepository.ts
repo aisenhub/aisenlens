@@ -32,7 +32,7 @@ const CALIBRATION_DRAFTS_STORE = "shot-calibration-drafts";
 const RESEARCH_RANGES_STORE = "research-ranges";
 const RESEARCH_CONTEXTS_STORE = "research-contexts";
 
-export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write";
+export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write" | "research-range-write" | "research-context-write";
 let projectRepositoryFaultInjector: ((point: ProjectRepositoryFaultPoint) => void) | null = null;
 
 export function setProjectRepositoryFaultInjector(injector: ((point: ProjectRepositoryFaultPoint) => void) | null): void {
@@ -254,20 +254,22 @@ function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): 
   });
 }
 
-async function markResearchContextsAfterStructureChange(store: IDBObjectStore, projectId: string, shotIds: string[], groupIds: string[], now: string): Promise<void> {
-  const contexts = await requestResult(store.index("projectId").getAll(IDBKeyRange.only(projectId))) as ResearchContext[];
+function markResearchContextsAfterStructureChange(contexts: ResearchContext[], shotIds: string[], groupIds: string[], now: string): ResearchContext[] {
   const shotSet = new Set(shotIds);
   const groupSet = new Set(groupIds);
-  contexts.forEach((context) => {
+  return contexts.map((context) => {
     const reasons = new Set(context.needsReviewReasons);
     if (context.target.kind === "shot" && !shotSet.has(context.target.id)) reasons.add("原镜头结构已变化，请重新关联目标。");
     if (context.target.kind === "group" && !groupSet.has(context.target.id)) reasons.add("原结构已变化，请重新关联目标。");
     if (context.status === "completed") reasons.add("正式镜头结构已更新，请复核研究结论。");
     if (context.evidence.some((item) => item.kind === "shot" && !shotSet.has(item.shotId))) reasons.add("引用的原镜头已不存在，证据需要重新关联。");
-    if (reasons.size) {
-      store.put({ ...context, needsReview: true, needsReviewReasons: [...reasons], updatedAt: now, revision: context.revision + 1 });
-    }
+    return reasons.size ? { ...context, needsReview: true, needsReviewReasons: [...reasons], updatedAt: now, revision: context.revision + 1 } : context;
   });
+}
+
+async function markStoredResearchContextsAfterStructureChange(store: IDBObjectStore, projectId: string, shotIds: string[], groupIds: string[], now: string): Promise<void> {
+  const contexts = await requestResult(store.index("projectId").getAll(IDBKeyRange.only(projectId))) as ResearchContext[];
+  markResearchContextsAfterStructureChange(contexts, shotIds, groupIds, now).forEach((context) => store.put(context));
 }
 
 function sameMediaFingerprint(left: MediaSourceFingerprint, right: MediaSourceFingerprint): boolean {
@@ -862,14 +864,17 @@ export function createProjectRepository(): ProjectRepository {
         const appliedDraft: CalibrationDraft = { ...structuredClone(draft), status: "applied", applyReceipt: { draftId: draft.id, appliedDraftRevision: draft.revision, projectUpdatedAt: now, appliedAt: now, recoverySnapshotId }, updatedAt: now };
         injectProjectRepositoryFault("draft-receipt-write");
         draftStore.put(toCalibrationDraftRecord(appliedDraft));
-        await markResearchContextsAfterStructureChange(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id, state.shots.map((shot) => shot.id), state.groups.map((group) => group.id), now);
         if (state.researchRanges !== undefined) {
           await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
+          injectProjectRepositoryFault("research-range-write");
           state.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId: state.project.id, updatedAt: now }));
         }
         if (state.researchContexts !== undefined) {
           await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id);
-          state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
+          injectProjectRepositoryFault("research-context-write");
+          markResearchContextsAfterStructureChange(state.researchContexts, state.shots.map((shot) => shot.id), state.groups.map((group) => group.id), now).forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
+        } else {
+          await markStoredResearchContextsAfterStructureChange(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id, state.shots.map((shot) => shot.id), state.groups.map((group) => group.id), now);
         }
         await completion;
         return updatedProject;
@@ -916,6 +921,7 @@ export function createProjectRepository(): ProjectRepository {
       const store = transaction.objectStore(RESEARCH_RANGES_STORE);
       const existing = await requestResult(store.get(range.id)) as ResearchRange | undefined;
       if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究范围已在其他标签页更新，请重新加载后再保存。");
+      injectProjectRepositoryFault("research-range-write");
       store.put(structuredClone(range));
       await transactionResult(transaction);
     },
@@ -944,6 +950,7 @@ export function createProjectRepository(): ProjectRepository {
       const existing = await requestResult(store.index("projectTarget").get(key)) as ResearchContext | undefined;
       if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究上下文已在其他标签页更新，请重新加载后再保存。");
       if (existing && existing.id !== context.id) store.delete(existing.id);
+      injectProjectRepositoryFault("research-context-write");
       store.put(structuredClone(context));
       await transactionResult(transaction);
     },

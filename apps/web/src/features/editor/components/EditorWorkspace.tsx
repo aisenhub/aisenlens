@@ -192,6 +192,8 @@ interface EditorHistorySnapshot {
   currentTime: number
   selectedMarkerId: string | null
   selectedGroupId: string | null
+  researchRanges: ResearchRange[]
+  researchContexts: ResearchContext[]
 }
 
 /* ── constants ── */
@@ -454,9 +456,9 @@ export default function EditorWorkspace({
 
   useEffect(() => {
     setSessionSelection({ shotId: shots[activeShot]?.id ?? null })
-    if (sessionResearchTarget?.kind === "range") return
+    if (sessionResearchTargetValue) return
     setSessionResearchTarget(selectedGroupId ? { kind: "group", id: selectedGroupId } : shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
-  }, [activeShot, selectedGroupId, sessionResearchTarget?.kind, setSessionResearchTarget, setSessionSelection, shots])
+  }, [activeShot, selectedGroupId, sessionResearchTargetValue, setSessionResearchTarget, setSessionSelection, shots])
 
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
@@ -571,6 +573,8 @@ export default function EditorWorkspace({
       currentTime,
       selectedMarkerId,
       selectedGroupId,
+      researchRanges: structuredClone(researchWorkbench.ranges),
+      researchContexts: structuredClone(researchWorkbench.contexts),
     }),
     [
       activeShot,
@@ -605,8 +609,9 @@ export default function EditorWorkspace({
       setCurrentTime(snapshot.currentTime)
       setSelectedMarkerId(snapshot.selectedMarkerId)
       setSelectedGroupId(snapshot.selectedGroupId)
+      researchWorkbench.restore(snapshot.researchRanges, snapshot.researchContexts)
     },
-    [],
+    [researchWorkbench.restore],
   )
 
   const editorHistory = useEditorHistory({
@@ -779,6 +784,8 @@ export default function EditorWorkspace({
     loadedProjectId,
     loadedShotGroupProjectId,
     autoShotDetection: autoShotDetectionRef.current,
+    researchRanges: researchWorkbench.ranges,
+    researchContexts: researchWorkbench.contexts,
     onProjectUpdated: (updatedProject) => onProjectUpdatedRef.current(updatedProject),
   })
 
@@ -840,6 +847,8 @@ export default function EditorWorkspace({
       template,
       compositionOverlay,
       contentOverlay,
+      researchRanges: researchWorkbench.ranges,
+      researchContexts: researchWorkbench.contexts,
     }),
     [
       annotationMarkers,
@@ -854,6 +863,8 @@ export default function EditorWorkspace({
       shotNotes,
       shotScreenshotIds,
       shots,
+      researchWorkbench.contexts,
+      researchWorkbench.ranges,
       template,
     ],
   )
@@ -997,7 +1008,7 @@ export default function EditorWorkspace({
   }, [dataLoadRevision, editorHistory.reset, projectId, videoUrl, media.metadata?.frameRate])
 
   useEffect(() => {
-    if (workflowView !== "scenes" || hasLoadedScreenshotFrames || !loadedProjectId || !shots.length) return
+    if (hasLoadedScreenshotFrames || !loadedProjectId || !shots.length) return
     const requestId = ++editorLoadRequestRef.current
     const isCurrent = () => requestId === editorLoadRequestRef.current
     const savedScreenshotIds = [
@@ -1035,7 +1046,7 @@ export default function EditorWorkspace({
     return () => {
       editorLoadRequestRef.current += 1
     }
-  }, [hasLoadedScreenshotFrames, loadedProjectId, shotBoundaryScreenshotIds, shotScreenshotIds, shots, workflowView])
+  }, [hasLoadedScreenshotFrames, loadedProjectId, shotBoundaryScreenshotIds, shotScreenshotIds, shots])
 
   useEffect(() => {
     let active = true
@@ -1109,7 +1120,6 @@ export default function EditorWorkspace({
   }, [durationSeconds, media.source, projectId, videoUrl])
 
   useEffect(() => {
-    if (workflowView !== "scenes") return
     let active = true
     const screenshotIds = [
       ...new Set([
@@ -1138,7 +1148,7 @@ export default function EditorWorkspace({
     return () => {
       active = false
     }
-  }, [shotScreenshotIds, shotBoundaryScreenshotIds, workflowView])
+  }, [shotScreenshotIds, shotBoundaryScreenshotIds])
 
   useEffect(() => {
     if (
@@ -1187,7 +1197,6 @@ export default function EditorWorkspace({
   useEffect(() => {
     const frameRate = media.metadata?.frameRate ?? FPS
     if (
-      workflowView !== "scenes" ||
       !hasLoadedScreenshotFrames ||
       !videoUrl ||
       durationSeconds <= 0 ||
@@ -1294,7 +1303,6 @@ export default function EditorWorkspace({
     shotFrames,
     shots,
     videoUrl,
-    workflowView,
   ])
 
   const commitTitle = () => {
@@ -2307,7 +2315,7 @@ export default function EditorWorkspace({
       const detection = candidate && autoShotRun?.controlSnapshot ? { source: "auto-shot" as const, taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash } : source?.detection ?? { source: "manual" as const }
       return { ...(source ?? { id: segment.id, projectId, order, status: "draft" as const, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: now, updatedAt: now }), id: segment.id, projectId, order, startFrame: segment.startFrame, endFrame: segment.endFrame, detection, updatedAt: now }
     })
-    const updatedProject = await projectRepository.applyCalibrationDraft({ state: { project: latestProject, shots: nextShotRecords, groups: nextGroups, markers: annotationMarkers, template: template as import("../../project/types").ProjectTemplateSnapshotRecord | null }, draft, expectedUpdatedAt: latestProject.updatedAt, recoverySnapshotId: recoverySnapshot.id, task: autoShotRun })
+    const updatedProject = await projectRepository.applyCalibrationDraft({ state: { project: latestProject, shots: nextShotRecords, groups: nextGroups, markers: annotationMarkers, template: template as import("../../project/types").ProjectTemplateSnapshotRecord | null, researchRanges: researchWorkbench.ranges, researchContexts: researchWorkbench.contexts }, draft, expectedUpdatedAt: latestProject.updatedAt, recoverySnapshotId: recoverySnapshot.id, task: autoShotRun })
     editorHistory.commit()
     setShots(nextShots)
     setShotFrames(Object.fromEntries(draft.segments.map((segment) => [segment.id, { first: segment.startFrame, last: segment.endFrame - 1 }])))
@@ -2320,17 +2328,19 @@ export default function EditorWorkspace({
     onWorkflowNavigate?.("overview", "film")
   }
 
-  const updateResearchContext = useCallback((target: ResearchTarget, patch: Partial<Pick<ResearchContext, "question" | "status" | "needsReview">>) => researchWorkbench.updateContext(target, patch), [researchWorkbench.updateContext])
-  const addResearchEvidence = useCallback((target: ResearchTarget, evidence: EvidenceRef) => { void researchWorkbench.addEvidence(target, evidence) }, [researchWorkbench.addEvidence])
-  const removeResearchEvidence = useCallback((target: ResearchTarget, evidenceId: string) => { void researchWorkbench.removeEvidence(target, evidenceId) }, [researchWorkbench.removeEvidence])
+  const updateResearchContext = useCallback((target: ResearchTarget, patch: Partial<Pick<ResearchContext, "question" | "status" | "needsReview">>) => { editorHistory.commit(); return researchWorkbench.updateContext(target, patch) }, [editorHistory.commit, researchWorkbench.updateContext])
+  const addResearchEvidence = useCallback((target: ResearchTarget, evidence: EvidenceRef) => { editorHistory.commit(); void researchWorkbench.addEvidence(target, evidence) }, [editorHistory.commit, researchWorkbench.addEvidence])
+  const removeResearchEvidence = useCallback((target: ResearchTarget, evidenceId: string) => { editorHistory.commit(); void researchWorkbench.removeEvidence(target, evidenceId) }, [editorHistory.commit, researchWorkbench.removeEvidence])
   const createResearchRange = useCallback(async (startUs: number, endUs: number) => {
+    editorHistory.commit()
     const range = await researchWorkbench.createRangeForMedia({ startUs, endUs, mediaIdentityDigest: researchMediaIdentityDigest })
     setSessionResearchMode("range")
     setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
     setSessionResearchTarget({ kind: "range", id: range.id })
+    onWorkflowNavigate?.("analyze", workflowView, { mode: "range", scopeKind: "saved-range", scopeId: range.id, fromUs: range.startUs, toUs: range.endUs, targetKind: "range", targetId: range.id })
     return range
-  }, [researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchMode, setSessionResearchScope, setSessionResearchTarget])
-  const updateResearchRange = useCallback((range: ResearchRange, patch: Partial<Pick<ResearchRange, "startUs" | "endUs" | "title" | "observation" | "interpretation" | "summary">>) => researchWorkbench.updateRange(range, patch), [researchWorkbench.updateRange])
+  }, [editorHistory.commit, onWorkflowNavigate, researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchMode, setSessionResearchScope, setSessionResearchTarget, workflowView])
+  const updateResearchRange = useCallback((range: ResearchRange, patch: Partial<Pick<ResearchRange, "startUs" | "endUs" | "title" | "observation" | "interpretation" | "summary">>) => { editorHistory.commit(); return researchWorkbench.updateRange(range, patch) }, [editorHistory.commit, researchWorkbench.updateRange])
   const saveAndNextResearchShot = useCallback(async () => {
     await researchWorkbench.flush()
     const nextIndex = activeShot + 1
@@ -2668,7 +2678,7 @@ export default function EditorWorkspace({
 
       {/* ══ Main body ══ */}
       <Suspense fallback={<div className="flex min-h-0 flex-1 items-center justify-center text-sm text-text-muted">正在加载工作区…</div>}>
-      <div className={workflowStage === "analyze" ? "contents" : "hidden"}>
+      {workflowStage !== "calibrate" ? <div className={workflowStage === "analyze" ? "contents" : "hidden"}>
       <AnalyzeWorkspace
         view={workflowView}
         shots={shots}
@@ -3544,7 +3554,7 @@ export default function EditorWorkspace({
         </aside>
       </div>
       </AnalyzeWorkspace>
-      </div>
+      </div> : null}
       {workflowStage !== "analyze" ? (
       workflowStage === "prepare" ? (
         <PrepareView

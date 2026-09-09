@@ -1,6 +1,6 @@
 # 执行入口与交接说明
 
-本文件保存稳定的执行规则；实际进度、测试、commit和阻塞更新到 [verification-record.md](verification-record.md)。本轮仅生成计划，没有启动实施任务。
+本文件保存稳定的执行规则；实际进度、测试、commit和阻塞更新到 [verification-record.md](verification-record.md)。本轮实施已完成，交付前以验证记录与 Git 状态为准。
 
 ## 可直接复制给执行agent
 
