@@ -16,6 +16,7 @@ export default function RunStatus({ record, isActive, error, disabled = false, o
   const progress = record ? Math.round((record.progress.processedUs / Math.max(1, record.progress.durationUs)) * 100) : 0;
   const completed = record?.status === "completed";
   const paused = record?.status === "paused";
+  const running = isActive || record?.status === "running";
   const canRestart = Boolean(record && !paused && record.status !== "running");
   return (
     <div className="space-y-2">
@@ -31,10 +32,10 @@ export default function RunStatus({ record, isActive, error, disabled = false, o
         </div>
       )}
       {(error || record?.status === "failed") && <p className="editor-meta text-red-300">{error ?? record?.error?.message ?? "自动分镜失败。"}</p>}
-      <Button type="button" variant="outline" size="sm" disabled={disabled || isActive || record?.status === "running"} onClick={canRestart ? onRestart : onStart} className="h-8 w-full border-accent/30 bg-accent/8 text-accent hover:bg-accent/15">
+      {!running && <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={canRestart ? onRestart : onStart} className="h-8 w-full border-accent/30 bg-accent/8 text-accent hover:bg-accent/15">
         {paused ? <><Play className="size-3" /> 继续扫描</> : canRestart ? <><RotateCcw className="size-3" /> 重新扫描</> : <><Play className="size-3" /> 开始自动分镜</>}
-      </Button>
-      {record?.status === "running" && <Button type="button" variant="ghost" size="sm" onClick={onPause} className="h-7 w-full text-text-muted hover:text-white"><Pause className="size-3" /> 暂停扫描</Button>}
+      </Button>}
+      {running && <Button type="button" variant="ghost" size="sm" onClick={onPause} className="h-7 w-full text-text-muted hover:text-white"><Pause className="size-3" /> 暂停扫描</Button>}
     </div>
   );
 }

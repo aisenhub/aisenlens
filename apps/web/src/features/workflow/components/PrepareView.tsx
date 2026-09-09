@@ -1,6 +1,8 @@
-import { ArrowRight, FileCog, Map, Settings2 } from "lucide-react"
+import { ArrowRight, FileCog, Map, RefreshCw, Settings2 } from "lucide-react"
+import { useState } from "react"
 import { Button } from "../../../components/ui/button"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
+import AutoShotResultDialog from "../../auto-shot/components/AutoShotResultDialog"
 import type { AutoShotControlSettings, AutoShotPresetDefinition, ResolvedAutoShotConfiguration } from "../../auto-shot/config/types"
 import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
 import MediaStatusPanel from "../../project/components/MediaStatusPanel"
@@ -28,6 +30,18 @@ interface PrepareViewProps {
 }
 
 export default function PrepareView({ project, media, videoUrl, isSelectingVideo, onImportVideo, onGoToAnalyze, onGoToCalibrate, onOpenSettings, settings, resolved, presets, record, isActive, error, onChange, onStart, onPause, onRestart }: PrepareViewProps) {
+  const [isAutoShotDialogOpen, setIsAutoShotDialogOpen] = useState(false)
+  const isRunning = isActive || record?.status === "running"
+  const canRestart = Boolean(record && record.status !== "paused" && record.status !== "running")
+  const scanActionLabel = record?.status === "completed" ? "重新扫描" : isRunning ? "查看扫描进度" : record?.status === "paused" ? "继续扫描" : "开始自动分镜"
+
+  const openAutoShotDialog = () => {
+    setIsAutoShotDialogOpen(true)
+    if (isRunning) return
+    if (canRestart) onRestart()
+    else onStart()
+  }
+
   return (
     <main className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
@@ -39,11 +53,12 @@ export default function PrepareView({ project, media, videoUrl, isSelectingVideo
           <MediaStatusPanel media={media} videoUrl={videoUrl} isSelectingVideo={isSelectingVideo} onImportVideo={onImportVideo} />
           <section className="border border-border bg-bg-panel p-4">
             <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-sm font-medium text-text-base">研究模板</h2><p className="mt-1 text-xs leading-5 text-text-muted">沿用当前项目模板与自定义字段，不新增未保存的研究意图。</p></div><Button type="button" variant="outline" size="sm" onClick={onOpenSettings} className="gap-2 border-border text-text-dim"><Settings2 className="size-3.5" />模板设置</Button></div>
-            <div className="flex items-center gap-3 border-t border-border pt-3 text-xs text-text-dim"><FileCog className="size-4 text-text-muted" /><span>{settings ? `当前预设：${settings.presetId}` : "正在读取当前视频配置…"}</span><span className="ml-auto font-mono text-text-muted">{record?.status === "completed" ? `${record.candidates.length} 个候选` : "尚未扫描"}</span></div>
+            <div className="flex items-center gap-3 border-t border-border pt-3 text-xs text-text-dim"><FileCog className="size-4 text-text-muted" /><span>{settings ? `当前预设：${settings.presetId}` : "正在读取当前视频配置…"}</span><span className="ml-auto font-mono text-text-muted">{record?.status === "completed" ? "已完成一次扫描" : "尚未扫描"}</span></div>
           </section>
-          <section className="border border-border bg-bg-panel p-4"><div className="mb-4 flex items-start gap-3"><Map className="mt-0.5 size-4 text-accent" /><div><h2 className="text-sm font-medium text-text-base">建立镜头地图</h2><p className="mt-1 text-xs leading-5 text-text-muted">自动分镜只提出候选区间；应用前会在校准阶段复核并创建恢复快照。</p></div></div><AutoShotControlPanel settings={settings} resolved={resolved} presets={presets} record={record} isActive={isActive} error={error} onChange={onChange} onStart={onStart} onPause={onPause} onRestart={onRestart} />{record?.status === "completed" && <Button type="button" size="sm" onClick={onGoToCalibrate} className="mt-3 h-8 w-full gap-2 bg-accent text-white hover:bg-accent/90">应用分镜<ArrowRight className="size-3.5" /></Button>}</section>
+          <section className="border border-border bg-bg-panel p-4"><div className="mb-4 flex items-start gap-3"><Map className="mt-0.5 size-4 text-accent" /><div><h2 className="text-sm font-medium text-text-base">建立镜头地图</h2><p className="mt-1 text-xs leading-5 text-text-muted">自动分镜只提出候选区间；应用前会在校准阶段复核并创建恢复快照。</p></div></div><AutoShotControlPanel settings={settings} resolved={resolved} presets={presets} record={record} isActive={isActive} error={error} showRunStatus={false} onChange={onChange} onStart={onStart} onPause={onPause} onRestart={onRestart} /><Button type="button" size="sm" disabled={!resolved} onClick={openAutoShotDialog} className="mt-3 h-9 w-full gap-2 bg-accent text-white hover:bg-accent/90"><RefreshCw className="size-3.5" />{scanActionLabel}</Button></section>
         </div>
       </div>
+      <AutoShotResultDialog open={isAutoShotDialogOpen} onOpenChange={setIsAutoShotDialogOpen} record={record} frameRate={media.metadata?.frameRate ?? 30} isActive={isActive} error={error} resolved={resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} onApply={() => { setIsAutoShotDialogOpen(false); onGoToCalibrate() }} />
     </main>
   )
 }

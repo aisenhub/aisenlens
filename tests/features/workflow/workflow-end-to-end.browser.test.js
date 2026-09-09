@@ -140,6 +140,9 @@ test("隔离浏览器可完成 Workflow 阶段导航与真实空项目流程", {
   await waitFor(async () => clickButton(client, sessionId, "创建并进入编辑器"), "进入编辑器按钮没有出现")
   await waitFor(async () => (await evaluate(client, sessionId, `location.pathname === "/app" && Boolean(new URL(location.href).searchParams.get("project"))`)), "空项目没有进入工作台")
   await waitFor(async () => (await evaluate(client, sessionId, `document.body.innerText.includes("准备素材与镜头地图")`)), "准备阶段内容没有加载")
+  const prepareText = await evaluate(client, sessionId, "document.body.innerText")
+  assert.equal(prepareText.includes("应用分镜"), false, "准备页不应在弹窗外展示应用分镜按钮")
+  assert.equal(prepareText.includes("候选分镜"), false, "准备页不应在弹窗外展示候选分镜详情")
 
   const stages = [
     ["准备", "prepare", "准备素材与镜头地图"],
