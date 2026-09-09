@@ -46,7 +46,7 @@ export default function AutoShotResultDialog({ open, onOpenChange, record, frame
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="max-h-[min(760px,calc(100vh-2rem))] max-w-2xl overflow-hidden border-border bg-bg-panel p-0">
+      <DialogContent showCloseButton={false} className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[min(760px,calc(100vh-2rem))] max-w-2xl overflow-hidden border-border bg-bg-panel p-0">
         <DialogHeader className="border-b border-border bg-bg-nav px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -93,9 +93,9 @@ export default function AutoShotResultDialog({ open, onOpenChange, record, frame
           {!record && !isActive && !error && <div className="mt-4 rounded-lg border border-dashed border-border px-4 py-8 text-center text-xs text-text-muted">准备开始扫描。完成后，候选分镜会显示在这里。</div>}
         </div>
 
-        <DialogFooter className="border-t border-border bg-bg-nav/70 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] text-text-muted">关闭弹窗不会中断扫描，稍后可从准备页重新打开。</p>
-          <div className="flex gap-2">
+        <DialogFooter className="mx-0 mb-0 border-t border-border bg-bg-nav/70 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="min-w-0 flex-1 text-[11px] text-text-muted">关闭弹窗不会中断扫描，稍后可从准备页重新打开。</p>
+          <div className="flex shrink-0 gap-2">
             <DialogClose render={<Button type="button" variant="outline" size="sm" className="border-border text-text-dim hover:text-white" />}>关闭</DialogClose>
             {completed && <Button type="button" size="sm" onClick={onApply} className="gap-2 bg-accent text-white hover:bg-accent/90">应用分镜<ArrowRight className="size-3.5" /></Button>}
           </div>
