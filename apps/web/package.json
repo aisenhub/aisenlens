@@ -19,6 +19,8 @@
     "test:auto-shot-config": "node --test test/auto-shot-config.test.mjs",
     "test:auto-shot-settings-store": "node --test test/auto-shot-settings-store.test.mjs",
     "test:scene-calibration": "node --experimental-strip-types --test test/scene-calibration.test.ts",
+    "test:shot-calibration": "node --experimental-strip-types --test ../../tests/features/shot-calibration/*.test.ts",
+    "test:shot-calibration-browser": "node --test ../../tests/features/shot-calibration/calibration-workflow.browser.test.js ../../tests/features/shot-calibration/calibration-real-media.browser.test.js ../../tests/features/shot-calibration/calibration-verification.browser.test.js",
     "test:editor-history": "node --experimental-strip-types --test test/editor-history-state.test.ts",
     "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",

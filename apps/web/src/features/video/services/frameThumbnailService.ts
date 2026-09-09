@@ -12,6 +12,8 @@ interface FrameThumbnailDecoderInput {
   mediaFingerprint: MediaSourceFingerprint;
   durationSeconds: number;
   frameRate: number;
+  presentationTimestamps?: readonly number[];
+  presentationDurations?: readonly number[];
 }
 
 export interface FrameThumbnailDecoder {
@@ -26,9 +28,12 @@ export interface DecodeVideoFrameCanvasInput {
   frame: number;
   frameRate: number;
   durationSeconds: number;
+  presentationTimestamps?: readonly number[];
+  presentationDurations?: readonly number[];
 }
 
-function frameTimestamp(frame: number, frameRate: number, durationSeconds: number): number {
+function frameTimestamp(frame: number, frameRate: number, durationSeconds: number, presentationTimestamps?: readonly number[]): number {
+  if (presentationTimestamps?.[frame] !== undefined) return presentationTimestamps[frame]!;
   return Math.min(Math.max(0, frame / frameRate), Math.max(0, durationSeconds - 0.001));
 }
 
@@ -44,7 +49,7 @@ export async function loadCachedFrameThumbnail(projectId: string, mediaFingerpri
   return cached ? { frame, url: URL.createObjectURL(cached.blob) } : null;
 }
 
-export async function decodeVideoFrameCanvas({ sourceUrl, frame, frameRate, durationSeconds }: DecodeVideoFrameCanvasInput): Promise<HTMLCanvasElement> {
+export async function decodeVideoFrameCanvas({ sourceUrl, frame, frameRate, durationSeconds, presentationTimestamps }: DecodeVideoFrameCanvasInput): Promise<HTMLCanvasElement> {
   const response = await fetch(sourceUrl);
   if (!response.ok) throw new Error("无法读取本地视频文件。");
   const source = await response.blob();
@@ -55,7 +60,7 @@ export async function decodeVideoFrameCanvas({ sourceUrl, frame, frameRate, dura
     const videoTrack = await mediaInput.getPrimaryVideoTrack();
     if (!videoTrack || !(await videoTrack.canDecode())) throw new Error("当前浏览器无法解码该视频帧。");
     const sink = new CanvasSink(videoTrack, { poolSize: 1 });
-    const decodedFrame = await sink.getCanvas(frameTimestamp(frame, frameRate, durationSeconds));
+    const decodedFrame = await sink.getCanvas(frameTimestamp(frame, frameRate, durationSeconds, presentationTimestamps));
     if (!decodedFrame) throw new Error("无法解码指定视频帧。");
     const canvas = document.createElement("canvas");
     canvas.width = decodedFrame.canvas.width;
@@ -86,7 +91,7 @@ export async function createFrameThumbnailDecoder(input: FrameThumbnailDecoderIn
   return {
     async capture(frame, shouldContinue) {
       if (disposed || !shouldContinue()) throw new Error("帧请求已失效。");
-      const timestamp = frameTimestamp(frame, input.frameRate, input.durationSeconds);
+      const timestamp = frameTimestamp(frame, input.frameRate, input.durationSeconds, input.presentationTimestamps);
       const wrappedCanvas = await sink.getCanvas(timestamp);
       if (!wrappedCanvas || disposed || !shouldContinue()) throw new Error("无法解码指定视频帧。");
       const blob = await canvasToJpeg(wrappedCanvas.canvas);

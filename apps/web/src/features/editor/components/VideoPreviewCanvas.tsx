@@ -10,7 +10,7 @@ import type { ContentOverlaySettings } from "../../content-overlay/types";
 
 export interface CanvasAspectPreset { label: string; width: number; height: number; }
 
-interface VideoPreviewCanvasProps {
+export interface VideoPreviewCanvasProps {
   showCompositionGrid: boolean;
   compositionOverlay: CompositionOverlaySettings;
   contentOverlay: ContentOverlaySettings;

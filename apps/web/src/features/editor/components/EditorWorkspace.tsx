@@ -40,7 +40,6 @@ import {
 } from "../../project/services/screenshotService"
 import projectRepository from "../../project/services/projectRepository"
 import formatTimecode from "../utils/formatTimecode"
-import retainShotMap from "../utils/retainShotMap"
 import { Button } from "../../../components/ui/button"
 import { Checkbox } from "../../../components/ui/checkbox"
 import { Input } from "../../../components/ui/input"
@@ -67,11 +66,7 @@ import {
   splitManualShotAtFrame,
 } from "../../shot/services/manualShotService"
 import { loadOrCreateProjectTemplate } from "../../template/services/templateService"
-import {
-  applyAutoShotCandidates,
-  resolveAutoShotTotalFrames,
-  type AutoShotApplyOutput,
-} from "../../auto-shot/applyAutoShotCandidates"
+import { resolveAutoShotTotalFrames } from "../../auto-shot/applyAutoShotCandidates"
 import {
   getShotAnalysisCompleteness,
   normalizeProjectTemplate,
@@ -90,6 +85,7 @@ import type {
 } from "../../annotation/types"
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
+import { frameToTimestampFromArrays } from "../../video/services/mediaFrameTimeService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
 import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
 import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
@@ -478,15 +474,9 @@ export default function EditorWorkspace({
     [],
   )
   const autoShotRun: AutoShotTaskRecord | null = autoShotTask.record
-  const [excludedAutoShotCandidateIds, setExcludedAutoShotCandidateIds] = useState<string[]>([])
-  const [pendingAutoShotApply, setPendingAutoShotApply] = useState<{ taskId: string; output: AutoShotApplyOutput } | null>(null)
-  const [selectedAutoShotCandidateId, setSelectedAutoShotCandidateId] = useState<string | null>(null)
   const [calibrationAnnotation, setCalibrationAnnotation] = useState<CalibrationAnnotationRecord | null>(null)
 
   useEffect(() => {
-    setExcludedAutoShotCandidateIds(autoShotRun?.review.excludedCandidateIds ?? [])
-    setPendingAutoShotApply(null)
-    setSelectedAutoShotCandidateId(autoShotRun?.candidates[0]?.id ?? null)
     if (!autoShotRun) {
       setCalibrationAnnotation(null)
       return
@@ -1307,20 +1297,6 @@ export default function EditorWorkspace({
     await autoShotTask.start({ resume: shouldResume, restart })
   }
 
-  const previewAutoShotCuts = () => {
-    if (!autoShotRun || autoShotRun.status !== "completed") return
-    const frameRate = media.metadata?.frameRate ?? FPS
-    const totalFrames = resolveAutoShotTotalFrames(autoShotRun.candidates, durationSeconds, frameRate)
-    let applied
-    try {
-      applied = applyAutoShotCandidates({ candidates: autoShotRun.candidates, excludedCandidateIds: excludedAutoShotCandidateIds, totalFrames, frameRate, currentShots: shots, currentShotFrames: shotFrames, currentGroups: shotGroups })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "自动分镜候选无效，未应用结果。")
-      return
-    }
-    setPendingAutoShotApply({ taskId: autoShotRun.id, output: applied })
-  }
-
   const updateCalibration = (updater: (current: CalibrationAnnotationRecord) => CalibrationAnnotationRecord) => {
     setCalibrationAnnotation((current) => {
       if (!current) return current
@@ -1391,58 +1367,6 @@ export default function EditorWorkspace({
 
   const locateCalibrationBoundary = (timestampUs: number) => {
     setCurrentTime(Math.min(Math.max(timestampUs / 1_000_000, 0), durationSeconds))
-  }
-
-  const applyAutoShotCuts = async () => {
-    if (!pendingAutoShotApply || !autoShotRun || autoShotRun.status !== "completed" || pendingAutoShotApply.taskId !== autoShotRun.id) {
-      setPendingAutoShotApply(null)
-      toast.error("自动分镜结果已更新，请重新打开应用确认。")
-      return
-    }
-    if (!autoShotRun.controlSnapshot) {
-      setPendingAutoShotApply(null)
-      toast.error("该自动分镜任务缺少控制快照，请重新扫描后再应用。")
-      return
-    }
-    const { output: applied } = pendingAutoShotApply
-    let recoverySnapshot
-    try {
-      recoverySnapshot = await createProjectRecoverySnapshot(projectId)
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "无法创建应用前恢复快照，未应用自动分镜结果。")
-      return
-    }
-    if (!recoverySnapshot) {
-      toast.error("无法创建应用前恢复快照，未应用自动分镜结果。")
-      return
-    }
-    try {
-      await projectRepository.saveAutoShotTask({ ...autoShotRun, review: { excludedCandidateIds: excludedAutoShotCandidateIds, appliedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "无法保存自动分镜审阅状态，未应用结果。")
-      return
-    }
-    editorHistory.commit()
-    setShots(applied.shots)
-    setShotFrames(applied.shotFrames)
-    setShotGroups(applied.groups)
-    const retainedShotIds = new Set(applied.shots.map((shot) => shot.id))
-    const provenance: Record<string, ShotDetectionMeta> = {}
-    for (const candidate of autoShotRun.candidates) {
-      if (excludedAutoShotCandidateIds.includes(candidate.id)) continue
-      const shot = applied.shots.find((item) => applied.shotFrames[item.id]?.first === candidate.startFrame && applied.shotFrames[item.id]?.last === candidate.endFrame - 1)
-      if (shot) provenance[shot.id] = { source: "auto-shot", taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash }
-    }
-    autoShotDetectionRef.current = provenance
-    setShotNotes((current) => retainShotMap(current, retainedShotIds))
-    setShotDims((current) => retainShotMap(current, retainedShotIds))
-    setShotScreenshotIds((current) => retainShotMap(current, retainedShotIds))
-    setPrimaryShotScreenshotIds((current) => retainShotMap(current, retainedShotIds))
-    setShotBoundaryScreenshotIds((current) => retainShotMap(current, retainedShotIds))
-    setSelectedShotIds([])
-    setSelectedGroupId(null)
-    setActiveShot(0)
-    setPendingAutoShotApply(null)
   }
 
   const playShot = (index: number) => {
@@ -2309,6 +2233,81 @@ export default function EditorWorkspace({
             }
   const SaveStatusIcon = saveButton.icon
 
+  const calibrationFormalShots = useMemo(() => shots.map((shot, index) => {
+    const frames = shotFrames[shot.id] ?? {
+      first: Math.round(shot.start * editorFrameRate),
+      last: Math.max(0, Math.round((shot.start + shot.duration) * editorFrameRate) - 1),
+    }
+    return {
+      id: shot.id,
+      projectId,
+      order: index,
+      startFrame: frames.first,
+      endFrame: frames.last + 1,
+      status: "draft" as const,
+      detection: autoShotDetectionRef.current[shot.id] ?? null,
+      primaryScreenshotId: primaryShotScreenshotIds[shot.id] ?? null,
+      screenshotIds: shotScreenshotIds[shot.id] ?? [],
+      firstFrameScreenshotId: shotBoundaryScreenshotIds[shot.id]?.first ?? null,
+      lastFrameScreenshotId: shotBoundaryScreenshotIds[shot.id]?.last ?? null,
+      analysisFields: shotDims[shot.id] ?? {},
+      description: shotNotes[shot.id]?.content ?? "",
+      notes: shotNotes[shot.id]?.analysis ?? "",
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }
+  }), [editorFrameRate, primaryShotScreenshotIds, project.createdAt, project.id, project.updatedAt, projectId, shotBoundaryScreenshotIds, shotDims, shotFrames, shotNotes, shotScreenshotIds, shots])
+
+  const applyCalibrationDraftToEditor = async (draft: import("../../shot-calibration/types").CalibrationDraft) => {
+    const currentMediaIdentity = autoShotRun?.mediaIdentity ?? autoShotTask.mediaIdentity
+    if (!currentMediaIdentity || draft.mediaIdentity.mediaIdentityDigest !== currentMediaIdentity.mediaIdentityDigest) {
+      toast.error("当前校准草稿与视频素材不匹配，未应用。")
+      return
+    }
+    await saveNow()
+    const latestProject = await projectRepository.getProject(projectId)
+    if (!latestProject) throw new Error("项目已不存在，无法应用校准草稿。")
+    const recoverySnapshot = await createProjectRecoverySnapshot(projectId)
+    if (!recoverySnapshot) throw new Error("无法创建应用前恢复快照。")
+    const now = new Date().toISOString()
+    const frameToMediaTime = (frame: number) => frameToTimestampFromArrays(draft.timebase.presentationTimestamps, draft.timebase.presentationDurations, frame)
+    const nextShots: ShotData[] = draft.segments.map((segment) => {
+      const source = shots.find((shot) => shot.id === segment.sourceShotId)
+      const start = frameToMediaTime(segment.startFrame)
+      const end = frameToMediaTime(segment.endFrame)
+      return source
+        ? { ...source, start, duration: Math.max(0, end - start) }
+        : { id: segment.id, start, duration: Math.max(0, end - start), type: "未分析", motion: "未分析", color: "未分析" }
+    })
+    if (autoShotRun?.controlSnapshot) {
+      const nextDetection = { ...autoShotDetectionRef.current }
+      for (const segment of draft.segments) {
+        const candidate = autoShotRun.candidates.find((item) => item.id === segment.sourceCandidateId)
+        if (!candidate) continue
+        nextDetection[segment.id] = { source: "auto-shot", taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash }
+      }
+      autoShotDetectionRef.current = nextDetection
+    }
+    const nextGroups = reconcileShotGroups(shotGroups, nextShots.map((shot) => shot.id))
+    const nextShotRecords = draft.segments.map((segment, order) => {
+      const source = calibrationFormalShots.find((shot) => shot.id === segment.sourceShotId)
+      const candidate = autoShotRun?.candidates.find((item) => item.id === segment.sourceCandidateId)
+      const detection = candidate && autoShotRun?.controlSnapshot ? { source: "auto-shot" as const, taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash } : source?.detection ?? { source: "manual" as const }
+      return { ...(source ?? { id: segment.id, projectId, order, status: "draft" as const, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: now, updatedAt: now }), id: segment.id, projectId, order, startFrame: segment.startFrame, endFrame: segment.endFrame, detection, updatedAt: now }
+    })
+    const updatedProject = await projectRepository.applyCalibrationDraft({ state: { project: latestProject, shots: nextShotRecords, groups: nextGroups, markers: annotationMarkers, template: template as import("../../project/types").ProjectTemplateSnapshotRecord | null }, draft, expectedUpdatedAt: latestProject.updatedAt, recoverySnapshotId: recoverySnapshot.id, task: autoShotRun })
+    editorHistory.commit()
+    setShots(nextShots)
+    setShotFrames(Object.fromEntries(draft.segments.map((segment) => [segment.id, { first: segment.startFrame, last: segment.endFrame - 1 }])))
+    setShotGroups(nextGroups)
+    onProjectUpdated(updatedProject)
+    setActiveShot(0)
+    setCurrentTime(0)
+    markDirty()
+    toast.success(`已应用 ${nextShots.length} 个镜头；应用前快照已保存。`)
+    onWorkflowNavigate?.("overview", "film")
+  }
+
   useEditorShortcuts({
     "file.save": () => {
       void saveNow().catch(() => undefined)
@@ -2422,7 +2421,7 @@ export default function EditorWorkspace({
               viewRange.outFrame! / (media.metadata?.frameRate ?? FPS),
             )
         : undefined,
-    "shot.trimStartToPlayhead": () => {
+    "shot.trimStartToPlayhead": workflowStage === "calibrate" ? undefined : () => {
       if (activeShot <= 0) return
       const frameRate = media.metadata?.frameRate ?? FPS
       const range = getShotRanges(frameRate)[activeShot]
@@ -2434,7 +2433,7 @@ export default function EditorWorkspace({
       )
         handleBoundaryCommit(activeShot - 1, currentFrame, activeShot)
     },
-    "shot.trimEndToPlayhead": () => {
+    "shot.trimEndToPlayhead": workflowStage === "calibrate" ? undefined : () => {
       if (activeShot >= shots.length - 1) return
       const frameRate = media.metadata?.frameRate ?? FPS
       const range = getShotRanges(frameRate)[activeShot]
@@ -2446,7 +2445,7 @@ export default function EditorWorkspace({
       )
         handleBoundaryCommit(activeShot, currentFrame + 1, activeShot)
     },
-    "selection.setInPoint": () => {
+    "selection.setInPoint": workflowStage === "calibrate" ? undefined : () => {
       const frameRate = media.metadata?.frameRate ?? FPS
       const frame = Math.max(
         0,
@@ -2463,7 +2462,7 @@ export default function EditorWorkspace({
             : range.outFrame,
       }))
     },
-    "selection.setOutPoint": () => {
+    "selection.setOutPoint": workflowStage === "calibrate" ? undefined : () => {
       const frameRate = media.metadata?.frameRate ?? FPS
       const frame = Math.max(
         0,
@@ -2480,9 +2479,9 @@ export default function EditorWorkspace({
         outFrame: frame,
       }))
     },
-    "marker.create": () => createAnnotationMarker("important"),
+    "marker.create": workflowStage === "calibrate" ? undefined : () => createAnnotationMarker("important"),
     "shot.splitAtPlayhead":
-      activeShortcutSurface === "preview" || activeShortcutSurface === "timeline"
+      workflowStage !== "calibrate" && (activeShortcutSurface === "preview" || activeShortcutSurface === "timeline")
         ? handleSplitShotAtPlayhead
         : undefined,
     "preview.toggleFullscreen":
@@ -2514,13 +2513,13 @@ export default function EditorWorkspace({
     },
     "help.show": () => setActiveTool("shortcuts"),
     "history.undo":
-      activeTool === "mask" && compositionShapeHistoryIndex > 0
+      workflowStage === "calibrate" ? undefined : activeTool === "mask" && compositionShapeHistoryIndex > 0
         ? undoCompositionShapes
         : editorHistory.canUndo
           ? editorHistory.undo
           : undefined,
     "history.redo":
-      activeTool === "mask" &&
+      workflowStage === "calibrate" ? undefined : activeTool === "mask" &&
       compositionShapeHistoryIndex <
         compositionShapeHistoryRef.current.length - 1
         ? redoCompositionShapes
@@ -2528,7 +2527,7 @@ export default function EditorWorkspace({
           ? editorHistory.redo
           : undefined,
     "editing.delete":
-      activeTool === "mask" && selectedCompositionShapeId
+      workflowStage === "calibrate" ? undefined : activeTool === "mask" && selectedCompositionShapeId
         ? deleteSelectedCompositionShape
         : shots.length > 1
           ? () => handleMergeShotAtIndex(activeShot)
@@ -3570,16 +3569,78 @@ export default function EditorWorkspace({
         <CreateView onBackToLearn={() => onWorkflowNavigate?.("learn", "notes")} />
       ) : (
         <CalibrateView
-          record={autoShotRun}
-          excludedCandidateIds={excludedAutoShotCandidateIds}
-          selectedCandidate={autoShotRun?.candidates.find((candidate) => candidate.id === selectedAutoShotCandidateId) ?? null}
-          frameRate={media.metadata?.frameRate ?? FPS}
-          onSelectCandidate={(candidate) => {
-            setSelectedAutoShotCandidateId(candidate.id)
-            setCurrentTime(candidate.startFrame / (media.metadata?.frameRate ?? FPS))
+          projectId={projectId}
+          projectUpdatedAt={mediaProject.updatedAt}
+          mediaIdentity={autoShotRun?.mediaIdentity ?? autoShotTask.mediaIdentity}
+          mediaSource={media.source}
+          videoUrl={videoUrl}
+          frameRate={editorFrameRate}
+          totalFrames={resolveAutoShotTotalFrames(autoShotRun?.candidates ?? [], durationSeconds, editorFrameRate)}
+          durationSeconds={durationSeconds}
+          task={autoShotRun}
+          formalShots={calibrationFormalShots}
+          previewProps={{
+            showCompositionGrid: maskOn,
+            compositionOverlay,
+            contentOverlay,
+            contentOverlayModel,
+            isCompositionOverlayEditing: activeTool === "mask" && compositionOverlay.enabled,
+            compositionDrawingTool,
+            selectedCompositionShapeId,
+            onCompositionShapesChange: updateCompositionShapes,
+            onCompositionShapeEditEnd: commitCompositionShapeHistory,
+            onSelectedCompositionShapeChange: setSelectedCompositionShapeId,
+            onCompositionDrawingToolChange: setCompositionDrawingTool,
+            backgroundColor: canvasBackgroundColor,
+            zoom: previewZoom,
+            aspectPreset: previewAspectPreset,
+            fullscreenRequest,
+            compositionCancelRequest,
+            onFullscreenChange: setIsPreviewFullscreen,
+            onActivate: () => setActiveShortcutSurface("preview"),
+            sourceWidth: media.metadata?.width ?? 0,
+            sourceHeight: media.metadata?.height ?? 0,
+            videoUrl,
+            videoRef,
+            status: playbackStatus,
+            errorMessage: playbackErrorMessage,
+            onRetry: retryVideoPlayback,
+            onLoadedMetadata,
+            onTimeUpdate: handleVideoTimeUpdate,
+            onPlay,
+            onPause,
+            onEnded,
+            onSeeking,
+            onSeeked,
+            onWaiting,
+            onCanPlay,
+            onError,
           }}
-          onToggleCandidate={(candidateId, included) => setExcludedAutoShotCandidateIds((current) => included ? current.filter((id) => id !== candidateId) : [...new Set([...current, candidateId])])}
-          onPreviewApply={previewAutoShotCuts}
+          controlsProps={{
+            currentTime,
+            durationSeconds,
+            isPlaying: playing,
+            isUnavailable: playbackStatus === "loading" || playbackStatus === "error",
+            isMuted,
+            speed,
+            canvasBackgroundColor,
+            zoom: previewZoom,
+            aspectPreset: previewAspectPreset,
+            showSafeMargins: compositionOverlay.showSafeMargins,
+            isFullscreen: isPreviewFullscreen,
+            onPreviousShot: () => setCurrentTime(Math.max(0, currentTime - 1)),
+            onNextShot: () => setCurrentTime(Math.min(durationSeconds, currentTime + 1)),
+            onCurrentTimeChange: setCurrentTime,
+            onPlayingChange: playViewRange,
+            onMutedChange: setMuted,
+            onSpeedChange: setSpeed,
+            onCanvasBackgroundColorChange: setCanvasBackgroundColor,
+            onZoomChange: setPreviewZoom,
+            onAspectPresetChange: setPreviewAspectPreset,
+            onSafeMarginsChange: (visible) => updateCompositionOverlay({ ...compositionOverlay, showSafeMargins: visible }),
+            onFullscreenToggle: () => setFullscreenRequest((request) => request + 1),
+          }}
+          onApply={applyCalibrationDraftToEditor}
           onBackToPrepare={() => onWorkflowNavigate?.("prepare", "media")}
         />
       )}
@@ -3640,26 +3701,6 @@ export default function EditorWorkspace({
           />
         </Suspense>
       )}
-      <Dialog open={pendingAutoShotApply !== null} onOpenChange={(open) => { if (!open) setPendingAutoShotApply(null) }}>
-        <DialogContent className="border border-border bg-bg-card text-text-base sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-white">确认应用自动分镜</DialogTitle>
-            <DialogDescription className="text-text-muted">应用后会一次性替换当前镜头边界，并清理受影响镜头的分析资料与截图。应用前会自动创建恢复快照。</DialogDescription>
-          </DialogHeader>
-          {pendingAutoShotApply && (
-            <div className="space-y-2 rounded-lg border border-border bg-bg-input p-3 editor-body text-text-dim">
-              <p>将生成 {pendingAutoShotApply.output.shots.length} 个镜头，其中 {pendingAutoShotApply.output.summary.preservedCount} 个保持原有范围和资料。</p>
-              <p>将新建或改变 {pendingAutoShotApply.output.summary.changedCount} 个镜头，移除 {pendingAutoShotApply.output.summary.removedCount} 个旧镜头引用。</p>
-              {pendingAutoShotApply.output.summary.removedGroupCount > 0 && <p className="text-amber-300">将移除 {pendingAutoShotApply.output.summary.removedGroupCount} 个失效分组引用。</p>}
-              {pendingAutoShotApply.output.summary.changedGroupCount > 0 && <p>将协调 {pendingAutoShotApply.output.summary.changedGroupCount} 个分组范围。</p>}
-            </div>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setPendingAutoShotApply(null)}>取消</Button>
-            <Button type="button" onClick={() => void applyAutoShotCuts()}>创建快照并应用</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

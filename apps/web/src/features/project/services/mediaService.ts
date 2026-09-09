@@ -13,7 +13,7 @@ export interface SelectedAudio {
 interface SessionVideoAccess {
   assetId: string;
   file: File;
-  handle: FileSystemFileHandle;
+  handle: FileSystemFileHandle | null;
 }
 
 const sessionVideoAccess = new Map<string, SessionVideoAccess>();
@@ -61,7 +61,7 @@ function createFingerprint(file: File): MediaSourceFingerprint {
   };
 }
 
-export function rememberVideoAccess(projectId: string, assetId: string, file: File, handle: FileSystemFileHandle) {
+export function rememberVideoAccess(projectId: string, assetId: string, file: File, handle: FileSystemFileHandle | null) {
   sessionVideoAccess.set(projectId, { assetId, file, handle });
 }
 

@@ -22,6 +22,8 @@ interface UseFrameThumbnailQueueOptions {
   mediaFingerprint: MediaSourceFingerprint;
   durationSeconds: number;
   frameRate: number;
+  presentationTimestamps?: readonly number[];
+  presentationDurations?: readonly number[];
   frames: number[];
   priorityFrames: number[];
 }
@@ -104,7 +106,7 @@ function updateActiveResources(consumerId: number, mediaKey: string, frames: num
   scheduleSessionPrune();
 }
 
-export default function useFrameThumbnailQueue({ projectId, sourceUrl, mediaFingerprint, durationSeconds, frameRate, frames, priorityFrames }: UseFrameThumbnailQueueOptions) {
+export default function useFrameThumbnailQueue({ projectId, sourceUrl, mediaFingerprint, durationSeconds, frameRate, presentationTimestamps, presentationDurations, frames, priorityFrames }: UseFrameThumbnailQueueOptions) {
   const [cacheVersion, setCacheVersion] = useState(0);
   const consumerIdRef = useRef(++consumerSequence);
   const requestVersionRef = useRef(0);
@@ -151,7 +153,7 @@ export default function useFrameThumbnailQueue({ projectId, sourceUrl, mediaFing
           else missing.push(frame);
         }
         if (!missing.length || requestVersionRef.current !== version) return;
-        const decoder = await createFrameThumbnailDecoder({ projectId, sourceUrl, mediaFingerprint, durationSeconds, frameRate });
+        const decoder = await createFrameThumbnailDecoder({ projectId, sourceUrl, mediaFingerprint, durationSeconds, frameRate, presentationTimestamps, presentationDurations });
         try {
           for (const frame of missing) {
             if (requestVersionRef.current !== version) return;
@@ -173,7 +175,7 @@ export default function useFrameThumbnailQueue({ projectId, sourceUrl, mediaFing
     };
   // The frame arrays are recomputed by the timeline render; the serialized keys
   // keep identical viewport requests from restarting the decoder.
-  }, [durationSeconds, frameKey, frameRate, mediaFingerprint, mediaKey, priorityKey, projectId, sourceUrl]);
+  }, [durationSeconds, frameKey, frameRate, mediaFingerprint, mediaKey, priorityKey, presentationDurations, presentationTimestamps, projectId, sourceUrl]);
 
   return thumbnails;
 }

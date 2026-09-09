@@ -93,9 +93,9 @@ export default function ProjectLibrary({ onOpenProject }: ProjectLibraryProps) {
       let project = await createProject({ title: newProjectTitle, folderId: newProjectFolderId });
       createdProjectId = project.id;
       if (pendingVideo) {
-        if (!pendingVideo.handle) throw new Error("当前浏览器无法保存视频引用，请使用 Chrome 或 Edge 重新选择视频。");
         const primaryVideoAsset = createLinkedVideoAsset(project.id, pendingVideo.source, pendingVideo.metadata, false);
-        await projectRepository.saveMediaAssetHandle(primaryVideoAsset.id, pendingVideo.handle);
+        if (pendingVideo.handle) await projectRepository.saveMediaAssetHandle(primaryVideoAsset.id, pendingVideo.handle);
+        else await projectRepository.saveMediaAssetBlob(primaryVideoAsset.id, pendingVideo.file);
         project = await updateProject({ ...project, primaryVideoAssetId: primaryVideoAsset.id, mediaAssets: [primaryVideoAsset] });
       }
       setIsProjectModalOpen(false);

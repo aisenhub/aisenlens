@@ -1,5 +1,29 @@
 # 参考项目索引
 
+## 2026-09-09 总览与深拆职责、研究范围和上下文（设计研究）
+
+用户明确“顺序逐镜记录”和“带问题选段研究”同等重要。本轮先查 Cinemetrics 官方测量说明、Columbia Deconstructor 历史教学工具说明及 Film Language Glossary，形成“总览选范围/建结构，深拆在同一播放器上下文收集证据与解释”的初案，再依 OpenReel → OpenCut 顺序读取相关片段。仅设计研究，未修改产品代码，未声称完成浏览器验收。
+
+| 模块 | 本轮查阅文件 | 已确认事实 | AisenLens 建议（待实施） |
+| --- | --- | --- | --- |
+| 工作区与检查器上下文 | OpenReel `openreel-video-main/apps/web/src/components/editor/EditorInterface.tsx`（前115行）、`InspectorPanel.tsx`（导入及 selectedItems/selectedClipIds 相关片段） | 工作区独立引入 Preview、Timeline、Inspector；检查器消费显式 selectedItems/selectedClipIds，播放控制另取 timeline store。 | 深拆共用播放器与局部时间线；分开研究范围、检查对象与播放位置，不根据“镜头有父分组”自动替换镜头检查器。 |
+| 场景导航和领域命令 | OpenCut `opencut-classic-main/apps/web/src/components/editor/scenes-view.tsx`（前95行）、`core/managers/scenes-manager.ts`（前80行） | ScenesView 调用 manager 切换/删除；manager 有 active/list 和 command 执行入口。 | 采纳明确目标导航与命令边界；OpenCut 场景是编辑实体，不能据此认定支持 AisenLens 叙事层级。 |
+
+本项目实际复核：`OverviewView/FilmMap/StructureView/deriveFilmOverview`、`AnalyzeWorkspace/ContextInspector/ShotInspector/SceneInspector`、`ShotBrowserView`、`SoundWorkspace`、`groupService`、`EditorWorkspace` 的入口/分支，以及 workflow 路由与项目 store。当前总览是统计＋镜头条/Scene卡片；Shots 与 Sound 分支不挂载 Scenes 的播放器；ContextInspector 在 group 非空时优先展示场景摘要；Group 跨kind互斥且至少两镜；旧规划中的 SceneShotStrip 未在 src 检索到，shotInspectorViewModel 未接入生产组件。中位数偶数样本取上中位而非两中值均值，cutsWindowSeconds=10 未用于局部密度计算。上述均为源码结论，不代表已复现所有运行时问题。
+
+设计建议：一套正式镜头/结构/笔记数据；总览支持预览、选范围、同页建结构和回到上次研究；深拆支持全片顺序/范围研究切换、显式检查对象、前后镜关系与声音上下文；研究范围不强制成为 Scene。结构跨层覆盖规则和单镜场景须独立调整并同步校准后的引用重整，不从目前平面互斥模型伪造嵌套结构。情绪/人物/技法仅在存在真实标注或分析来源时展示。
+
+## 2026-09-08 校准流程：漏切巡视与边界微调（设计建议）
+
+先查阅 Adobe Premiere Scene Edit Detection 官方说明、Blackmagic Scene Cut Detection 官方培训资料及 PySceneDetect CLI/检测器文档，形成“连续巡视 + 就地补切 + 边界前后帧对照”的本地优先初案，再按 OpenReel → OpenCut 顺序读取下列模块相关文件。本轮不修改产品代码；建议尚未实现或经用户验证。
+
+| 模块 | 本轮实际查阅文件 | 已确认结论 | AisenLens 设计建议 |
+| --- | --- | --- | --- |
+| 播放头补切 | OpenReel `openreel-video-main/apps/web/src/utils/timeline-item-actions.ts` | 分割委托 store 动作；可分割目标须被选中且时间严格位于片段内部。 | 复用本项目 `manualShotService.ts` 的区间约束，校准页让目标明确跟随播放头所在草稿镜头。 |
+| 分割命令与时间精度 | OpenCut `opencut-classic-main/apps/web/src/commands/timeline/element/split-elements.ts`（前145行） | 命令执行前保存 tracks，拒绝端点切分；源时间只取整一次，再由总量推导右侧时长。 | 校准修改采用可撤销命令、统一边界精度；不复制多轨、动画和变速模型。 |
+
+本项目代码复核：`CalibrateView.tsx` 当前只连接候选保留/排除与应用预览；`CalibrationWorkbench.tsx` 明确只记录研究真值；正式编辑器另有 `manualShotService.ts` 和 `shotBoundaryService.ts`。建议以可编辑校准草稿汇合补切、移点、删点，保留应用前恢复快照。检查范围与已处理候选分别记录；不能用候选分数推导漏切概率，也不能把“疑点处理完”显示为全片已复核。
+
 ## 2026-09-08 Workflow 重构规划（正式产品，排除废弃预览）
 
 先复核 React Router useSearchParams、Zustand createStore、WAI Window Splitter、wavesurfer Regions 官方资料，再提出“既有栈导航 + 项目作用域会话 + 复用领域能力”的初案；随后按 OpenReel → OpenCut 顺序检查以下文件。本轮只写规划，没有修改生产代码，也不把参考项目功能当作 AisenLens 已有能力。

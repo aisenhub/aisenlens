@@ -190,6 +190,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
     pause,
     cancel,
     isActive,
+    mediaIdentity,
     mediaIdentityDigest: mediaIdentity?.mediaIdentityDigest ?? null,
   };
 }

@@ -4,12 +4,14 @@ import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
 import type { CalibrationAnnotationRecord } from "../../scene-calibration/types";
+import type { CalibrationDraft, CalibrationDraftRecord } from "../../shot-calibration/types";
+import { fromCalibrationDraftRecord, toCalibrationDraftRecord, validateCalibrationDraft } from "../../shot-calibration/services/calibrationDraftService";
 import { hashSceneDetectionConfig } from "../../../../../../packages/scene-engine/src/api/configHash.ts";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 15;
+const DATABASE_VERSION = 16;
 const PROJECTS_STORE = "projects";
 const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
@@ -25,6 +27,18 @@ const AUTO_SHOT_RUNS_STORE = "auto-shot-runs";
 const CALIBRATION_ANNOTATIONS_STORE = "scene-calibration-annotations";
 const SHOT_GROUPS_STORE = "shot-groups";
 const RECOVERY_SNAPSHOTS_STORE = "recovery-snapshots";
+const CALIBRATION_DRAFTS_STORE = "shot-calibration-drafts";
+
+export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write";
+let projectRepositoryFaultInjector: ((point: ProjectRepositoryFaultPoint) => void) | null = null;
+
+export function setProjectRepositoryFaultInjector(injector: ((point: ProjectRepositoryFaultPoint) => void) | null): void {
+  projectRepositoryFaultInjector = injector;
+}
+
+function injectProjectRepositoryFault(point: ProjectRepositoryFaultPoint): void {
+  projectRepositoryFaultInjector?.(point);
+}
 
 interface MediaHandleRecord {
   assetId: string;
@@ -194,6 +208,11 @@ function openDatabase(): Promise<IDBDatabase> {
         const snapshots = database.createObjectStore(RECOVERY_SNAPSHOTS_STORE, { keyPath: "id" });
         snapshots.createIndex("projectId", "projectId", { unique: false });
         snapshots.createIndex("projectCreatedAt", ["projectId", "createdAt"], { unique: false });
+      }
+      if (!database.objectStoreNames.contains(CALIBRATION_DRAFTS_STORE)) {
+        const drafts = database.createObjectStore(CALIBRATION_DRAFTS_STORE, { keyPath: "id" });
+        drafts.createIndex("projectId", "projectId", { unique: false });
+        drafts.createIndex("projectMediaKey", "projectMediaKey", { unique: true });
       }
     };
   });
@@ -449,7 +468,7 @@ export function createProjectRepository(): ProjectRepository {
 
     async deleteProject(projectId: string) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, CALIBRATION_DRAFTS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE], "readwrite");
       const mediaAssets = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as ProjectRecord | undefined;
       mediaAssets?.mediaAssets.forEach((asset) => {
         transaction.objectStore(MEDIA_ASSET_HANDLES_STORE).delete(asset.id);
@@ -491,6 +510,7 @@ export function createProjectRepository(): ProjectRepository {
       deleteProjectRecords(transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(SHOT_GROUPS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(CALIBRATION_DRAFTS_STORE), projectId);
       await transactionResult(transaction);
     },
 
@@ -719,6 +739,93 @@ export function createProjectRepository(): ProjectRepository {
       const transaction = database.transaction(CALIBRATION_ANNOTATIONS_STORE, "readwrite");
       await deleteProjectRecordsAndWait(transaction.objectStore(CALIBRATION_ANNOTATIONS_STORE), projectId);
       await transactionResult(transaction);
+    },
+
+    async getCalibrationDraft(projectId: string, mediaIdentity: AutoShotMediaIdentity) {
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_DRAFTS_STORE, "readonly");
+      const record = await requestResult(transaction.objectStore(CALIBRATION_DRAFTS_STORE).index("projectMediaKey").get([projectId, mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
+      await transactionResult(transaction);
+      if (!record) return null;
+      try {
+        const draft = fromCalibrationDraftRecord(record);
+        return sameAutoShotMediaIdentity(draft.mediaIdentity, mediaIdentity) ? draft : null;
+      } catch {
+        return null;
+      }
+    },
+
+    async saveCalibrationDraft(draft: CalibrationDraft, expectedRevision?: number) {
+      validateCalibrationDraft(draft);
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_DRAFTS_STORE, "readwrite");
+      const store = transaction.objectStore(CALIBRATION_DRAFTS_STORE);
+      const existing = await requestResult(store.index("projectMediaKey").get([draft.projectId, draft.mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
+      if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw new Error("校准草稿已在其他标签页更新，请重新加载后再保存。");
+      store.put(toCalibrationDraftRecord(draft));
+      await transactionResult(transaction);
+    },
+
+    async deleteCalibrationDraft(projectId: string, mediaIdentity?: AutoShotMediaIdentity) {
+      const database = await openDatabase();
+      const transaction = database.transaction(CALIBRATION_DRAFTS_STORE, "readwrite");
+      const store = transaction.objectStore(CALIBRATION_DRAFTS_STORE);
+      if (mediaIdentity) {
+        const existing = await requestResult(store.index("projectMediaKey").get([projectId, mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
+        if (existing) store.delete(existing.id);
+      } else {
+        await deleteProjectRecordsAndWait(store, projectId);
+      }
+      await transactionResult(transaction);
+    },
+
+    async applyCalibrationDraft({ state, draft, expectedUpdatedAt, recoverySnapshotId, task }) {
+      validateCalibrationDraft(draft);
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, CALIBRATION_DRAFTS_STORE, AUTO_SHOT_RUNS_STORE], "readwrite");
+      const completion = transactionResult(transaction);
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
+        if (!current) throw new Error("项目不存在或已删除，无法应用校准草稿。");
+        if (current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开校准页后再应用。");
+        const draftStore = transaction.objectStore(CALIBRATION_DRAFTS_STORE);
+        const storedDraft = await requestResult(draftStore.index("projectMediaKey").get([draft.projectId, draft.mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
+        if (storedDraft && storedDraft.revision !== draft.revision) throw new Error("校准草稿已在其他标签页更新，请重新加载后再应用。");
+        if (storedDraft?.status === "applied" && storedDraft.applyReceipt?.draftId === draft.id && storedDraft.applyReceipt.appliedDraftRevision === draft.revision) {
+          await completion;
+          return current;
+        }
+        const now = new Date().toISOString();
+        const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
+        injectProjectRepositoryFault("project-write");
+        projectStore.put(updatedProject);
+        injectProjectRepositoryFault("shots-write");
+        await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
+        await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
+        const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
+        const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
+        if (existingTemplate) templateStore.delete(existingTemplate.id);
+        state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
+        injectProjectRepositoryFault("groups-write");
+        state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
+        injectProjectRepositoryFault("markers-write");
+        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
+        injectProjectRepositoryFault("template-write");
+        if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
+        injectProjectRepositoryFault("task-write");
+        if (task) transaction.objectStore(AUTO_SHOT_RUNS_STORE).put({ ...task, review: { ...task.review, appliedAt: now, updatedAt: now }, updatedAt: now });
+        const appliedDraft: CalibrationDraft = { ...structuredClone(draft), status: "applied", applyReceipt: { draftId: draft.id, appliedDraftRevision: draft.revision, projectUpdatedAt: now, appliedAt: now, recoverySnapshotId }, updatedAt: now };
+        injectProjectRepositoryFault("draft-receipt-write");
+        draftStore.put(toCalibrationDraftRecord(appliedDraft));
+        await completion;
+        return updatedProject;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
     },
 
     async listProjectShotGroups(projectId: string) {

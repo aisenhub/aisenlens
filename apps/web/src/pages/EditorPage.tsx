@@ -22,7 +22,7 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
     workflow.ensureProjectInLocation()
   }, [workflow.ensureProjectInLocation])
 
-  return <ProjectMediaGate projectId={projectId} onNavigate={editorProps.onNavigate} onProjectLoaded={onProjectLoaded}>
+  return <ProjectMediaGate projectId={workflow.projectId} onNavigate={editorProps.onNavigate} onProjectLoaded={onProjectLoaded}>
     {(project, videoUrl, primaryVideoAsset, onRenameProject, onImportVideo, isSelectingVideo) => {
       const emptyMediaAsset: MediaAsset = {
         id: `empty-video-${project.id}`,

@@ -69,12 +69,20 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
       return;
     }
     if (!handle) {
-      const missingProject = await projectRepository.updateProject({ ...nextProject, mediaAssets: nextProject.mediaAssets.map((asset) => asset.id === primaryVideoAsset.id ? { ...asset, status: "missing", updatedAt: new Date().toISOString() } : asset) });
-      if (!isCurrentRequest()) return;
-      setProject(missingProject);
-      onProjectLoaded(missingProject);
-      setPreviewUrl(null);
-      setLoadState("missing");
+      const blob = await projectRepository.getMediaAssetBlob(primaryVideoAsset.id);
+      if (!blob || !isCurrentRequest()) {
+        const missingProject = await projectRepository.updateProject({ ...nextProject, mediaAssets: nextProject.mediaAssets.map((asset) => asset.id === primaryVideoAsset.id ? { ...asset, status: "missing", updatedAt: new Date().toISOString() } : asset) });
+        if (!isCurrentRequest()) return;
+        setProject(missingProject);
+        onProjectLoaded(missingProject);
+        setPreviewUrl(null);
+        setLoadState("missing");
+        return;
+      }
+      const file = new File([blob], primaryVideoAsset.source.name, { type: primaryVideoAsset.source.mimeType });
+      rememberVideoAccess(nextProject.id, primaryVideoAsset.id, file, null);
+      setPreviewUrl(URL.createObjectURL(file));
+      setLoadState("ready");
       return;
     }
 
@@ -146,7 +154,6 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
     setIsSelectingVideo(true);
     try {
       const selectedVideo = await selectLocalVideo();
-      if (!selectedVideo.handle) throw new Error("当前浏览器无法保存视频引用，请使用 Chrome 或 Edge 重新选择视频。");
       const inspectedVideo = await inspectLocalVideo(selectedVideo);
       const existingAsset = project.mediaAssets.find((asset) => asset.id === project.primaryVideoAssetId && asset.kind === "video") ?? null;
       if (existingAsset?.source && !isMatchingVideo(selectedVideo.file, existingAsset.source)) {
@@ -154,7 +161,8 @@ export default function ProjectMediaGate({ projectId, onNavigate, onProjectLoade
         return;
       }
       const linkedVideoAsset = createLinkedVideoAsset(project.id, inspectedVideo.source!, inspectedVideo.metadata!, existingAsset?.status === "missing", existingAsset?.id);
-      await projectRepository.saveMediaAssetHandle(linkedVideoAsset.id, selectedVideo.handle);
+      if (selectedVideo.handle) await projectRepository.saveMediaAssetHandle(linkedVideoAsset.id, selectedVideo.handle);
+      else await projectRepository.saveMediaAssetBlob(linkedVideoAsset.id, selectedVideo.file);
       rememberVideoAccess(project.id, linkedVideoAsset.id, selectedVideo.file, selectedVideo.handle);
       const updatedProject = await projectRepository.updateProject({
         ...project,

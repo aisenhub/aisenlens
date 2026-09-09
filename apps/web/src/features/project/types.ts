@@ -7,6 +7,7 @@ import type { CompositionOverlaySettings } from "../composition-overlay/types";
 import type { ContentOverlaySettings } from "../content-overlay/types";
 import type { AutoShotTaskRecord } from "../auto-shot/types";
 import type { CalibrationAnnotationRecord } from "../scene-calibration/types";
+import type { CalibrationDraft } from "../shot-calibration/types";
 
 export type MediaAssetStatus = "unlinked" | "linked" | "missing" | "unsupported";
 export type MediaAssetKind = "video" | "audio";
@@ -221,6 +222,10 @@ export interface ProjectRepository {
   getCalibrationAnnotation: (projectId: string, mediaIdentity: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<CalibrationAnnotationRecord | null>;
   saveCalibrationAnnotation: (annotation: CalibrationAnnotationRecord) => Promise<void>;
   deleteCalibrationAnnotation: (projectId: string) => Promise<void>;
+  getCalibrationDraft: (projectId: string, mediaIdentity: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<CalibrationDraft | null>;
+  saveCalibrationDraft: (draft: CalibrationDraft, expectedRevision?: number) => Promise<void>;
+  deleteCalibrationDraft: (projectId: string, mediaIdentity?: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<void>;
+  applyCalibrationDraft: (input: { state: ProjectEditorState; draft: CalibrationDraft; expectedUpdatedAt: string; recoverySnapshotId: string; task: AutoShotTaskRecord | null }) => Promise<ProjectRecord>;
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
   replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[]) => Promise<void>;
   listProjectAnnotationMarkers: (projectId: string) => Promise<AnnotationMarker[]>;

@@ -46,7 +46,7 @@ const CANVAS_BACKGROUND_SWATCHES = [
   "#0EA5E9",
 ]
 
-interface VideoPlaybackControlsProps {
+export interface VideoPlaybackControlsProps {
   currentTime: number
   durationSeconds: number
   isPlaying: boolean

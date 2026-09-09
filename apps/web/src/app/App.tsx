@@ -59,22 +59,12 @@ const getPageForPath = (pathname: string) => {
   )
 }
 
-function isPageReload() {
-  const navigationEntry = performance.getEntriesByType(
-    "navigation",
-  )[0] as PerformanceNavigationTiming | undefined
-
-  return navigationEntry?.type === "reload"
-}
-
 function getInitialActiveProjectId() {
   const projectIdFromLocation = new URLSearchParams(window.location.search).get(
     "project",
   )
   if (projectIdFromLocation) return projectIdFromLocation
-  return isPageReload()
-    ? window.sessionStorage.getItem("aisenlens:active-project-id")
-    : null
+  return window.sessionStorage.getItem("aisenlens:active-project-id")
 }
 
 export default function App() {
@@ -126,6 +116,14 @@ export default function App() {
       )
     else window.sessionStorage.removeItem("aisenlens:active-project-id")
   }, [activeProjectId])
+
+  useEffect(() => {
+    if (location.pathname !== "/app" || !activeProjectId) return
+    const params = new URLSearchParams(location.search)
+    if (params.get("project") === activeProjectId) return
+    params.set("project", activeProjectId)
+    navigate({ pathname: "/app", search: `?${params.toString()}` }, { replace: true })
+  }, [activeProjectId, location.pathname, location.search, navigate])
 
   const handleNavigate = (nextPage: number) => {
     const path = PAGE_PATHS[nextPage]
