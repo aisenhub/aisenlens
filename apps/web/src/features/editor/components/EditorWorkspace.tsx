@@ -153,6 +153,8 @@ const AnalyzeWorkspace = lazy(() => import("../../analysis/components/AnalyzeWor
 const LearnView = lazy(() => import("../../learn/components/LearnView"))
 const CreateView = lazy(() => import("../../workflow/components/CreateView"))
 import type { LearningSource } from "../../learn/services/deriveLearningSources"
+import useResearchWorkbench from "../../analysis/hooks/useResearchWorkbench"
+import type { EvidenceRef, ResearchContext, ResearchRange, ResearchTarget } from "../../analysis/types.ts"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -263,6 +265,8 @@ export default function EditorWorkspace({
   const setSessionResearchMode = useProjectSession((state) => state.setResearchMode)
   const setSessionResearchScope = useProjectSession((state) => state.setResearchScope)
   const setSessionResearchQueue = useProjectSession((state) => state.setResearchQueue)
+  const sessionResearchTargetValue = useProjectSession((state) => state.researchTarget)
+  const sessionResearchTarget: ResearchTarget | null = sessionResearchTargetValue && (sessionResearchTargetValue.kind === "shot" || sessionResearchTargetValue.kind === "group" || sessionResearchTargetValue.kind === "range") ? { kind: sessionResearchTargetValue.kind, id: sessionResearchTargetValue.id } : null
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
   const autoShotDetectionRef = useRef<Record<string, ShotDetectionMeta>>({})
@@ -450,8 +454,9 @@ export default function EditorWorkspace({
 
   useEffect(() => {
     setSessionSelection({ shotId: shots[activeShot]?.id ?? null })
+    if (sessionResearchTarget?.kind === "range") return
     setSessionResearchTarget(selectedGroupId ? { kind: "group", id: selectedGroupId } : shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
-  }, [activeShot, selectedGroupId, setSessionResearchTarget, setSessionSelection, shots])
+  }, [activeShot, selectedGroupId, sessionResearchTarget?.kind, setSessionResearchTarget, setSessionSelection, shots])
 
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
@@ -474,6 +479,8 @@ export default function EditorWorkspace({
   useEffect(() => {
     setAutoShotMediaIdentityDigest(autoShotTask.mediaIdentityDigest)
   }, [autoShotTask.mediaIdentityDigest])
+  const researchWorkbench = useResearchWorkbench({ projectId })
+  const researchMediaIdentityDigest = autoShotMediaIdentityDigest ?? "unidentified-media"
   const autoShotPresets = useMemo(
     () => listFrontendPresetDefinitions(getProductionPresetRegistry(), "production"),
     [],
@@ -2313,6 +2320,27 @@ export default function EditorWorkspace({
     onWorkflowNavigate?.("overview", "film")
   }
 
+  const updateResearchContext = useCallback((target: ResearchTarget, patch: Partial<Pick<ResearchContext, "question" | "status" | "needsReview">>) => researchWorkbench.updateContext(target, patch), [researchWorkbench.updateContext])
+  const addResearchEvidence = useCallback((target: ResearchTarget, evidence: EvidenceRef) => { void researchWorkbench.addEvidence(target, evidence) }, [researchWorkbench.addEvidence])
+  const removeResearchEvidence = useCallback((target: ResearchTarget, evidenceId: string) => { void researchWorkbench.removeEvidence(target, evidenceId) }, [researchWorkbench.removeEvidence])
+  const createResearchRange = useCallback(async (startUs: number, endUs: number) => {
+    const range = await researchWorkbench.createRangeForMedia({ startUs, endUs, mediaIdentityDigest: researchMediaIdentityDigest })
+    setSessionResearchMode("range")
+    setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
+    setSessionResearchTarget({ kind: "range", id: range.id })
+    return range
+  }, [researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchMode, setSessionResearchScope, setSessionResearchTarget])
+  const updateResearchRange = useCallback((range: ResearchRange, patch: Partial<Pick<ResearchRange, "startUs" | "endUs" | "title" | "observation" | "interpretation" | "summary">>) => researchWorkbench.updateRange(range, patch), [researchWorkbench.updateRange])
+  const saveAndNextResearchShot = useCallback(async () => {
+    await researchWorkbench.flush()
+    const nextIndex = activeShot + 1
+    if (!shots[nextIndex]) return
+    setSelectedGroupId(null)
+    setActiveShot(nextIndex)
+    setCurrentTime(shots[nextIndex].start)
+    setSessionResearchTarget({ kind: "shot", id: shots[nextIndex].id })
+  }, [activeShot, researchWorkbench.flush, setSessionResearchTarget, shots, setCurrentTime])
+
   useEditorShortcuts({
     "file.save": () => {
       void saveNow().catch(() => undefined)
@@ -2651,6 +2679,13 @@ export default function EditorWorkspace({
         project={mediaProject}
         frameRate={media.metadata?.frameRate ?? FPS}
         currentFrame={Math.round(currentTime * (media.metadata?.frameRate ?? FPS))}
+        currentTime={currentTime}
+        mediaIdentityDigest={researchMediaIdentityDigest}
+        researchTarget={sessionResearchTarget}
+        researchRanges={researchWorkbench.ranges}
+        researchContexts={researchWorkbench.contexts}
+        firstScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.first : null}
+        lastScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.last : null}
         onViewChange={(view) => onWorkflowNavigate?.("analyze", view)}
         onLocateShot={(index) => {
           setSelectedGroupId(null)
@@ -2667,8 +2702,15 @@ export default function EditorWorkspace({
           }))
         }}
         onProjectUpdated={handleMediaProjectUpdated}
+        onUpdateResearchContext={updateResearchContext}
+        onAddEvidence={addResearchEvidence}
+        onRemoveEvidence={removeResearchEvidence}
+        onCreateResearchRange={createResearchRange}
+        onUpdateResearchRange={updateResearchRange}
+        onSaveAndNext={saveAndNextResearchShot}
+        isResearchSaving={researchWorkbench.writeState === "saving"}
+        researchError={researchWorkbench.error}
       >
-      {workflowView === "scenes" ? (
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* ── Far left: tool column ── */}
         <div className="flex shrink-0 border-r border-border">
@@ -3501,7 +3543,6 @@ export default function EditorWorkspace({
           )}
         </aside>
       </div>
-      ) : null}
       </AnalyzeWorkspace>
       ) : workflowStage === "prepare" ? (
         <PrepareView
@@ -3573,6 +3614,8 @@ export default function EditorWorkspace({
           shots={shots}
           groups={shotGroups}
           notes={shotNotes}
+          researchRanges={researchWorkbench.ranges}
+          researchContexts={researchWorkbench.contexts}
           onOpenSource={(source: LearningSource) => {
             if (source.kind === "shot") {
               const index = shots.findIndex((shot) => shot.id === source.id)
@@ -3580,10 +3623,19 @@ export default function EditorWorkspace({
                 setActiveShot(index)
                 setCurrentTime(shots[index]?.start ?? 0)
               }
-            } else {
+            } else if (source.kind === "group") {
               setSelectedGroupId(source.id)
               const index = shots.findIndex((shot) => shot.id === source.shotId)
               if (index >= 0) setActiveShot(index)
+            } else {
+              setSelectedGroupId(null)
+              setSessionResearchTarget({ kind: "range", id: source.id })
+              const range = researchWorkbench.ranges.find((item) => item.id === source.id)
+              if (range) {
+                setCurrentTime(range.startUs / 1_000_000)
+                setSessionResearchMode("range")
+                setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
+              }
             }
             onWorkflowNavigate?.("analyze", "scenes")
           }}
@@ -3699,6 +3751,8 @@ export default function EditorWorkspace({
               groups: shotGroups,
               fields: template?.fields ?? [],
               screenshotUrls: shotScreenshotUrls,
+              researchRanges: researchWorkbench.ranges,
+              researchContexts: researchWorkbench.contexts,
             }}
             isExporting={isExporting}
             onClose={() => setIsExportDialogOpen(false)}

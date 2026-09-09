@@ -234,10 +234,10 @@ export interface ProjectRepository {
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
   replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[]) => Promise<void>;
   listProjectResearchRanges: (projectId: string) => Promise<ResearchRange[]>;
-  saveProjectResearchRange: (range: ResearchRange) => Promise<void>;
+  saveProjectResearchRange: (range: ResearchRange, expectedRevision?: number) => Promise<void>;
   deleteProjectResearchRange: (projectId: string, rangeId: string) => Promise<void>;
   listProjectResearchContexts: (projectId: string) => Promise<ResearchContext[]>;
-  saveProjectResearchContext: (context: ResearchContext) => Promise<void>;
+  saveProjectResearchContext: (context: ResearchContext, expectedRevision?: number) => Promise<void>;
   deleteProjectResearchContext: (projectId: string, contextId: string) => Promise<void>;
   listProjectAnnotationMarkers: (projectId: string) => Promise<AnnotationMarker[]>;
   replaceProjectAnnotationMarkers: (projectId: string, markers: AnnotationMarker[]) => Promise<void>;

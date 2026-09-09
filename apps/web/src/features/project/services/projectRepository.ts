@@ -909,11 +909,14 @@ export function createProjectRepository(): ProjectRepository {
       return ranges.sort((left, right) => left.startUs - right.startUs || left.createdAt.localeCompare(right.createdAt));
     },
 
-    async saveProjectResearchRange(range: ResearchRange) {
+    async saveProjectResearchRange(range: ResearchRange, expectedRevision?: number) {
       if (!Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs) || range.endUs <= range.startUs) throw new Error("研究范围必须是正向整数微秒区间。");
       const database = await openDatabase();
       const transaction = database.transaction(RESEARCH_RANGES_STORE, "readwrite");
-      transaction.objectStore(RESEARCH_RANGES_STORE).put(structuredClone(range));
+      const store = transaction.objectStore(RESEARCH_RANGES_STORE);
+      const existing = await requestResult(store.get(range.id)) as ResearchRange | undefined;
+      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究范围已在其他标签页更新，请重新加载后再保存。");
+      store.put(structuredClone(range));
       await transactionResult(transaction);
     },
 
@@ -933,12 +936,13 @@ export function createProjectRepository(): ProjectRepository {
       return contexts.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
     },
 
-    async saveProjectResearchContext(context: ResearchContext) {
+    async saveProjectResearchContext(context: ResearchContext, expectedRevision?: number) {
       const database = await openDatabase();
       const transaction = database.transaction(RESEARCH_CONTEXTS_STORE, "readwrite");
       const store = transaction.objectStore(RESEARCH_CONTEXTS_STORE);
       const key = [context.projectId, context.target.kind, context.target.id];
       const existing = await requestResult(store.index("projectTarget").get(key)) as ResearchContext | undefined;
+      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究上下文已在其他标签页更新，请重新加载后再保存。");
       if (existing && existing.id !== context.id) store.delete(existing.id);
       store.put(structuredClone(context));
       await transactionResult(transaction);
