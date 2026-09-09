@@ -1,6 +1,6 @@
 # O6 — 整体验证、性能、旧路径清理与交付
 
-状态：验收通过待推送。前置：O0–O5已交付。verify:web、领域/浏览器/真实媒体回归、压力场景、lint、typecheck、build 与 UI detector 已运行；不能以旧workflow“已验证”替代本轮运行。
+状态：已交付。前置：O0–O5已交付。verify:web、领域/浏览器/真实媒体回归、压力场景、lint、typecheck、build 与 UI detector 已运行；不能以旧workflow“已验证”替代本轮运行。
 
 ## 1. 测试入口
 

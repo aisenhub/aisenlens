@@ -27,12 +27,12 @@
 | 阶段 | 状态 | 已完成/剩余 | 代码SHA | push/GitHub链接 |
 | --- | --- | --- | --- | --- |
 | O0 基线 | 已交付 | 基线、调用链、校准边界与受影响文件已核实 | `db55304` / `0440be5` | 已推送至 `origin/codex/overview-analyze-upgrade` |
-| O1 领域与存储 | 验收通过待推送 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验、按 target 串行写入与 revision 冲突检测已实现；浏览器已完成真实 IndexedDB range round-trip 与 URL target 恢复；故障注入入口已加入仓储事务边界 | 工作树待提交 | 待推送 |
-| O2 会话与播放器 | 验收通过待推送 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 与 Overview 跨 stage 保持单一视频 DOM；真实 synthetic.webm 已完成播放/校准/刷新恢复回归 | 工作树待提交 | 待推送 |
-| O3 总览 | 验收通过待推送 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；空项目已覆盖 1440×900、1280×720、768×1024、390×844 导航；1000/3000 镜头压力场景保持有界 DOM | 工作树待提交 | 待推送 |
-| O4 深拆 | 验收通过待推送 | Shot/Group/Range Inspector、问题/状态、证据引用、选段保存、Save & Next flush、音频范围引用、保存失败可见状态已实现；真实媒体已验证校准前后帧；输入控件已避免逐键写历史，IME 专项仍未做系统级自动化 | 工作树待提交 | 待推送 |
-| O5 连续性与恢复 | 验收通过待推送 | 校准应用事务会标记研究上下文待复核；研究数据进入备份/恢复边界；报告 CSV/HTML/XLSX 研究附录与 Learn Range 来源已接通；完整备份 ZIP 导入的浏览器自动化仍未纳入本轮门禁 | 工作树待提交 | 待推送 |
-| O6 验证与清理 | 验收通过待推送 | verify:web、领域测试、lint、UI detector、Overview/Analyze 浏览器导航、1000/3000 镜头压力、synthetic.webm 真实媒体回归均通过；build最大JS chunk约476KB；未测量真实硬件内存/网络缓存，也未单独覆盖 Cinema/Studio 主题矩阵 | 工作树待提交 | 待推送 |
+| O1 领域与存储 | 已交付 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验、按 target 串行写入与 revision 冲突检测已实现；浏览器已完成真实 IndexedDB range round-trip 与 URL target 恢复；故障注入入口已加入仓储事务边界 | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
+| O2 会话与播放器 | 已交付 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 与 Overview 跨 stage 保持单一视频 DOM；真实 synthetic.webm 已完成播放/校准/刷新恢复回归 | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
+| O3 总览 | 已交付 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；空项目已覆盖 1440×900、1280×720、768×1024、390×844 导航；1000/3000 镜头压力场景保持有界 DOM | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
+| O4 深拆 | 已交付 | Shot/Group/Range Inspector、问题/状态、证据引用、选段保存、Save & Next flush、音频范围引用、保存失败可见状态已实现；真实媒体已验证校准前后帧；输入控件已避免逐键写历史，IME 专项仍未做系统级自动化 | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
+| O5 连续性与恢复 | 已交付 | 校准应用事务会标记研究上下文待复核；研究数据进入备份/恢复边界；报告 CSV/HTML/XLSX 研究附录与 Learn Range 来源已接通；完整备份 ZIP 导入的浏览器自动化仍未纳入本轮门禁 | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
+| O6 验证与清理 | 已交付 | verify:web、领域测试、lint、UI detector、Overview/Analyze 浏览器导航、1000/3000 镜头压力、synthetic.webm 真实媒体回归均通过；build最大JS chunk约476KB；未测量真实硬件内存/网络缓存，也未单独覆盖 Cinema/Studio 主题矩阵 | `ea4a3ae` / merge `2b641e3` | 已推送到 `main` |
 
 ## 3. 阶段实施记录（每阶段复制填写）
 
@@ -78,7 +78,7 @@
 
 | 阶段 | 分支 | 代码commit SHA | GitHub链接 | push结果/远程包含确认 | 记录更新提交 |
 | --- | --- | --- | --- | --- | --- |
-| O1–O6 | `codex/overview-analyze-upgrade` | 待提交 | [Pull Request](https://github.com/aisenhub/aisenlens/pull/new/codex/overview-analyze-upgrade) | 待本轮提交、推送并合并到 `main` | 本轮记录与代码一起提交 |
+| O1–O6 | `codex/overview-analyze-upgrade` → `main` | `ea4a3ae` / merge `2b641e3` | [Pull Request](https://github.com/aisenhub/aisenlens/pull/new/codex/overview-analyze-upgrade) | 分支已推送；已合并并推送 `origin/main` | 本轮记录收口提交随后推送 |
 
 允许先推代码，再提交记录更新；本文件记录代码SHA，不要求自我引用记录提交的最终SHA，不为此反复amend。失败保留原因和后续处理，进入下一阶段前必须补齐推送。
 
@@ -88,7 +88,7 @@
 - 本轮已解决：真实 synthetic.webm 媒体校准与刷新恢复、Overview→Analyze→Shots 多视口导航、研究范围 IndexedDB round-trip、1000/3000 镜头有界渲染；未将未测量的硬件/缓存指标伪称为已通过。
 - 可复用接口：`ResearchRange`/`ResearchContext`、`validateResearchRange`、`validateStructureMembership`、`createWorkflowSearch` 研究参数、Zustand research session slice。
 - 不应重复实施：不得把现有校准功能重新实现一遍；本轮只扩展校准应用后的研究状态复核。
-- 未提交修改及owner：验证记录与代码当前由本 agent 更新；提交后将推送 `codex/overview-analyze-upgrade` 并合并到 `main`。
+- 未提交修改及owner：无；本 agent 已将代码与计划记录提交、推送，并合并到 `main`。
 - 待用户决定：当前没有新增产品方向问题；若远程/访问权限或已有工作归属无法核实，提出具体问题。
 
 ## 7. 计划编写记录（与产品验收分开）
@@ -96,5 +96,5 @@
 - 已完成：架构文档与当前相关源码读取；编写总计划、阶段计划、执行指令和本模板。
 - 产品测试：基线、逻辑测试、隔离空项目浏览器导航、研究范围真实 IndexedDB round-trip、synthetic.webm 真实媒体回归、1000/3000 镜头压力与构建均已执行；真实硬件内存/缓存、系统级 IME、完整 ZIP 导入自动化仍未执行并已列明边界。
 - 产品代码：本轮已修改，当前分支为 `codex/overview-analyze-upgrade`。
-- Git提交/推送：历史代码提交已推送；本轮代码与记录待提交，随后推送分支并合并 `main`。
+- Git提交/推送：代码提交 `ea4a3ae` 已推送到升级分支，合并提交 `2b641e3` 已推送到 `origin/main`；本次记录收口提交随后推送到 `main`。
 - 文档本地链接检查：2026-09-09已检查本目录9份Markdown的本地链接，全部目标存在；该检查不属于产品测试。
