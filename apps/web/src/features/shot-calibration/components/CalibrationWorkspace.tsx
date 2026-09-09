@@ -255,7 +255,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
 
   return <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-deep text-text-base lg:overflow-hidden">
     <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-bg-nav px-4 py-2.5">
-      <div className="min-w-0 flex-1"><h1 className="text-sm font-semibold">镜头校准</h1><p className="mt-0.5 text-[11px] text-text-muted">连续巡视，发现变化后暂停、逐帧定位并补切。</p></div>
+      <div className="min-w-0 flex-1"><h1 className="text-sm font-semibold">镜头校准</h1></div>
       <div className="hidden items-center gap-3 text-[11px] text-text-muted md:flex"><span>已巡视 <b className="font-mono text-text">{formatTime(playedFrames, frameRate)}</b></span><span>·</span><span>已复核 <b className="font-mono text-text">{formatTime(reviewedFrames, frameRate)}</b></span><span>·</span><span>待回看 <b className="font-mono text-amber-200">{pendingIssues.length}</b></span></div>
       <span className={`rounded-full border px-2 py-1 text-[10px] ${session.saveState === "error" ? "border-red-400/30 text-red-200" : session.saveState === "saving" || session.saveState === "idle" ? "border-amber-400/30 text-amber-200" : "border-emerald-400/30 text-emerald-200"}`}>{session.saveState === "saving" ? "保存中" : session.saveState === "error" ? "未保存，可重试" : session.saveState === "saved" ? "草稿已保存" : "待保存"}</span>
       <Button type="button" variant="ghost" size="icon-sm" onClick={session.undo} disabled={!session.canUndo} aria-label="撤销"><Undo2 /></Button>
