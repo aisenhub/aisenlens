@@ -25,6 +25,15 @@ export function formalShotsSignature(shots: readonly StoredShotRecord[]): string
   return JSON.stringify(meaningfulShots.map((shot) => [shot.order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.primaryScreenshotId, shot.screenshotIds, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId, shot.analysisFields, shot.description, shot.notes]))
 }
 
+export function isTransientFullFilmPlaceholder(shots: readonly StoredShotRecord[]): boolean {
+  const [shot] = shots
+  return shots.length === 1 && shot?.startFrame === 0 && shot.endFrame > 0 && shot.status === "draft" && shot.detection === null && shot.primaryScreenshotId === null && shot.screenshotIds.length === 0 && shot.firstFrameScreenshotId === null && shot.lastFrameScreenshotId === null && Object.keys(shot.analysisFields).length === 0 && shot.description === "" && shot.notes === ""
+}
+
+export function shouldSeedCalibrationFromDetection(task: AutoShotTaskRecord | null, shots: readonly StoredShotRecord[]): boolean {
+  return task?.status === "completed" && task.candidates.length > 0 && isTransientFullFilmPlaceholder(shots)
+}
+
 export function deriveCalibrationSegments(
   totalFrames: number,
   boundaries: readonly CalibrationBoundary[],

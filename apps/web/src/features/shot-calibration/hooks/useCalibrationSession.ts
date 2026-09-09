@@ -3,7 +3,7 @@ import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import type { StoredShotRecord, MediaSourceFingerprint } from "../../project/types"
 import projectRepository from "../../project/services/projectRepository"
-import { createCalibrationDraft, formalShotsSignature } from "../services/calibrationDraftService"
+import { createCalibrationDraft, formalShotsSignature, shouldSeedCalibrationFromDetection } from "../services/calibrationDraftService"
 import { createCalibrationStore, type CalibrationStore } from "../stores/createCalibrationStore"
 import type { CalibrationDraft } from "../types"
 
@@ -46,11 +46,13 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
         if (cancelled) return
         const baseShotsChanged = stored ? stored.baseFormalShotsSignature !== formalShotsSignature(input.shots) : false
         const baseTaskChanged = stored ? stored.baseTaskUpdatedAt !== (input.task?.updatedAt ?? null) : false
+        const useDetectionTask = shouldSeedCalibrationFromDetection(input.task, input.shots)
+        const storedMatchesDetectionTask = !useDetectionTask || (stored?.initialSource === "detection" && stored.baseTaskId === input.task?.id)
         const draft = stored?.status === "editing" && stored.baseProjectUpdatedAt !== input.baseProjectUpdatedAt && (baseShotsChanged || baseTaskChanged)
           ? { ...stored, status: "conflict" as const }
-          : stored?.status === "editing"
+          : stored?.status === "editing" && storedMatchesDetectionTask
             ? stored
-            : createCalibrationDraft({ ...input, mediaIdentity, task: input.shots.length ? null : input.task })
+            : createCalibrationDraft({ ...input, mediaIdentity, task: useDetectionTask ? input.task : null })
         const store = createCalibrationStore(draft)
         storeRef.current = store
         persistedRevisionRef.current = stored?.revision

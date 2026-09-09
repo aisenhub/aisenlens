@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { createCalibrationDraft } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
+import { createCalibrationDraft, isTransientFullFilmPlaceholder } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
 import { applyCalibrationCommand, CalibrationCommandError } from "../../../apps/web/src/features/shot-calibration/services/calibrationCommandService.ts"
 import { addPlaybackCoverage, coverageFrames, mergeCoverageRanges } from "../../../apps/web/src/features/shot-calibration/services/reviewCoverageService.ts"
 
@@ -41,6 +41,31 @@ test("校准草稿覆盖全片并保留正式镜头身份", () => {
   assert.deepEqual(draft.boundaries.map((boundary) => boundary.frame), [48])
   assert.deepEqual(draft.segments.map((segment) => [segment.startFrame, segment.endFrame]), [[0, 48], [48, 96]])
   assert.deepEqual(draft.segments.map((segment) => segment.id), ["shot-a", "shot-b"])
+})
+
+test("识别全片占位镜头，避免覆盖自动分镜候选", () => {
+  const placeholder = [{ ...createDraft().segments[0], id: "placeholder", startFrame: 0, endFrame: 96 }]
+  assert.equal(
+    isTransientFullFilmPlaceholder(placeholder.map((segment) => ({
+      id: segment.id,
+      projectId: "project-1",
+      order: 0,
+      startFrame: segment.startFrame,
+      endFrame: segment.endFrame,
+      status: "draft" as const,
+      detection: null,
+      primaryScreenshotId: null,
+      screenshotIds: [],
+      firstFrameScreenshotId: null,
+      lastFrameScreenshotId: null,
+      analysisFields: {},
+      description: "",
+      notes: "",
+      createdAt: "now",
+      updatedAt: "now",
+    }))),
+    true,
+  )
 })
 
 test("补切、移点、合并保持稳定 ID 且不修改源草稿", () => {

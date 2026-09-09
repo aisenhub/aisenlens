@@ -1,0 +1,58 @@
+import test from "node:test"
+import assert from "node:assert/strict"
+import { createCalibrationDraft, shouldSeedCalibrationFromDetection } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
+
+const identity = {
+  identitySchema: "aisenlens-auto-shot-media-identity" as const,
+  schemaVersion: 1 as const,
+  contentDigestStrategy: "sha256-file-v1" as const,
+  contentDigest: "a".repeat(64),
+  size: 100,
+  codec: "avc1",
+  codedWidth: 1920,
+  codedHeight: 1080,
+  displayWidth: 1920,
+  displayHeight: 1080,
+  rotation: 0 as const,
+  durationUs: 4_000_000,
+  mediaIdentityDigest: "b".repeat(64),
+}
+
+test("自动分镜任务作为校准草稿来源时生成全部候选区段", () => {
+  const task = {
+    id: "task-1",
+    projectId: "project-1",
+    mediaIdentity: identity,
+    review: { excludedCandidateIds: [], updatedAt: null, appliedAt: null },
+    controlSnapshot: null,
+    config: {} as never,
+    status: "completed" as const,
+    engineVersion: "test",
+    configHash: "config",
+    progress: { processedUs: 4_000_000, durationUs: 4_000_000, decodedFrames: 96, candidateCount: 3 },
+    candidates: [
+      { id: "candidate-1", kind: "hard-cut" as const, startFrame: 0, endFrame: 24, boundary: null, transitionRange: null, score: 1, threshold: 0.5, detectors: [], evidence: {}, engineVersion: "test", configHash: "config" },
+      { id: "candidate-2", kind: "hard-cut" as const, startFrame: 24, endFrame: 60, boundary: null, transitionRange: null, score: 1, threshold: 0.5, detectors: [], evidence: {}, engineVersion: "test", configHash: "config" },
+      { id: "candidate-3", kind: "tail" as const, startFrame: 60, endFrame: 96, boundary: null, transitionRange: null, score: 1, threshold: 0.5, detectors: [], evidence: {}, engineVersion: "test", configHash: "config" },
+    ],
+    checkpoint: null,
+    result: null,
+    error: null,
+    createdAt: "now",
+    updatedAt: "now",
+  }
+  const placeholder = [{ id: "placeholder", projectId: "project-1", order: 0, startFrame: 0, endFrame: 96, status: "draft" as const, detection: null, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: "now", updatedAt: "now" }]
+  assert.equal(shouldSeedCalibrationFromDetection(task, placeholder), true)
+  const draft = createCalibrationDraft({
+    projectId: "project-1",
+    mediaIdentity: identity,
+    mediaSource: null,
+    frameRate: 24,
+    totalFrames: 96,
+    baseProjectUpdatedAt: "now",
+    task,
+    shots: [],
+  })
+  assert.equal(draft.initialSource, "detection")
+  assert.deepEqual(draft.segments.map((segment) => [segment.startFrame, segment.endFrame]), [[0, 24], [24, 60], [60, 96]])
+})
