@@ -27,8 +27,9 @@ test("真实 synthetic.webm 完成素材关联、PTS 校准、双帧检查与刷
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('· 第 ') && (document.body.innerText.includes('CFR') || document.body.innerText.includes('VFR'))")), "播放头未按 PTS 定位", 10_000)
   await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.includes('在当前帧切开')); if (!button) return false; button.click(); return true })()")
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('镜头 2')")), "当前帧补切未生成第二镜头", 15_000)
+  await until(async () => (await evaluate(client, sessionId, "(() => { const button = document.querySelector('button[aria-label=\"定位镜头 1 的边界\"]'); if (!button) return false; button.click(); return true })()")), "左侧镜头列表未提供边界定位入口")
+  await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('结束边界')")), "点击左侧镜头后右侧未跳转到对应边界")
 
-  await until(async () => (await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.includes('人工')); if (!button) return false; button.click(); return true })()")), "新增边界未进入检查器")
   await until(async () => (await evaluate(client, sessionId, "document.querySelector('[aria-label=\"边界双帧证据\"]')?.querySelectorAll('figure img').length === 2")), "双帧边界检查器未完成解码", 45_000)
   const pair = await evaluate(client, sessionId, "(() => { const panel = document.querySelector('[aria-label=\"边界双帧证据\"]'); return { figures: panel?.querySelectorAll('figure').length ?? 0, labels: panel?.textContent ?? '' } })()")
   assert.equal(pair.figures, 2)
