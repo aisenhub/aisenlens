@@ -9,6 +9,7 @@ import VideoPreviewCanvas, { type VideoPreviewCanvasProps } from "../../editor/c
 import BoundaryFramePair from "./BoundaryFramePair"
 import CalibrationTimeline from "./CalibrationTimeline"
 import useEditorShortcuts from "../../editor/shortcuts/useEditorShortcuts"
+import useLocalStorage from "../../../hooks/useLocalStorage"
 import useCalibrationSession from "../hooks/useCalibrationSession"
 import useMediaFrameTimeline from "../hooks/useMediaFrameTimeline"
 import { coverageFrames, deriveCoverage } from "../services/reviewCoverageService"
@@ -53,7 +54,9 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
   const [isApplyOpen, setIsApplyOpen] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
   const [issueNote, setIssueNote] = useState("")
+  const [rememberedSegmentId, setRememberedSegmentId] = useLocalStorage<string | null>(`aisenlens:calibration:selected-segment:${projectId}`, null)
   const shotPlaybackRef = useRef<{ segmentId: string; endFrame: number } | null>(null)
+  const segmentButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const playbackCoverageRef = useRef<{ lastTime: number; lastWallTime: number; startFrame: number; endFrame: number } | null>(null)
 
   useEffect(() => {
@@ -133,6 +136,15 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     setSelectedBoundaryId(boundary?.id ?? null)
     moveToFrame(segment.startFrame)
   }
+  useEffect(() => {
+    if (session.state !== "ready" || !draft?.segments.length || selectedSegmentId) return
+    const segment = draft.segments.find((candidate) => candidate.id === rememberedSegmentId) ?? draft.segments[0]
+    selectSegment(segment)
+    window.requestAnimationFrame(() => segmentButtonRefs.current[segment.id]?.focus())
+  }, [draft, rememberedSegmentId, selectedSegmentId, session.state])
+  useEffect(() => {
+    if (selectedSegmentId) setRememberedSegmentId(selectedSegmentId)
+  }, [selectedSegmentId, setRememberedSegmentId])
   const selectAdjacentSegment = (direction: -1 | 1) => {
     if (!draft?.segments.length) return
     const currentFrame = frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0
@@ -211,6 +223,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     ? draft.segments.map((segment, index) => (
       <button
         key={segment.id}
+        ref={(element) => { segmentButtonRefs.current[segment.id] = element }}
         type="button"
         onClick={() => selectSegment(segment)}
         onKeyDown={handleShotPlaybackKeyDown}
