@@ -11,7 +11,7 @@ export function parseWorkflowLocation(search: string): WorkflowLocation {
   const requestedStage = params.get("stage")
   const stage: WorkflowStage = stageIds.has(requestedStage as WorkflowStage)
     ? (requestedStage as WorkflowStage)
-    : "analyze"
+    : "prepare"
   const definition = getStageDefinition(stage)
   const requestedView = params.get("view") as WorkflowView | null
   const view = definition.views.includes(requestedView as WorkflowView)

@@ -47,4 +47,4 @@ export const WORKFLOW_STAGE_DEFINITIONS: readonly WorkflowStageDefinition[] = [
 
 export const getStageDefinition = (stage: string | null | undefined) =>
   WORKFLOW_STAGE_DEFINITIONS.find((definition) => definition.id === stage) ??
-  WORKFLOW_STAGE_DEFINITIONS.find((definition) => definition.id === "analyze")!
+  WORKFLOW_STAGE_DEFINITIONS.find((definition) => definition.id === "prepare")!

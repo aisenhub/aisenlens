@@ -24,6 +24,8 @@ test("Sound 研究范围通过真实 IndexedDB 往返并在刷新后恢复 URL �
   assert.ok(browserPath, "未找到 Chrome 或 Edge；可通过 AISENLENS_CHROME_PATH 指定浏览器路径。")
   const { client, sessionId } = await launchBrowser(context, "overview-analyze-research-roundtrip")
   await createProjectAndEnterEditor(client, sessionId)
+  await until(async () => (await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '深拆'); if (!button) return false; button.click(); return true })()")), "深拆入口未出现")
+  await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('stage') === 'analyze'")), "深拆阶段未加载")
   await until(async () => (await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === 'Sound'); if (!button) return false; button.click(); return true })()")), "Sound 入口未出现")
   await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('view') === 'sound'")), "Sound 视图未加载")
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('保存声音研究范围')")), "声音研究范围入口未出现")

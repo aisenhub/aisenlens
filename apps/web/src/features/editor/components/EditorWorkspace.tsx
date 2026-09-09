@@ -257,7 +257,7 @@ export default function EditorWorkspace({
   coverScreenshotId,
   onProjectUpdated,
   isActive = true,
-  workflowStage = "analyze",
+  workflowStage = "prepare",
   workflowView = "scenes",
   onWorkflowNavigate,
 }: EditorWorkspaceProps) {

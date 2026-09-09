@@ -13,8 +13,16 @@ test("parses a valid project stage and view", () => {
 test("falls back to a safe stage view without dropping project", () => {
   assert.deepEqual(parseWorkflowLocation("?project=p1&stage=unknown&view=private"), {
     projectId: "p1",
-    stage: "analyze",
-    view: "scenes",
+    stage: "prepare",
+    view: "media",
+  })
+})
+
+test("opens a project in preparation when no stage is requested", () => {
+  assert.deepEqual(parseWorkflowLocation("?project=p1"), {
+    projectId: "p1",
+    stage: "prepare",
+    view: "media",
   })
 })
 
