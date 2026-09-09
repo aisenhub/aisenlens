@@ -27,12 +27,12 @@
 | 阶段 | 状态 | 已完成/剩余 | 代码SHA | push/GitHub链接 |
 | --- | --- | --- | --- | --- |
 | O0 基线 | 已交付 | 基线、调用链、校准边界与受影响文件已核实 | `db55304` / `0440be5` | 已推送至 `origin/codex/overview-analyze-upgrade` |
-| O1 领域与存储 | 进行中 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验、按 target 串行写入与 revision 冲突检测已实现；IndexedDB故障/round-trip浏览器验证待补 | 本轮待提交 | 待推送 |
-| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 与 Overview 跨 stage 均保留同一视频 DOM；真实媒体播放状态往返仍待浏览器验证 | 本轮待提交 | 待推送 |
-| O3 总览 | 进行中 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；新增空项目多视口浏览器导航验证，拖选预览与真实媒体矩阵待补 | 本轮待提交 | 待推送 |
-| O4 深拆 | 进行中 | Shot/Group/Range Inspector、问题/状态、证据引用、选段保存、Save & Next flush、音频范围引用、保存失败可见状态已实现；IME专项与真实媒体前后帧浏览器验证待补 | 本轮待提交 | 待推送 |
-| O5 连续性与恢复 | 进行中 | 校准应用事务会标记研究上下文待复核；研究数据进入备份/恢复边界；报告 CSV/HTML/XLSX 研究附录与 Learn Range 来源已接通；完整 lineage/backup round-trip 仍待补 | 本轮待提交 | 待推送 |
-| O6 验证与清理 | 进行中 | verify:web、领域测试、lint、UI detector、Overview/Analyze 浏览器导航通过；build最大JS chunk约476KB；真实媒体、Cinema/Studio、内存/请求矩阵待补 | 本轮待提交 | 待推送 |
+| O1 领域与存储 | 进行中 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验、按 target 串行写入与 revision 冲突检测已实现；IndexedDB故障/round-trip浏览器验证待补 | `1b7b1a8` | 已推送 |
+| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；Analyze 内 Scenes/Shots/Sound 与 Overview 跨 stage 均保留同一视频 DOM；真实媒体播放状态往返仍待浏览器验证 | `6722e09` | 已推送 |
+| O3 总览 | 进行中 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；新增空项目多视口浏览器导航验证，拖选预览与真实媒体矩阵待补 | `6722e09` | 已推送 |
+| O4 深拆 | 进行中 | Shot/Group/Range Inspector、问题/状态、证据引用、选段保存、Save & Next flush、音频范围引用、保存失败可见状态已实现；IME专项与真实媒体前后帧浏览器验证待补 | `1b7b1a8` | 已推送 |
+| O5 连续性与恢复 | 进行中 | 校准应用事务会标记研究上下文待复核；研究数据进入备份/恢复边界；报告 CSV/HTML/XLSX 研究附录与 Learn Range 来源已接通；完整 lineage/backup round-trip 仍待补 | `1b7b1a8` | 已推送 |
+| O6 验证与清理 | 进行中 | verify:web、领域测试、lint、UI detector、Overview/Analyze 浏览器导航通过；build最大JS chunk约476KB；真实媒体、Cinema/Studio、内存/请求矩阵待补 | `6722e09` | 已推送 |
 
 ## 3. 阶段实施记录（每阶段复制填写）
 
@@ -77,7 +77,7 @@
 
 | 阶段 | 分支 | 代码commit SHA | GitHub链接 | push结果/远程包含确认 | 记录更新提交 |
 | --- | --- | --- | --- | --- | --- |
-| O1–O3/O4/O5局部/O6 | `codex/overview-analyze-upgrade` | `db55304` / `0440be5` / `1b7b1a8` | [Pull Request](https://github.com/aisenhub/aisenlens/pull/new/codex/overview-analyze-upgrade) | 前两阶段已推送；本轮代码提交待推送 | 本次记录更新待提交 |
+| O1–O3/O4/O5局部/O6 | `codex/overview-analyze-upgrade` | `db55304` / `0440be5` / `1b7b1a8` / `6722e09` | [Pull Request](https://github.com/aisenhub/aisenlens/pull/new/codex/overview-analyze-upgrade) | 已推送；远程与本地一致 | 本次记录更新待提交 |
 
 允许先推代码，再提交记录更新；本文件记录代码SHA，不要求自我引用记录提交的最终SHA，不为此反复amend。失败保留原因和后续处理，进入下一阶段前必须补齐推送。
 
@@ -95,5 +95,5 @@
 - 已完成：架构文档与当前相关源码读取；编写总计划、阶段计划、执行指令和本模板。
 - 产品测试：基线、逻辑测试、隔离空项目浏览器导航与构建已执行，真实媒体/存储故障/性能矩阵仍未执行。
 - 产品代码：本轮已修改，当前分支为 `codex/overview-analyze-upgrade`。
-- Git提交/推送：代码已提交 `1b7b1a8`；验证记录待本轮提交，随后推送分支。
+- Git提交/推送：代码提交 `1b7b1a8`、`6722e09` 已推送；本次记录更新待提交，随后推送分支。
 - 文档本地链接检查：2026-09-09已检查本目录9份Markdown的本地链接，全部目标存在；该检查不属于产品测试。
