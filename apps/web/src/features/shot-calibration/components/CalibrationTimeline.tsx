@@ -36,7 +36,7 @@ function chooseTickStep(rangeFrames: number, frameRate: number) {
 }
 
 export default function CalibrationTimeline({ segments, boundaries, frameRate, totalFrames, currentFrame, selectedSegment, selectedSegmentIndex, onSelectSegment, onPlaySelectedSegment, onSeekFrame }: CalibrationTimelineProps) {
-  const [scope, setScope] = useState<TimelineScope>("film")
+  const [scope, setScope] = useState<TimelineScope>("segment")
   const [isDragging, setIsDragging] = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
   const safeTotalFrames = Math.max(1, totalFrames)
