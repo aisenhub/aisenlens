@@ -128,7 +128,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     const boundaryId = segment.endBoundaryId ?? segment.startBoundaryId
     const boundary = boundaryId ? draft?.boundaries.find((item) => item.id === boundaryId) : null
     setSelectedBoundaryId(boundary?.id ?? null)
-    moveToFrame(boundary?.frame ?? segment.startFrame)
+    moveToFrame(segment.startFrame)
   }
   const splitAtPlayhead = () => {
     if (!draft) return
