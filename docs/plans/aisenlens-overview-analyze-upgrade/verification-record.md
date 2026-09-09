@@ -26,13 +26,13 @@
 
 | 阶段 | 状态 | 已完成/剩余 | 代码SHA | push/GitHub链接 |
 | --- | --- | --- | --- | --- |
-| O0 基线 | 已完成 | 基线、调用链、校准边界与受影响文件已核实 | 待提交 | 待推送 |
-| O1 领域与存储 | 进行中 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验已实现；IndexedDB故障/round-trip浏览器验证待补 | 待提交 | 待推送 |
-| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；稳定单Video跨stage保活、完整flush命令仍待后续 | 待提交 | 待推送 |
-| O3 总览 | 进行中 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；拖选预览/浏览器矩阵待补 | 待提交 | 待推送 |
+| O0 基线 | 已交付 | 基线、调用链、校准边界与受影响文件已核实 | `db55304` / `0440be5` | 已推送至 `origin/codex/overview-analyze-upgrade` |
+| O1 领域与存储 | 进行中 | ResearchRange/Context、半开范围、v17 stores、备份/恢复字段、结构校验已实现；IndexedDB故障/round-trip浏览器验证待补 | `db55304` | 已推送 |
+| O2 会话与播放器 | 进行中 | 会话已加入 mode/scope/target/queue/follow/return 字段，URL支持研究导航参数；稳定单Video跨stage保活、完整flush命令仍待后续 | `db55304` | 已推送 |
+| O3 总览 | 进行中 | 真实时长、偶数中位数、10秒分箱、单击留在总览、显式研究入口、三类结构展示已实现；拖选预览/浏览器矩阵待补 | `db55304` | 已推送 |
 | O4 深拆 | 未开始 | 已修正显式 Shot/Group Inspector 路由并加入研究模式/范围队列过滤；证据、声音范围记录和完整保存 UI 待实施 | 未提交 | 未推送 |
-| O5 连续性与恢复 | 进行中 | 校准应用事务会标记研究上下文待复核；研究数据已进入备份/恢复边界；完整 lineage/导出/Learn round-trip 待补 | 待提交 | 待推送 |
-| O6 验证与清理 | 进行中 | verify:web、领域测试、UI detector通过；build最大JS chunk约476KB；真实浏览器/媒体/内存矩阵待补 | 待提交 | 待推送 |
+| O5 连续性与恢复 | 进行中 | 校准应用事务会标记研究上下文待复核；研究数据已进入备份/恢复边界；完整 lineage/导出/Learn round-trip 待补 | `db55304` | 已推送 |
+| O6 验证与清理 | 进行中 | verify:web、领域测试、UI detector通过；build最大JS chunk约476KB；真实浏览器/媒体/内存矩阵待补 | `db55304` / `0440be5` | 已推送 |
 
 ## 3. 阶段实施记录（每阶段复制填写）
 
@@ -76,7 +76,7 @@
 
 | 阶段 | 分支 | 代码commit SHA | GitHub链接 | push结果/远程包含确认 | 记录更新提交 |
 | --- | --- | --- | --- | --- | --- |
-| O1–O3/O5局部 | `codex/overview-analyze-upgrade` | 待提交 | 待生成 | 待推送 | 待生成 |
+| O1–O3/O5局部 | `codex/overview-analyze-upgrade` | `db55304` / `0440be5` | [Pull Request](https://github.com/aisenhub/aisenlens/pull/new/codex/overview-analyze-upgrade) | push成功；远程已确认两个提交 | 本次记录更新待提交 |
 
 允许先推代码，再提交记录更新；本文件记录代码SHA，不要求自我引用记录提交的最终SHA，不为此反复amend。失败保留原因和后续处理，进入下一阶段前必须补齐推送。
 
