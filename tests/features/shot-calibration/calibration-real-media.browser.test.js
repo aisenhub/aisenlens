@@ -17,6 +17,10 @@ test("真实 synthetic.webm 完成素材关联、PTS 校准、双帧检查与刷
   const calibrationStatus = await evaluate(client, sessionId, "document.body.innerText")
   assert.equal(calibrationStatus.includes('无法验证精确帧'), false, calibrationStatus)
   await until(async () => (await evaluate(client, sessionId, "document.querySelectorAll('video').length === 1")), "真实素材视频元素未出现", 10_000)
+  const calibrationTimeline = await evaluate(client, sessionId, "(() => { const timeline = document.querySelector('[aria-label=\"校准时间轴\"]'); return { exists: Boolean(timeline), scopeControls: timeline?.querySelectorAll('button').length ?? 0, hasThumbnailImages: Boolean(timeline?.querySelector('img')) } })()")
+  assert.equal(calibrationTimeline.exists, true)
+  assert.equal(calibrationTimeline.hasThumbnailImages, false)
+  assert.ok(calibrationTimeline.scopeControls >= 2)
 
   const metadata = await evaluate(client, sessionId, "(() => { const video = document.querySelector('video'); return { count: document.querySelectorAll('video').length, duration: video?.duration ?? 0, readyState: video?.readyState ?? 0 } })()")
   assert.equal(metadata.count, 1)

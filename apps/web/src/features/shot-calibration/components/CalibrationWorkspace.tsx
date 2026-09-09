@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Check, ChevronLeft, ChevronRight, Flag, GitBranch, Redo2, Scissors, Trash2, Undo2 } from "lucide-react"
+import { Check, ChevronRight, Flag, GitBranch, Redo2, Scissors, Trash2, Undo2 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
-import FrameThumbnailStrip from "../../video/components/FrameThumbnailStrip"
 import VideoPlaybackControls, { type VideoPlaybackControlsProps } from "../../editor/components/VideoPlaybackControls"
 import VideoPreviewCanvas, { type VideoPreviewCanvasProps } from "../../editor/components/VideoPreviewCanvas"
 import BoundaryFramePair from "./BoundaryFramePair"
+import CalibrationTimeline from "./CalibrationTimeline"
 import useEditorShortcuts from "../../editor/shortcuts/useEditorShortcuts"
 import useCalibrationSession from "../hooks/useCalibrationSession"
 import useMediaFrameTimeline from "../hooks/useMediaFrameTimeline"
@@ -50,8 +50,6 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
   const [selectedBoundaryId, setSelectedBoundaryId] = useState<string | null>(null)
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
   const [navigation, setNavigation] = useState<"shots" | "issues">("shots")
-  const [visibleStart, setVisibleStart] = useState(0)
-  const [visibleEnd, setVisibleEnd] = useState(Math.min(durationSeconds, 30))
   const [isApplyOpen, setIsApplyOpen] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
   const [issueNote, setIssueNote] = useState("")
@@ -114,6 +112,16 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
   const moveToFrame = (frame: number) => {
     if (!frameTimeline.timeline) return
     controlsProps.onCurrentTimeChange(frameToTimestamp(frameTimeline.timeline, Math.max(0, Math.min(verifiedTotalFrames - 1, frame))))
+  }
+  const seekToFrame = (frame: number) => {
+    const segment = draft?.segments.find((candidate) => frame >= candidate.startFrame && frame < candidate.endFrame) ?? null
+    if (segment && segment.id !== selectedSegmentId) {
+      setSelectedSegmentId(segment.id)
+      const boundaryId = segment.endBoundaryId ?? segment.startBoundaryId
+      const boundary = boundaryId ? draft?.boundaries.find((item) => item.id === boundaryId) : null
+      setSelectedBoundaryId(boundary?.id ?? null)
+    }
+    moveToFrame(frame)
   }
   const selectSegment = (segment: CalibrationDraft["segments"][number]) => {
     setSelectedSegmentId(segment.id)
@@ -180,7 +188,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
       <section className="order-1 flex min-h-0 min-w-0 flex-col overflow-hidden lg:order-2">
         <div className="min-h-0 flex-1 p-3"><VideoPreviewCanvas {...previewProps} /></div>
         <div className="shrink-0 border-t border-border bg-bg-panel px-3 py-2"><VideoPlaybackControls {...controlsProps} /></div>
-        <div className="shrink-0 border-t border-border bg-bg-panel p-3"><div className="relative h-20 overflow-hidden rounded-lg border border-border bg-black/70">{mediaIdentity && mediaSource && videoUrl && frameTimeline.timeline && <FrameThumbnailStrip projectId={projectId} sourceUrl={videoUrl} mediaFingerprint={mediaSource} durationSeconds={durationSeconds} frameRate={frameRate} presentationTimestamps={presentationTimestamps} presentationDurations={presentationDurations} pixelsPerSecond={Math.max(12, 800 / Math.max(1, durationSeconds))} visibleStart={visibleStart} visibleEnd={visibleEnd} currentTime={controlsProps.currentTime} onSeek={(time) => controlsProps.onCurrentTimeChange(time)} />}<div className="pointer-events-none absolute inset-y-0 w-px bg-accent" style={{ left: `${durationSeconds ? controlsProps.currentTime / durationSeconds * 100 : 0}%` }} /></div><div className="mt-2 flex items-center justify-between gap-2"><span className="font-mono text-[10px] text-text-muted">{frameTimeline.timeline ? formatTime(timestampToFrame(frameTimeline.timeline, controlsProps.currentTime), frameRate) : "—"} · 第 {frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : "—"} 帧 · {frameTimeline.timeline?.timingMode.toUpperCase()}</span><div className="flex gap-1"><Button type="button" variant="ghost" size="icon-xs" onClick={() => setVisibleStart(Math.max(0, visibleStart - 10))} aria-label="时间带向左平移"><ChevronLeft /></Button><Button type="button" variant="ghost" size="icon-xs" onClick={() => setVisibleEnd(Math.min(durationSeconds, visibleEnd + 10))} aria-label="时间带向右平移"><ChevronRight /></Button></div></div></div>
+        <div className="shrink-0 border-t border-border bg-bg-panel p-3"><CalibrationTimeline segments={draft.segments} boundaries={draft.boundaries} frameRate={frameRate} totalFrames={verifiedTotalFrames} currentFrame={frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0} selectedSegment={selectedSegment} selectedSegmentIndex={selectedSegmentIndex} onSelectSegment={selectSegment} onSeekFrame={seekToFrame} /></div>
       </section>
       <aside className="order-3 min-h-0 overflow-y-auto border-t border-border bg-bg-panel p-3 lg:border-l lg:border-t-0">
         <div className="flex items-start justify-between gap-2"><div><h2 className="text-xs font-medium">当前帧操作</h2><p className="mt-1 text-[10px] leading-4 text-text-muted">精确帧确认后再写入草稿。</p></div><span className="rounded bg-accent/10 px-1.5 py-1 font-mono text-[10px] text-accent">F {frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : "—"}</span></div>
