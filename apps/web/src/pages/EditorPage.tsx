@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import EditorWorkspace from "../features/editor/components/EditorWorkspace";
 import ProjectMediaGate from "../features/project/components/ProjectMediaGate";
 import type { MediaAsset, ProjectRecord } from "../features/project/types";
@@ -16,11 +17,13 @@ interface Props {
 }
 
 export default function EditorPage({ projectId, onProjectLoaded, ...editorProps }: Props) {
+  const location = useLocation()
   const workflow = useWorkflowNavigation(projectId)
 
   useEffect(() => {
+    if (location.pathname !== "/app") return
     workflow.ensureProjectInLocation()
-  }, [workflow.ensureProjectInLocation])
+  }, [location.pathname, workflow.ensureProjectInLocation])
 
   return <ProjectMediaGate projectId={workflow.projectId} onNavigate={editorProps.onNavigate} onProjectLoaded={onProjectLoaded}>
     {(project, videoUrl, primaryVideoAsset, onRenameProject, onImportVideo, isSelectingVideo) => {

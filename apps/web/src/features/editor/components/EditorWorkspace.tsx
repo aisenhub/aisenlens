@@ -797,11 +797,13 @@ export default function EditorWorkspace({
   } = useEditorSaveState({ projectId, save: saveCurrentProject })
 
   const leaveEditor = useCallback(async () => {
+    const pendingSave = saveNow()
+    onNavigate(2)
+
     try {
-      await saveNow()
-      onNavigate(2)
+      await pendingSave
     } catch (error) {
-      toast.error(error instanceof Error ? `保存失败：${error.message}` : "保存失败，请留在编辑器重试。")
+      toast.error(error instanceof Error ? `已返回项目库，但保存失败：${error.message}` : "已返回项目库，但保存失败，请重新打开项目重试。")
     }
   }, [onNavigate, saveNow])
 

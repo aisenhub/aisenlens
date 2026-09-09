@@ -154,4 +154,8 @@ test("隔离浏览器可完成 Workflow 阶段导航与真实空项目流程", {
     await waitFor(async () => (await evaluate(client, sessionId, `new URL(location.href).searchParams.get("stage") === ${JSON.stringify(stage)}`)), `${label} URL 没有更新`)
     await waitFor(async () => (await evaluate(client, sessionId, `document.body.innerText.includes(${JSON.stringify(expectedText)})`)), `${label} 页面没有加载`) 
   }
+
+  assert.equal(await clickButton(client, sessionId, "项目列表"), true, "找不到返回项目列表按钮")
+  await waitFor(async () => (await evaluate(client, sessionId, `location.pathname === "/projects"`)), "点击返回项目列表后路由没有离开编辑器")
+  await waitFor(async () => (await evaluate(client, sessionId, `document.body.innerText.includes("项目库")`)), "返回项目列表后项目库没有加载")
 })
