@@ -58,6 +58,8 @@ export interface VideoPlaybackControlsProps {
   aspectPreset: CanvasAspectPreset
   showSafeMargins: boolean
   isFullscreen: boolean
+  isPreviousShotDisabled?: boolean
+  isNextShotDisabled?: boolean
   onPreviousShot: () => void
   onNextShot: () => void
   onCurrentTimeChange: (time: number) => void
@@ -83,6 +85,8 @@ export default function VideoPlaybackControls({
   aspectPreset,
   showSafeMargins,
   isFullscreen,
+  isPreviousShotDisabled = false,
+  isNextShotDisabled = false,
   onPreviousShot,
   onNextShot,
   onCurrentTimeChange,
@@ -110,11 +114,11 @@ export default function VideoPlaybackControls({
         {formatTimecode(durationSeconds)}
       </span>
       <div className="flex items-center justify-center gap-1">
-        <Button type="button" variant="ghost" size="icon" aria-label="上一分镜" disabled={isUnavailable} onClick={onPreviousShot} className="text-text-muted hover:bg-white/8 hover:text-white"><SkipBack /></Button>
+        <Button type="button" variant="ghost" size="icon" aria-label="上一分镜" disabled={isUnavailable || isPreviousShotDisabled} onClick={onPreviousShot} className="text-text-muted hover:bg-white/8 hover:text-white"><SkipBack /></Button>
         <Button type="button" variant="ghost" size="icon" aria-label="后退一帧" disabled={isUnavailable} onClick={() => onCurrentTimeChange(Math.max(0, currentTime - 1 / FRAMES_PER_SECOND))} className="text-text-muted hover:bg-white/8 hover:text-white"><StepBack /></Button>
         <Button type="button" size="icon" aria-label={isPlaying ? "暂停" : "播放"} disabled={isUnavailable} onClick={() => onPlayingChange(!isPlaying)} className="bg-accent/80 text-white hover:bg-accent">{isPlaying ? <Pause /> : <Play />}</Button>
         <Button type="button" variant="ghost" size="icon" aria-label="前进一帧" disabled={isUnavailable} onClick={() => onCurrentTimeChange(Math.min(durationSeconds, currentTime + 1 / FRAMES_PER_SECOND))} className="text-text-muted hover:bg-white/8 hover:text-white"><StepForward /></Button>
-        <Button type="button" variant="ghost" size="icon" aria-label="下一分镜" disabled={isUnavailable} onClick={onNextShot} className="text-text-muted hover:bg-white/8 hover:text-white"><SkipForward /></Button>
+        <Button type="button" variant="ghost" size="icon" aria-label="下一分镜" disabled={isUnavailable || isNextShotDisabled} onClick={onNextShot} className="text-text-muted hover:bg-white/8 hover:text-white"><SkipForward /></Button>
       </div>
       <div className="relative flex items-center justify-end gap-0.5">
         <DropdownMenu><DropdownMenuTrigger render={<Button type="button" variant="ghost" size="xs" aria-label="预览缩放" className="h-6 gap-1 px-1.5 font-mono editor-meta text-text-muted hover:bg-white/8 hover:text-white" />}><ZoomIn className="size-3" />{Math.round(zoom * 100)}%</DropdownMenuTrigger><DropdownMenuContent align="end" side="top" className="min-w-20 border-border bg-bg-panel"><DropdownMenuRadioGroup value={String(zoom)} onValueChange={(value) => onZoomChange(Number(value))}>{CANVAS_ZOOM_OPTIONS.map((option) => <DropdownMenuRadioItem key={option} value={String(option)} className="h-7 font-mono editor-body text-text-dim">{Math.round(option * 100)}%</DropdownMenuRadioItem>)}</DropdownMenuRadioGroup></DropdownMenuContent></DropdownMenu>

@@ -133,6 +133,16 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     setSelectedBoundaryId(boundary?.id ?? null)
     moveToFrame(segment.startFrame)
   }
+  const selectAdjacentSegment = (direction: -1 | 1) => {
+    if (!draft?.segments.length) return
+    const currentFrame = frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0
+    const currentIndex = selectedSegmentIndex >= 0
+      ? selectedSegmentIndex
+      : draft.segments.findIndex((segment) => currentFrame >= segment.startFrame && currentFrame < segment.endFrame)
+    const nextIndex = Math.min(draft.segments.length - 1, Math.max(0, (currentIndex >= 0 ? currentIndex : direction > 0 ? -1 : draft.segments.length) + direction))
+    const nextSegment = draft.segments[nextIndex]
+    if (nextSegment) selectSegment(nextSegment)
+  }
   const toggleSelectedSegmentPlayback = () => {
     if (!selectedSegment || !frameTimeline.timeline || controlsProps.isUnavailable) return
     if (shotPlaybackRef.current?.segmentId === selectedSegment.id && previewProps.status === "playing") {
@@ -250,7 +260,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
       </aside>
       <section className="order-1 flex h-max min-w-0 flex-col overflow-visible lg:order-2 lg:h-auto lg:min-h-0 lg:overflow-hidden">
         <div className="h-[clamp(12rem,52vw,28rem)] min-h-48 shrink-0 p-3 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink"><VideoPreviewCanvas {...previewProps} /></div>
-        <div className="shrink-0 border-t border-border bg-bg-panel px-3 py-2"><VideoPlaybackControls {...controlsProps} /></div>
+        <div className="shrink-0 border-t border-border bg-bg-panel px-3 py-2"><VideoPlaybackControls {...controlsProps} isPreviousShotDisabled={selectedSegmentIndex <= 0} isNextShotDisabled={selectedSegmentIndex < 0 || selectedSegmentIndex >= draft.segments.length - 1} onPreviousShot={() => selectAdjacentSegment(-1)} onNextShot={() => selectAdjacentSegment(1)} /></div>
         <div className="shrink-0 border-t border-border bg-bg-panel p-3"><CalibrationTimeline segments={draft.segments} boundaries={draft.boundaries} frameRate={frameRate} totalFrames={verifiedTotalFrames} currentFrame={frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0} selectedSegment={selectedSegment} selectedSegmentIndex={selectedSegmentIndex} onSelectSegment={selectSegment} onPlaySelectedSegment={toggleSelectedSegmentPlayback} onSeekFrame={seekToFrame} /></div>
       </section>
       <aside className="order-3 min-h-64 overflow-y-auto border-t border-border bg-bg-panel p-3 lg:min-h-0 lg:border-l lg:border-t-0">
