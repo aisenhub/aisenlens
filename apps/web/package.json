@@ -23,6 +23,8 @@
     "test:shot-calibration-browser": "node --test ../../tests/features/shot-calibration/calibration-workflow.browser.test.js ../../tests/features/shot-calibration/calibration-real-media.browser.test.js ../../tests/features/shot-calibration/calibration-verification.browser.test.js",
     "test:editor-history": "node --experimental-strip-types --test test/editor-history-state.test.ts",
     "test:retain-shot-map": "node --experimental-strip-types --test test/retain-shot-map.test.ts",
+    "test:overview-analyze": "node --experimental-strip-types --test ../../tests/features/overview-analyze/*.test.ts",
+    "test:overview-analyze-browser": "node --test ../../tests/features/overview-analyze/overview-analyze.browser.test.js",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
     "test:video-export": "node --test test/video-export.browser.test.js",
     "test:video-export-boundary": "node --experimental-strip-types --test test/video-export-boundary.test.ts",

@@ -8,6 +8,7 @@ import type { ContentOverlaySettings } from "../content-overlay/types";
 import type { AutoShotTaskRecord } from "../auto-shot/types";
 import type { CalibrationAnnotationRecord } from "../scene-calibration/types";
 import type { CalibrationDraft } from "../shot-calibration/types";
+import type { ResearchContext, ResearchRange } from "../analysis/types";
 
 export type MediaAssetStatus = "unlinked" | "linked" | "missing" | "unsupported";
 export type MediaAssetKind = "video" | "audio";
@@ -174,6 +175,8 @@ export interface ProjectRecoverySnapshot {
   groups: ShotGroupRecord[];
   markers: AnnotationMarker[];
   template: ProjectTemplateSnapshotRecord | null;
+  researchRanges?: ResearchRange[];
+  researchContexts?: ResearchContext[];
 }
 
 export interface ProjectEditorState {
@@ -182,6 +185,8 @@ export interface ProjectEditorState {
   groups: ShotGroupRecord[];
   markers: AnnotationMarker[];
   template: ProjectTemplateSnapshotRecord | null;
+  researchRanges?: ResearchRange[];
+  researchContexts?: ResearchContext[];
 }
 
 export interface CreateProjectInput {
@@ -228,6 +233,12 @@ export interface ProjectRepository {
   applyCalibrationDraft: (input: { state: ProjectEditorState; draft: CalibrationDraft; expectedUpdatedAt: string; recoverySnapshotId: string; task: AutoShotTaskRecord | null }) => Promise<ProjectRecord>;
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
   replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[]) => Promise<void>;
+  listProjectResearchRanges: (projectId: string) => Promise<ResearchRange[]>;
+  saveProjectResearchRange: (range: ResearchRange, expectedRevision?: number) => Promise<void>;
+  deleteProjectResearchRange: (projectId: string, rangeId: string) => Promise<void>;
+  listProjectResearchContexts: (projectId: string) => Promise<ResearchContext[]>;
+  saveProjectResearchContext: (context: ResearchContext, expectedRevision?: number) => Promise<void>;
+  deleteProjectResearchContext: (projectId: string, contextId: string) => Promise<void>;
   listProjectAnnotationMarkers: (projectId: string) => Promise<AnnotationMarker[]>;
   replaceProjectAnnotationMarkers: (projectId: string, markers: AnnotationMarker[]) => Promise<void>;
   saveProjectAnnotationMarker: (marker: AnnotationMarker) => Promise<void>;

@@ -8,6 +8,7 @@ import type { ShotDetectionMeta, ShotRecord } from "../../shot/types";
 import type { AnalysisFieldValue, ProjectTemplateSnapshot } from "../../template/types";
 import { getShotAnalysisCompleteness, normalizeShotAnalysisFields } from "../../template/services/templateValidation";
 import type { ShotData } from "../constants/editorData";
+import type { ResearchContext, ResearchRange } from "../../analysis/types";
 
 interface UseEditorPersistenceInput {
   projectId: string;
@@ -28,6 +29,8 @@ interface UseEditorPersistenceInput {
   loadedProjectId: string | null;
   loadedShotGroupProjectId: string | null;
   autoShotDetection: Record<string, ShotDetectionMeta>;
+  researchRanges: ResearchRange[];
+  researchContexts: ResearchContext[];
   onProjectUpdated: (project: ProjectRecord) => void;
 }
 
@@ -36,7 +39,7 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
     projectId, projectTitle, compositionOverlay, contentOverlay, frameRate, shots,
     shotFrames, shotScreenshotIds, primaryShotScreenshotIds, shotBoundaryScreenshotIds,
     shotNotes, shotDims, shotGroups, annotationMarkers, template, loadedProjectId,
-    loadedShotGroupProjectId, autoShotDetection, onProjectUpdated,
+    loadedShotGroupProjectId, autoShotDetection, researchRanges, researchContexts, onProjectUpdated,
   } = input;
 
   return useCallback(async () => {
@@ -79,7 +82,9 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
       groups: reconciledGroups,
       markers: annotationMarkers,
       template: template as ProjectTemplateSnapshotRecord,
+      researchRanges,
+      researchContexts,
     }, latestProject.updatedAt);
     onProjectUpdated(updatedProject);
-  }, [annotationMarkers, autoShotDetection, compositionOverlay, contentOverlay, frameRate, loadedProjectId, loadedShotGroupProjectId, onProjectUpdated, primaryShotScreenshotIds, projectId, projectTitle, shotBoundaryScreenshotIds, shotDims, shotFrames, shotGroups, shotNotes, shotScreenshotIds, shots, template]);
+  }, [annotationMarkers, autoShotDetection, compositionOverlay, contentOverlay, frameRate, loadedProjectId, loadedShotGroupProjectId, onProjectUpdated, primaryShotScreenshotIds, projectId, projectTitle, researchContexts, researchRanges, shotBoundaryScreenshotIds, shotDims, shotFrames, shotGroups, shotNotes, shotScreenshotIds, shots, template]);
 }

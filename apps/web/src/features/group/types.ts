@@ -9,4 +9,8 @@ export interface ShotGroupRecord {
   shotIds: string[];
   createdAt: string;
   updatedAt: string;
+  validity?: {
+    status: "valid" | "needs-review";
+    reason: string | null;
+  };
 }

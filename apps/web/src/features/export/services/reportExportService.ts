@@ -34,12 +34,23 @@ function orderedFields(fields: TemplateField[]) {
   return fields.filter((field) => !field.isFixed).sort((left, right) => left.order - right.order);
 }
 
+function researchRows(input: ReportExportInput) {
+  const ranges = input.researchRanges ?? []
+  const contexts = input.researchContexts ?? []
+  return ranges.map((range) => {
+    const context = contexts.find((item) => item.target.kind === "range" && item.target.id === range.id)
+    return [range.title, formatTime(range.startUs / 1_000_000), formatTime(range.endUs / 1_000_000), context?.status ?? "未开始", context?.question ?? "", range.observation, range.interpretation, range.summary, String(context?.evidence.length ?? 0)] as Array<string | number>
+  })
+}
+
 export function createReportCsv(input: ReportExportInput) {
   const fields = orderedFields(input.fields);
   const groupByShotId = new Map(input.groups.flatMap((group) => group.shotIds.map((shotId) => [shotId, group] as const)));
   const header = ["镜号", "起始时间", "结束时间", "时长（秒）", "分组", "画面内容", "镜头分析", ...fields.map((field) => field.label)];
   const rows = input.shots.map((shot, index) => [index + 1, formatTime(shot.start), formatTime(shot.start + shot.duration), shot.duration.toFixed(2), groupByShotId.get(shot.id)?.title ?? "", shot.description, shot.notes, ...fields.map((field) => formatValue(shot.analysisFields[field.id] ?? null))]);
-  return `\uFEFF${[header, ...rows].map((row) => row.map(escapeCsv).join(",")).join("\r\n")}`;
+  const appendix = researchRows(input)
+  const appendixRows = appendix.length ? [["研究附录"], ["范围", "开始", "结束", "状态", "问题", "观察", "解释", "摘要", "证据数"], ...appendix] : []
+  return `\uFEFF${[header, ...rows, ...(appendixRows.length ? [[""]] : []), ...appendixRows].map((row) => row.map(escapeCsv).join(",")).join("\r\n")}`;
 }
 
 export function createReportHtml(input: ReportExportInput) {
@@ -53,7 +64,9 @@ export function createReportHtml(input: ReportExportInput) {
     const values = fields.map((field) => `<dt>${escapeHtml(field.label)}</dt><dd>${escapeHtml(formatValue(shot.analysisFields[field.id] ?? null)) || "—"}</dd>`).join("");
     return `<article class="shot"><div class="shot-image">${image ? `<img src="${image}" alt="分镜 ${index + 1} 代表图">` : "<span>暂无代表图</span>"}</div><div class="shot-content"><p class="eyebrow">镜头 ${String(index + 1).padStart(2, "0")}${group ? ` · ${escapeHtml(group.title)}` : ""}</p><h3>${escapeHtml(formatTime(shot.start))} – ${escapeHtml(formatTime(shot.start + shot.duration))} <small>${shot.duration.toFixed(2)} 秒</small></h3>${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}${shot.notes ? `<p><strong>分析：</strong>${escapeHtml(shot.notes)}</p>` : ""}${values ? `<dl>${values}</dl>` : ""}</div></article>`;
   }).join("");
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.projectTitle)} · 拉片报告</title><style>body{max-width:960px;margin:0 auto;padding:36px 20px;background:#fafafa;color:#1f2937;font:14px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif}h1,h2,h3,p{margin-top:0}header{border-bottom:2px solid #111827;margin-bottom:28px}.eyebrow{color:#6b7280;font-size:12px;letter-spacing:.08em;text-transform:uppercase}.chapters{margin:24px 0}.chapters article{border-left:3px solid #2563eb;padding:10px 14px;margin:8px 0;background:#fff}.shot{display:grid;grid-template-columns:240px 1fr;gap:20px;border:1px solid #d1d5db;background:#fff;padding:16px;margin:14px 0}.shot-image{aspect-ratio:16/9;align-self:center;background:#e5e7eb;display:flex;align-items:center;justify-content:center;color:#6b7280}.shot-image img{width:100%;height:100%;object-fit:cover}.shot h3{font-size:16px;margin-bottom:8px}.shot small{color:#6b7280;font-weight:400}dl{display:grid;grid-template-columns:120px 1fr;gap:4px 12px;margin:14px 0 0}dt{color:#6b7280}dd{margin:0}@media print{body{padding:0}.shot{break-inside:avoid}}@media(max-width:640px){.shot{grid-template-columns:1fr}}</style></head><body><header><p class="eyebrow">AisenLens · 本地生成</p><h1>${escapeHtml(input.projectTitle)}</h1><p>共 ${input.shots.length} 个分镜 · 导出于 ${escapeHtml(new Date().toLocaleString("zh-CN"))}</p></header>${chapterSummary}<main>${shots || "<p>暂无分镜数据。</p>"}</main></body></html>`;
+  const research = researchRows(input)
+  const researchSection = research.length ? `<section class="research"><h2>研究附录</h2><table><thead><tr>${["范围", "时间", "状态", "问题", "观察", "解释", "摘要", "证据数"].map((item) => `<th>${item}</th>`).join("")}</tr></thead><tbody>${research.map((row) => `<tr>${[row[0], `${row[1]}–${row[2]}`, row[3], row[4], row[5], row[6], row[7], row[8]].map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>` : ""
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.projectTitle)} · 拉片报告</title><style>body{max-width:960px;margin:0 auto;padding:36px 20px;background:#fafafa;color:#1f2937;font:14px/1.6 system-ui,-apple-system,"Microsoft YaHei",sans-serif}h1,h2,h3,p{margin-top:0}header{border-bottom:2px solid #111827;margin-bottom:28px}.eyebrow{color:#6b7280;font-size:12px;letter-spacing:.08em;text-transform:uppercase}.chapters{margin:24px 0}.chapters article{border-top:3px solid #2563eb;padding:10px 14px;margin:8px 0;background:#fff}.research{margin:28px 0}.research table{width:100%;border-collapse:collapse;background:#fff}.research th,.research td{border:1px solid #d1d5db;padding:7px;text-align:left;vertical-align:top;font-size:12px}.shot{display:grid;grid-template-columns:240px 1fr;gap:20px;border:1px solid #d1d5db;background:#fff;padding:16px;margin:14px 0}.shot-image{aspect-ratio:16/9;align-self:center;background:#e5e7eb;display:flex;align-items:center;justify-content:center;color:#6b7280}.shot-image img{width:100%;height:100%;object-fit:cover}.shot h3{font-size:16px;margin-bottom:8px}.shot small{color:#6b7280;font-weight:400}dl{display:grid;grid-template-columns:120px 1fr;gap:4px 12px;margin:14px 0 0}dt{color:#6b7280}dd{margin:0}@media print{body{padding:0}.shot{break-inside:avoid}}@media(max-width:640px){.shot{grid-template-columns:1fr}}</style></head><body><header><p class="eyebrow">AisenLens · 本地生成</p><h1>${escapeHtml(input.projectTitle)}</h1><p>共 ${input.shots.length} 个分镜 · 导出于 ${escapeHtml(new Date().toLocaleString("zh-CN"))}</p></header>${chapterSummary}${researchSection}<main>${shots || "<p>暂无分镜数据。</p>"}</main></body></html>`;
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
