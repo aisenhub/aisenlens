@@ -14,6 +14,7 @@ interface CalibrationTimelineProps {
   selectedSegment: CalibrationSegment | null
   selectedSegmentIndex: number
   onSelectSegment: (segment: CalibrationSegment) => void
+  onPlaySelectedSegment: () => void
   onSeekFrame: (frame: number) => void
 }
 
@@ -34,7 +35,7 @@ function chooseTickStep(rangeFrames: number, frameRate: number) {
   return Math.max(1, Math.round(seconds * Math.max(1, frameRate)))
 }
 
-export default function CalibrationTimeline({ segments, boundaries, frameRate, totalFrames, currentFrame, selectedSegment, selectedSegmentIndex, onSelectSegment, onSeekFrame }: CalibrationTimelineProps) {
+export default function CalibrationTimeline({ segments, boundaries, frameRate, totalFrames, currentFrame, selectedSegment, selectedSegmentIndex, onSelectSegment, onPlaySelectedSegment, onSeekFrame }: CalibrationTimelineProps) {
   const [scope, setScope] = useState<TimelineScope>("film")
   const [isDragging, setIsDragging] = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -83,6 +84,12 @@ export default function CalibrationTimeline({ segments, boundaries, frameRate, t
   const visibleSegments = scope === "segment" && activeSegment ? [activeSegment] : segments
   const visibleBoundaries = boundaries.filter((boundary) => boundary.frame >= viewStart && boundary.frame <= viewEnd)
   const position = (frame: number) => `${clamp((frame - viewStart) / viewRange, 0, 1) * 100}%`
+  const handleShotKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== " ") return
+    event.preventDefault()
+    event.stopPropagation()
+    onPlaySelectedSegment()
+  }
 
   return <section className="rounded-lg border border-border bg-bg-input/20 p-3" aria-label="校准时间轴">
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -114,7 +121,7 @@ export default function CalibrationTimeline({ segments, boundaries, frameRate, t
           const right = position(segment.endFrame)
           const width = Math.max(0.8, Number.parseFloat(right) - Number.parseFloat(left))
           const selected = segment.id === selectedSegment?.id
-          return <button key={segment.id} type="button" title={`镜头 ${String(index + 1).padStart(2, "0")} · ${formatTime(segment.startFrame, frameRate)} – ${formatTime(segment.endFrame, frameRate)}`} onPointerDown={(event) => event.stopPropagation()} onClick={() => onSelectSegment(segment)} className={`absolute inset-y-2 z-10 overflow-hidden rounded border px-1.5 text-left transition-colors ${selected ? "border-accent bg-accent/30 text-text-base" : "border-sky-300/40 bg-sky-300/10 text-text-muted hover:border-sky-200/70 hover:bg-sky-300/20"}`} style={{ left, width: `${width}%` }}><span className="block truncate text-[10px] font-medium">镜头 {String(index + 1).padStart(2, "0")}</span><span className="block truncate font-mono text-[9px] opacity-80">{formatTime(segment.startFrame, frameRate)} – {formatTime(segment.endFrame, frameRate)}</span></button>
+          return <button key={segment.id} type="button" title={`镜头 ${String(index + 1).padStart(2, "0")} · ${formatTime(segment.startFrame, frameRate)} – ${formatTime(segment.endFrame, frameRate)}`} onPointerDown={(event) => event.stopPropagation()} onClick={() => onSelectSegment(segment)} onKeyDown={handleShotKeyDown} className={`absolute inset-y-2 z-10 overflow-hidden rounded border px-1.5 text-left transition-colors ${selected ? "border-accent bg-accent/30 text-text-base" : "border-sky-300/40 bg-sky-300/10 text-text-muted hover:border-sky-200/70 hover:bg-sky-300/20"}`} style={{ left, width: `${width}%` }}><span className="block truncate text-[10px] font-medium">镜头 {String(index + 1).padStart(2, "0")}</span><span className="block truncate font-mono text-[9px] opacity-80">{formatTime(segment.startFrame, frameRate)} – {formatTime(segment.endFrame, frameRate)}</span></button>
         })}
         {visibleBoundaries.map((boundary) => <div key={boundary.id} className="pointer-events-none absolute inset-y-1 z-20 w-px bg-amber-300/80" style={{ left: position(boundary.frame) }} title={`边界 ${formatTime(boundary.frame, frameRate)}`} />)}
         <button type="button" aria-label={`拖动播放头，当前第 ${playheadFrame} 帧`} aria-pressed={isDragging} className={`absolute top-0 z-30 h-full w-4 -translate-x-1/2 cursor-col-resize ${isDragging ? "cursor-grabbing" : "cursor-col-resize"}`} style={{ left: position(playheadFrame) }} onPointerDown={startDrag} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); onSeekFrame(clamp(playheadFrame + (event.key === "ArrowLeft" ? -1 : 1), viewStart, Math.max(viewStart, viewEnd - 1))) } }}><span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-accent" /><span className="absolute left-1/2 top-0 size-3 -translate-x-1/2 rounded-b-sm bg-accent" /></button>

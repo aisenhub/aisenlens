@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { toast } from "sonner"
 import { Check, ChevronRight, Flag, GitBranch, Redo2, Scissors, Trash2, Undo2 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
@@ -53,6 +53,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
   const [isApplyOpen, setIsApplyOpen] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
   const [issueNote, setIssueNote] = useState("")
+  const shotPlaybackRef = useRef<{ segmentId: string; endFrame: number } | null>(null)
   const playbackCoverageRef = useRef<{ lastTime: number; lastWallTime: number; startFrame: number; endFrame: number } | null>(null)
 
   useEffect(() => {
@@ -124,12 +125,40 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     moveToFrame(frame)
   }
   const selectSegment = (segment: CalibrationDraft["segments"][number]) => {
+    shotPlaybackRef.current = null
+    if (previewProps.status === "playing") controlsProps.onPlayingChange(false)
     setSelectedSegmentId(segment.id)
     const boundaryId = segment.endBoundaryId ?? segment.startBoundaryId
     const boundary = boundaryId ? draft?.boundaries.find((item) => item.id === boundaryId) : null
     setSelectedBoundaryId(boundary?.id ?? null)
     moveToFrame(segment.startFrame)
   }
+  const toggleSelectedSegmentPlayback = () => {
+    if (!selectedSegment || !frameTimeline.timeline || controlsProps.isUnavailable) return
+    if (shotPlaybackRef.current?.segmentId === selectedSegment.id && previewProps.status === "playing") {
+      shotPlaybackRef.current = null
+      controlsProps.onPlayingChange(false)
+      return
+    }
+    shotPlaybackRef.current = { segmentId: selectedSegment.id, endFrame: Math.max(selectedSegment.startFrame, selectedSegment.endFrame - 1) }
+    moveToFrame(selectedSegment.startFrame)
+    controlsProps.onPlayingChange(true)
+  }
+  const handleShotPlaybackKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== " ") return
+    event.preventDefault()
+    event.stopPropagation()
+    toggleSelectedSegmentPlayback()
+  }
+  useEffect(() => {
+    const playback = shotPlaybackRef.current
+    if (!playback || previewProps.status !== "playing" || !frameTimeline.timeline) return
+    const currentFrame = timestampToFrame(frameTimeline.timeline, controlsProps.currentTime)
+    if (currentFrame < playback.endFrame) return
+    moveToFrame(playback.endFrame)
+    shotPlaybackRef.current = null
+    controlsProps.onPlayingChange(false)
+  }, [controlsProps.currentTime, frameTimeline.timeline, previewProps.status])
   const splitAtPlayhead = () => {
     if (!draft) return
     if (!frameTimeline.timeline) return
@@ -146,6 +175,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     setNavigation("issues")
   }
   useEditorShortcuts({
+    "playback.toggle": toggleSelectedSegmentPlayback,
     "shot.splitAtPlayhead": splitAtPlayhead,
     "marker.create": addIssue,
     "history.undo": session.undo,
@@ -167,6 +197,39 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
   if (session.state === "idle") return <main className="flex flex-1 items-center justify-center bg-bg-deep p-6"><div className="max-w-md rounded-xl border border-border bg-bg-panel p-5 text-center"><h1 className="text-lg font-semibold">复核候选镜头</h1><p className="mt-2 text-sm leading-6 text-text-muted">请先在准备阶段导入视频并完成一次自动分镜，校准工作区会在此恢复真实草稿。</p><Button type="button" variant="outline" size="sm" onClick={onBack} className="mt-4">返回准备</Button></div></main>
   if (session.state === "error" || !draft || draft.status === "conflict") return <main className="flex flex-1 items-center justify-center bg-bg-deep p-6"><div className="max-w-md rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100"><p className="font-medium">校准草稿需要重新确认</p><p className="mt-2 text-red-100/80">{session.error ?? "项目正式内容已在其他位置更新，当前草稿已保留但不能覆盖新版本。请返回并重新开始校准。"}</p><Button type="button" variant="outline" size="sm" onClick={onBack} className="mt-4">返回准备</Button></div></main>
 
+  const shotListContent = navigation === "shots"
+    ? draft.segments.map((segment, index) => (
+      <button
+        key={segment.id}
+        type="button"
+        onClick={() => selectSegment(segment)}
+        onKeyDown={handleShotPlaybackKeyDown}
+        aria-current={selectedSegmentId === segment.id ? "true" : undefined}
+        aria-label={`定位镜头 ${index + 1} 的边界`}
+        className={`mb-1 flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left ${selectedSegmentId === segment.id ? "border-accent/50 bg-accent/10" : "border-transparent hover:border-border hover:bg-bg-input/40"}`}
+      >
+        <span className="min-w-0">
+          <span className="block text-xs font-medium">镜头 {String(index + 1).padStart(2, "0")}</span>
+          <span className="mt-0.5 block font-mono text-[10px] text-text-muted">{formatTime(segment.startFrame, frameRate)} – {formatTime(segment.endFrame, frameRate)}</span>
+        </span>
+        <ChevronRight className="size-3 text-text-muted" />
+      </button>
+    ))
+    : draft.issues.map((issue) => (
+      <button
+        key={issue.id}
+        type="button"
+        onClick={() => moveToFrame(issue.frame)}
+        className="mb-1 w-full rounded-lg border border-border/70 px-2.5 py-2 text-left hover:bg-bg-input/40"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-[11px]">{formatTime(issue.frame, frameRate)}</span>
+          <span className={`text-[10px] ${issue.status === "pending" ? "text-amber-200" : "text-emerald-200"}`}>{issue.status === "pending" ? "待处理" : "已处理"}</span>
+        </div>
+        {issue.note && <p className="mt-1 truncate text-[10px] text-text-muted">{issue.note}</p>}
+      </button>
+    ))
+
   return <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-bg-deep text-text-base lg:overflow-hidden">
     <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-bg-nav px-4 py-2.5">
       <div className="min-w-0 flex-1"><h1 className="text-sm font-semibold">镜头校准</h1><p className="mt-0.5 text-[11px] text-text-muted">连续巡视，发现变化后暂停、逐帧定位并补切。</p></div>
@@ -181,14 +244,14 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
       <aside className="order-2 flex min-h-48 flex-col border-t border-border bg-bg-panel lg:order-1 lg:min-h-0 lg:border-r lg:border-t-0">
         <div className="flex border-b border-border"><Button type="button" variant="ghost" size="sm" onClick={() => setNavigation("shots")} className={`flex-1 rounded-none ${navigation === "shots" ? "bg-accent/10 text-accent" : "text-text-muted"}`}>镜头 {draft.segments.length}</Button><Button type="button" variant="ghost" size="sm" onClick={() => setNavigation("issues")} className={`flex-1 rounded-none ${navigation === "issues" ? "bg-accent/10 text-accent" : "text-text-muted"}`}>待回看 {pendingIssues.length}</Button></div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
-          {navigation === "shots" ? draft.segments.map((segment, index) => <button key={segment.id} type="button" onClick={() => selectSegment(segment)} aria-current={selectedSegmentId === segment.id ? "true" : undefined} aria-label={`定位镜头 ${index + 1} 的边界`} className={`mb-1 flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-left ${selectedSegmentId === segment.id ? "border-accent/50 bg-accent/10" : "border-transparent hover:border-border hover:bg-bg-input/40"}`}><span className="min-w-0"><span className="block text-xs font-medium">镜头 {String(index + 1).padStart(2, "0")}</span><span className="mt-0.5 block font-mono text-[10px] text-text-muted">{formatTime(segment.startFrame, frameRate)} – {formatTime(segment.endFrame, frameRate)}</span></span><ChevronRight className="size-3 text-text-muted" /></button>) : draft.issues.map((issue) => <button key={issue.id} type="button" onClick={() => moveToFrame(issue.frame)} className="mb-1 w-full rounded-lg border border-border/70 px-2.5 py-2 text-left hover:bg-bg-input/40"><div className="flex items-center justify-between gap-2"><span className="font-mono text-[11px]">{formatTime(issue.frame, frameRate)}</span><span className={`text-[10px] ${issue.status === "pending" ? "text-amber-200" : "text-emerald-200"}`}>{issue.status === "pending" ? "待处理" : "已处理"}</span></div>{issue.note && <p className="mt-1 truncate text-[10px] text-text-muted">{issue.note}</p>}</button>)}
+          {shotListContent}
           {navigation === "issues" && draft.issues.length === 0 && <p className="p-3 text-xs leading-5 text-text-muted">还没有待回看项。巡视时发现不确定位置，可在右侧标记。</p>}
         </div>
       </aside>
       <section className="order-1 flex h-max min-w-0 flex-col overflow-visible lg:order-2 lg:h-auto lg:min-h-0 lg:overflow-hidden">
         <div className="h-[clamp(12rem,52vw,28rem)] min-h-48 shrink-0 p-3 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink"><VideoPreviewCanvas {...previewProps} /></div>
         <div className="shrink-0 border-t border-border bg-bg-panel px-3 py-2"><VideoPlaybackControls {...controlsProps} /></div>
-        <div className="shrink-0 border-t border-border bg-bg-panel p-3"><CalibrationTimeline segments={draft.segments} boundaries={draft.boundaries} frameRate={frameRate} totalFrames={verifiedTotalFrames} currentFrame={frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0} selectedSegment={selectedSegment} selectedSegmentIndex={selectedSegmentIndex} onSelectSegment={selectSegment} onSeekFrame={seekToFrame} /></div>
+        <div className="shrink-0 border-t border-border bg-bg-panel p-3"><CalibrationTimeline segments={draft.segments} boundaries={draft.boundaries} frameRate={frameRate} totalFrames={verifiedTotalFrames} currentFrame={frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0} selectedSegment={selectedSegment} selectedSegmentIndex={selectedSegmentIndex} onSelectSegment={selectSegment} onPlaySelectedSegment={toggleSelectedSegmentPlayback} onSeekFrame={seekToFrame} /></div>
       </section>
       <aside className="order-3 min-h-64 overflow-y-auto border-t border-border bg-bg-panel p-3 lg:min-h-0 lg:border-l lg:border-t-0">
         <div className="flex items-start justify-between gap-2"><div><h2 className="text-xs font-medium">当前帧操作</h2><p className="mt-1 text-[10px] leading-4 text-text-muted">精确帧确认后再写入草稿。</p></div><span className="rounded bg-accent/10 px-1.5 py-1 font-mono text-[10px] text-accent">F {frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : "—"}</span></div>
