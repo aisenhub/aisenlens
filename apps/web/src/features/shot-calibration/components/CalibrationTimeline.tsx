@@ -95,7 +95,6 @@ export default function CalibrationTimeline({ segments, boundaries, frameRate, t
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="min-w-0">
         <h2 className="text-xs font-medium">校准时间轴</h2>
-        <p className="mt-0.5 text-[10px] text-text-muted">拖动播放头定位，点击分镜块切换当前边界。</p>
       </div>
       <div className="flex items-center gap-1 rounded-md border border-border bg-bg-panel p-0.5" aria-label="时间轴范围">
         <Button type="button" size="xs" variant={scope === "film" ? "secondary" : "ghost"} aria-pressed={scope === "film"} onClick={() => setScope("film")}>全片</Button>
