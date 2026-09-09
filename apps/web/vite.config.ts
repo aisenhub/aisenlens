@@ -24,6 +24,14 @@ export default defineConfig(({ mode }) => {
           assetFileNames: "assets/[hash][extname]",
           chunkFileNames: "assets/[hash].js",
           entryFileNames: "assets/[hash].js",
+          manualChunks(id) {
+            if (id.includes("/packages/scene-engine/")) return "scene-engine"
+            if (id.includes("/features/auto-shot/")) return "auto-shot"
+            if (id.includes("/features/scene-calibration/")) return "calibration"
+            if (id.includes("/features/export/")) return "export"
+            if (id.includes("/features/media/")) return "media"
+            return undefined
+          },
         },
       },
     },

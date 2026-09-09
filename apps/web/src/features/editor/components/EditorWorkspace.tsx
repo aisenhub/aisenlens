@@ -145,13 +145,13 @@ import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPrevi
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
 import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
 import { useProjectSession } from "../session/ProjectSessionProvider"
-import type { WorkflowStage, WorkflowView } from "../../workflow/types.ts"
-import PrepareView from "../../workflow/components/PrepareView"
-import CalibrateView from "../../workflow/components/CalibrateView"
-import OverviewView from "../../overview/components/OverviewView"
-import AnalyzeWorkspace from "../../analysis/components/AnalyzeWorkspace"
-import LearnView from "../../learn/components/LearnView"
-import CreateView from "../../workflow/components/CreateView"
+import type { WorkflowLocation, WorkflowStage, WorkflowView } from "../../workflow/types.ts"
+const PrepareView = lazy(() => import("../../workflow/components/PrepareView"))
+const CalibrateView = lazy(() => import("../../workflow/components/CalibrateView"))
+const OverviewView = lazy(() => import("../../overview/components/OverviewView"))
+const AnalyzeWorkspace = lazy(() => import("../../analysis/components/AnalyzeWorkspace"))
+const LearnView = lazy(() => import("../../learn/components/LearnView"))
+const CreateView = lazy(() => import("../../workflow/components/CreateView"))
 import type { LearningSource } from "../../learn/services/deriveLearningSources"
 
 interface EditorWorkspaceProps {
@@ -169,7 +169,7 @@ interface EditorWorkspaceProps {
   isActive?: boolean
   workflowStage?: WorkflowStage
   workflowView?: WorkflowView
-  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView) => void
+  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
 }
 
 interface EditorHistorySnapshot {
@@ -259,6 +259,10 @@ export default function EditorWorkspace({
 }: EditorWorkspaceProps) {
   const setSessionSelection = useProjectSession((state) => state.setSelection)
   const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
+  const setSessionResearchTarget = useProjectSession((state) => state.setResearchTarget)
+  const setSessionResearchMode = useProjectSession((state) => state.setResearchMode)
+  const setSessionResearchScope = useProjectSession((state) => state.setResearchScope)
+  const setSessionResearchQueue = useProjectSession((state) => state.setResearchQueue)
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
   const autoShotDetectionRef = useRef<Record<string, ShotDetectionMeta>>({})
@@ -446,7 +450,8 @@ export default function EditorWorkspace({
 
   useEffect(() => {
     setSessionSelection({ shotId: shots[activeShot]?.id ?? null })
-  }, [activeShot, setSessionSelection, shots])
+    setSessionResearchTarget(selectedGroupId ? { kind: "group", id: selectedGroupId } : shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
+  }, [activeShot, selectedGroupId, setSessionResearchTarget, setSessionSelection, shots])
 
   const autoShotMediaFingerprint = useMemo(
     () => (media.source ? normalizeMediaSourceFingerprint(media.source) : null),
@@ -2634,18 +2639,21 @@ export default function EditorWorkspace({
       </header>
 
       {/* ══ Main body ══ */}
+      <Suspense fallback={<div className="flex min-h-0 flex-1 items-center justify-center text-sm text-text-muted">正在加载工作区…</div>}>
       {workflowStage === "analyze" ? (
       <AnalyzeWorkspace
         view={workflowView}
         shots={shots}
         groups={shotGroups}
         activeShotIndex={activeShot}
+        selectedGroupId={selectedGroupId}
         notes={shotNotes}
         project={mediaProject}
         frameRate={media.metadata?.frameRate ?? FPS}
         currentFrame={Math.round(currentTime * (media.metadata?.frameRate ?? FPS))}
         onViewChange={(view) => onWorkflowNavigate?.("analyze", view)}
         onLocateShot={(index) => {
+          setSelectedGroupId(null)
           setActiveShot(index)
           setCurrentTime(shots[index]?.start ?? 0)
         }}
@@ -3525,11 +3533,28 @@ export default function EditorWorkspace({
           markers={annotationMarkers}
           durationSeconds={durationSeconds}
           frameRate={media.metadata?.frameRate ?? null}
+          selectedShotId={shots[activeShot]?.id ?? null}
           onViewChange={(view) => onWorkflowNavigate?.("overview", view)}
           onSelectShot={(index) => {
             setActiveShot(index)
             setCurrentTime(shots[index]?.start ?? 0)
-            onWorkflowNavigate?.("analyze", "scenes")
+            setSelectedGroupId(null)
+          }}
+          onEnterResearch={(shot) => {
+            const startUs = Math.round(shot.start * 1_000_000)
+            const endUs = Math.round((shot.start + shot.duration) * 1_000_000)
+            setSessionResearchMode("range")
+            setSessionResearchScope({ kind: "transient-range", fromUs: startUs, toUs: endUs })
+            setSessionResearchQueue([shot.id])
+            setSessionResearchTarget({ kind: "shot", id: shot.id })
+            onWorkflowNavigate?.("analyze", "shots", { mode: "range", scopeKind: "transient-range", fromUs: startUs, toUs: endUs, targetKind: "shot", targetId: shot.id })
+          }}
+          onEnterSequential={() => {
+            setSessionResearchMode("sequential")
+            setSessionResearchScope({ kind: "full-film" })
+            setSessionResearchQueue(shots.map((shot) => shot.id), activeShot)
+            setSessionResearchTarget(shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
+            onWorkflowNavigate?.("analyze", "shots", { mode: "sequential", scopeKind: "full-film", targetKind: "shot", targetId: shots[activeShot]?.id })
           }}
           onOpenScene={(group) => {
             setSelectedGroupId(group.id)
@@ -3644,6 +3669,7 @@ export default function EditorWorkspace({
           onBackToPrepare={() => onWorkflowNavigate?.("prepare", "media")}
         />
       )}
+      </Suspense>
       {isTemplateEditorOpen && template && (
         <TemplateEditorModal
           template={template}

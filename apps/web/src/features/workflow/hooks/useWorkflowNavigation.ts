@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { getStageDefinition } from "../constants/workflowStages.ts"
 import { createWorkflowSearch, parseWorkflowLocation } from "../services/workflowLocation.ts"
-import type { WorkflowStage, WorkflowView } from "../types.ts"
+import type { WorkflowLocation, WorkflowStage, WorkflowView } from "../types.ts"
 
 export default function useWorkflowNavigation(projectId?: string | null) {
   const location = useLocation()
@@ -12,13 +12,14 @@ export default function useWorkflowNavigation(projectId?: string | null) {
   const effectiveProjectId = projectId ?? parsed.projectId
 
   const goTo = useCallback(
-    (stage: WorkflowStage, view?: WorkflowView) => {
+    (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => {
       const definition = getStageDefinition(stage)
       const nextView = view && definition.views.includes(view) ? view : definition.defaultView
       const params = createWorkflowSearch(location.search, {
         projectId: effectiveProjectId,
         stage,
         view: nextView,
+        ...research,
       })
       setSearchParams(params)
     },

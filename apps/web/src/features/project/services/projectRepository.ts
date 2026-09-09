@@ -1,4 +1,5 @@
 import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { ResearchContext, ResearchRange } from "../../analysis/types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
@@ -11,7 +12,7 @@ import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettin
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 16;
+const DATABASE_VERSION = 17;
 const PROJECTS_STORE = "projects";
 const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
@@ -28,6 +29,8 @@ const CALIBRATION_ANNOTATIONS_STORE = "scene-calibration-annotations";
 const SHOT_GROUPS_STORE = "shot-groups";
 const RECOVERY_SNAPSHOTS_STORE = "recovery-snapshots";
 const CALIBRATION_DRAFTS_STORE = "shot-calibration-drafts";
+const RESEARCH_RANGES_STORE = "research-ranges";
+const RESEARCH_CONTEXTS_STORE = "research-contexts";
 
 export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write";
 let projectRepositoryFaultInjector: ((point: ProjectRepositoryFaultPoint) => void) | null = null;
@@ -214,6 +217,16 @@ function openDatabase(): Promise<IDBDatabase> {
         drafts.createIndex("projectId", "projectId", { unique: false });
         drafts.createIndex("projectMediaKey", "projectMediaKey", { unique: true });
       }
+      if (!database.objectStoreNames.contains(RESEARCH_RANGES_STORE)) {
+        const ranges = database.createObjectStore(RESEARCH_RANGES_STORE, { keyPath: "id" });
+        ranges.createIndex("projectId", "projectId", { unique: false });
+        ranges.createIndex("projectMedia", ["projectId", "mediaIdentityDigest"], { unique: false });
+      }
+      if (!database.objectStoreNames.contains(RESEARCH_CONTEXTS_STORE)) {
+        const contexts = database.createObjectStore(RESEARCH_CONTEXTS_STORE, { keyPath: "id" });
+        contexts.createIndex("projectId", "projectId", { unique: false });
+        contexts.createIndex("projectTarget", ["projectId", "target.kind", "target.id"], { unique: true });
+      }
     };
   });
 
@@ -238,6 +251,22 @@ function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): 
       deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("无法清理项目数据。"));
       deleteRequest.onsuccess = () => cursor.continue();
     };
+  });
+}
+
+async function markResearchContextsAfterStructureChange(store: IDBObjectStore, projectId: string, shotIds: string[], groupIds: string[], now: string): Promise<void> {
+  const contexts = await requestResult(store.index("projectId").getAll(IDBKeyRange.only(projectId))) as ResearchContext[];
+  const shotSet = new Set(shotIds);
+  const groupSet = new Set(groupIds);
+  contexts.forEach((context) => {
+    const reasons = new Set(context.needsReviewReasons);
+    if (context.target.kind === "shot" && !shotSet.has(context.target.id)) reasons.add("原镜头结构已变化，请重新关联目标。");
+    if (context.target.kind === "group" && !groupSet.has(context.target.id)) reasons.add("原结构已变化，请重新关联目标。");
+    if (context.status === "completed") reasons.add("正式镜头结构已更新，请复核研究结论。");
+    if (context.evidence.some((item) => item.kind === "shot" && !shotSet.has(item.shotId))) reasons.add("引用的原镜头已不存在，证据需要重新关联。");
+    if (reasons.size) {
+      store.put({ ...context, needsReview: true, needsReviewReasons: [...reasons], updatedAt: now, revision: context.revision + 1 });
+    }
   });
 }
 
@@ -423,13 +452,15 @@ export function createProjectRepository(): ProjectRepository {
 
     async readProjectEditorState(projectId) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readonly");
-      const [project, shots, groups, markers, template] = await Promise.all([
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readonly");
+      const [project, shots, groups, markers, template, researchRanges, researchContexts] = await Promise.all([
         requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as Promise<ProjectRecord | undefined>,
         requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
         requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
         requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnnotationMarker[]>,
         requestResult(transaction.objectStore(PROJECT_TEMPLATES_STORE).index("projectId").get(projectId)) as Promise<ProjectTemplateSnapshotRecord | undefined>,
+        requestResult(transaction.objectStore(RESEARCH_RANGES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchRange[]>,
+        requestResult(transaction.objectStore(RESEARCH_CONTEXTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchContext[]>,
       ]);
       await transactionResult(transaction);
       if (!project) return null;
@@ -439,12 +470,14 @@ export function createProjectRepository(): ProjectRepository {
         groups: groups.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
         markers: markers.sort((left, right) => left.frame - right.frame || left.createdAt.localeCompare(right.createdAt)),
         template: template ?? null,
+        researchRanges: researchRanges.sort((left, right) => left.startUs - right.startUs),
+        researchContexts: researchContexts.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
       } satisfies ProjectEditorState;
     },
 
     async saveProjectEditorState(state, expectedUpdatedAt) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
       const projectStore = transaction.objectStore(PROJECTS_STORE);
       const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
       if (!current) throw new Error("项目不存在或已删除。");
@@ -462,13 +495,21 @@ export function createProjectRepository(): ProjectRepository {
       state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
       state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
       if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
+      if (state.researchRanges !== undefined) {
+        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
+        state.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId: state.project.id, updatedAt: now }));
+      }
+      if (state.researchContexts !== undefined) {
+        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id);
+        state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
+      }
       await transactionResult(transaction);
       return updatedProject;
     },
 
     async deleteProject(projectId: string) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, CALIBRATION_DRAFTS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, CALIBRATION_DRAFTS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
       const mediaAssets = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as ProjectRecord | undefined;
       mediaAssets?.mediaAssets.forEach((asset) => {
         transaction.objectStore(MEDIA_ASSET_HANDLES_STORE).delete(asset.id);
@@ -511,6 +552,8 @@ export function createProjectRepository(): ProjectRepository {
       deleteProjectRecords(transaction.objectStore(SHOT_GROUPS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(CALIBRATION_DRAFTS_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(RESEARCH_RANGES_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(RESEARCH_CONTEXTS_STORE), projectId);
       await transactionResult(transaction);
     },
 
@@ -782,7 +825,7 @@ export function createProjectRepository(): ProjectRepository {
     async applyCalibrationDraft({ state, draft, expectedUpdatedAt, recoverySnapshotId, task }) {
       validateCalibrationDraft(draft);
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, CALIBRATION_DRAFTS_STORE, AUTO_SHOT_RUNS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, CALIBRATION_DRAFTS_STORE, AUTO_SHOT_RUNS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
       const completion = transactionResult(transaction);
       try {
         const projectStore = transaction.objectStore(PROJECTS_STORE);
@@ -819,6 +862,15 @@ export function createProjectRepository(): ProjectRepository {
         const appliedDraft: CalibrationDraft = { ...structuredClone(draft), status: "applied", applyReceipt: { draftId: draft.id, appliedDraftRevision: draft.revision, projectUpdatedAt: now, appliedAt: now, recoverySnapshotId }, updatedAt: now };
         injectProjectRepositoryFault("draft-receipt-write");
         draftStore.put(toCalibrationDraftRecord(appliedDraft));
+        await markResearchContextsAfterStructureChange(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id, state.shots.map((shot) => shot.id), state.groups.map((group) => group.id), now);
+        if (state.researchRanges !== undefined) {
+          await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
+          state.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId: state.project.id, updatedAt: now }));
+        }
+        if (state.researchContexts !== undefined) {
+          await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id);
+          state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
+        }
         await completion;
         return updatedProject;
       } catch (error) {
@@ -847,6 +899,57 @@ export function createProjectRepository(): ProjectRepository {
         cursor.continue();
       };
       groups.forEach((group) => store.put({ ...group, projectId, updatedAt: new Date().toISOString() }));
+      await transactionResult(transaction);
+    },
+
+    async listProjectResearchRanges(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_RANGES_STORE, "readonly");
+      const ranges = await requestResult(transaction.objectStore(RESEARCH_RANGES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as ResearchRange[];
+      return ranges.sort((left, right) => left.startUs - right.startUs || left.createdAt.localeCompare(right.createdAt));
+    },
+
+    async saveProjectResearchRange(range: ResearchRange) {
+      if (!Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs) || range.endUs <= range.startUs) throw new Error("研究范围必须是正向整数微秒区间。");
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_RANGES_STORE, "readwrite");
+      transaction.objectStore(RESEARCH_RANGES_STORE).put(structuredClone(range));
+      await transactionResult(transaction);
+    },
+
+    async deleteProjectResearchRange(projectId: string, rangeId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_RANGES_STORE, "readwrite");
+      const store = transaction.objectStore(RESEARCH_RANGES_STORE);
+      const range = await requestResult(store.get(rangeId)) as ResearchRange | undefined;
+      if (range?.projectId === projectId) store.delete(rangeId);
+      await transactionResult(transaction);
+    },
+
+    async listProjectResearchContexts(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_CONTEXTS_STORE, "readonly");
+      const contexts = await requestResult(transaction.objectStore(RESEARCH_CONTEXTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as ResearchContext[];
+      return contexts.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
+    },
+
+    async saveProjectResearchContext(context: ResearchContext) {
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_CONTEXTS_STORE, "readwrite");
+      const store = transaction.objectStore(RESEARCH_CONTEXTS_STORE);
+      const key = [context.projectId, context.target.kind, context.target.id];
+      const existing = await requestResult(store.index("projectTarget").get(key)) as ResearchContext | undefined;
+      if (existing && existing.id !== context.id) store.delete(existing.id);
+      store.put(structuredClone(context));
+      await transactionResult(transaction);
+    },
+
+    async deleteProjectResearchContext(projectId: string, contextId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(RESEARCH_CONTEXTS_STORE, "readwrite");
+      const store = transaction.objectStore(RESEARCH_CONTEXTS_STORE);
+      const context = await requestResult(store.get(contextId)) as ResearchContext | undefined;
+      if (context?.projectId === projectId) store.delete(contextId);
       await transactionResult(transaction);
     },
 
@@ -955,7 +1058,7 @@ export function createProjectRepository(): ProjectRepository {
 
     async restoreProjectRecoverySnapshot(snapshot: ProjectRecoverySnapshot) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
       const projectId = snapshot.projectId;
       transaction.objectStore(PROJECTS_STORE).put({ ...snapshot.project, id: projectId });
       await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), projectId);
@@ -968,6 +1071,14 @@ export function createProjectRepository(): ProjectRepository {
       snapshot.shots.forEach((shot) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId }));
       snapshot.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId }));
       snapshot.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId }));
+      if (snapshot.researchRanges !== undefined) {
+        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), projectId);
+        snapshot.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId }));
+      }
+      if (snapshot.researchContexts !== undefined) {
+        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), projectId);
+        snapshot.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId }));
+      }
       await transactionResult(transaction);
     },
 

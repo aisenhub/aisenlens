@@ -2,6 +2,7 @@ import projectRepository from "../../project/services/projectRepository";
 import type { ShotGroupKind, ShotGroupRecord } from "../types";
 export { getContiguousShotIds, reconcileShotGroups } from "./reconcileShotGroups";
 import { getContiguousShotIds } from "./reconcileShotGroups";
+import { validateStructureMembership, validateStructureChange } from "./structureValidation";
 
 export function getShotGroupIndexes(group: ShotGroupRecord, shotIds: string[]): { first: number; last: number } | null {
   const members = getContiguousShotIds(shotIds, group.shotIds);
@@ -15,10 +16,10 @@ export function adjustShotGroupRange({ groups, groupId, shotIds, edge, operation
   if (!group) return groups;
   const indexes = getShotGroupIndexes(group, shotIds);
   if (!indexes) return groups;
-  const otherMembers = new Set(groups.filter((item) => item.id !== groupId).flatMap((item) => item.shotIds));
+  const otherMembers = new Set(groups.filter((item) => item.id !== groupId && item.kind === group.kind).flatMap((item) => item.shotIds));
   let members = group.shotIds;
   if (operation === "shrink") {
-    if (members.length <= 2) return groups;
+    if (members.length <= 1) return groups;
     members = edge === "start" ? members.slice(1) : members.slice(0, -1);
   } else {
     const candidateIndex = edge === "start" ? indexes.first - 1 : indexes.last + 1;
@@ -26,14 +27,16 @@ export function adjustShotGroupRange({ groups, groupId, shotIds, edge, operation
     if (!candidate || otherMembers.has(candidate)) return groups;
     members = edge === "start" ? [candidate, ...members] : [...members, candidate];
   }
-  return groups.map((item) => item.id === groupId ? { ...item, shotIds: members, updatedAt: new Date().toISOString() } : item);
+  const next = groups.map((item) => item.id === groupId ? { ...item, shotIds: members, updatedAt: new Date().toISOString() } : item);
+  const candidate = next.find((item) => item.id === groupId);
+  return candidate && validateStructureChange(candidate, next).valid ? next : groups;
 }
 
 export function createShotGroup({ projectId, kind, title, selectedShotIds, shotIds, existingGroups = [] }: { projectId: string; kind: ShotGroupKind; title: string; selectedShotIds: string[]; shotIds: string[]; existingGroups?: ShotGroupRecord[] }): ShotGroupRecord | null {
   const members = getContiguousShotIds(shotIds, selectedShotIds);
   const normalizedTitle = title.trim();
-  const occupiedShotIds = new Set(existingGroups.flatMap((group) => group.shotIds));
-  if (!normalizedTitle || members.length < 2 || members.some((shotId) => occupiedShotIds.has(shotId))) return null;
+  const validation = validateStructureMembership({ kind, shotIds: members, existingGroups });
+  if (!normalizedTitle || !validation.valid) return null;
   const now = new Date().toISOString();
   return { id: crypto.randomUUID(), projectId, kind, title: normalizedTitle, summary: "", shotIds: members, createdAt: now, updatedAt: now };
 }

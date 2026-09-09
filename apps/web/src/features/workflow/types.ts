@@ -20,10 +20,21 @@ export type WorkflowView =
   | "notes"
   | "coming-soon"
 
+export type ResearchMode = "sequential" | "range"
+export type ResearchScopeKind = "full-film" | "group" | "saved-range" | "transient-range"
+export type ResearchTargetKind = "shot" | "group" | "range" | "evidence"
+
 export interface WorkflowLocation {
   projectId: string | null
   stage: WorkflowStage
   view: WorkflowView
+  mode?: ResearchMode
+  scopeKind?: ResearchScopeKind
+  scopeId?: string
+  fromUs?: number
+  toUs?: number
+  targetKind?: ResearchTargetKind
+  targetId?: string
 }
 
 export interface WorkflowStageDefinition {

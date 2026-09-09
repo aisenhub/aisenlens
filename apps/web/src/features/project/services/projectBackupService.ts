@@ -3,9 +3,10 @@ import type { ShotGroupRecord } from "../../group/types";
 import type { ShotRecord } from "../../shot/types";
 import projectRepository from "./projectRepository";
 import type { ProjectRecord, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { ResearchContext, ResearchRange } from "../../analysis/types";
 
 const FORMAT = "aisenlens-project-backup";
-const VERSION = 2;
+const VERSION = 3;
 const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
@@ -13,7 +14,7 @@ const decoder = new TextDecoder();
 
 interface BackupProgress { phase: "preparing" | "packing" | "saving"; completed: number; total: number; }
 interface BackupScreenshot { screenshot: ScreenshotRecord; path: string; }
-interface ProjectBackup { format: typeof FORMAT; version: typeof VERSION; exportedAt: string; project: ProjectRecord; shots: ShotRecord[]; groups: ShotGroupRecord[]; markers: AnnotationMarker[]; template: ProjectTemplateSnapshotRecord | null; screenshots: BackupScreenshot[]; }
+interface ProjectBackup { format: typeof FORMAT; version: typeof VERSION; exportedAt: string; project: ProjectRecord; shots: ShotRecord[]; groups: ShotGroupRecord[]; markers: AnnotationMarker[]; template: ProjectTemplateSnapshotRecord | null; researchRanges: ResearchRange[]; researchContexts: ResearchContext[]; screenshots: BackupScreenshot[]; }
 
 function crc32(input: Uint8Array) { let crc = 0xffffffff; for (const value of input) { crc ^= value; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); } return (crc ^ 0xffffffff) >>> 0; }
 function join(parts: Uint8Array[]) { const output = new Uint8Array(parts.reduce((total, part) => total + part.length, 0)); let offset = 0; for (const part of parts) { output.set(part, offset); offset += part.length; } return output; }
@@ -75,7 +76,7 @@ function validate(value: unknown): asserts value is ProjectBackup {
   if (!value || typeof value !== "object") throw new Error("备份清单无效。");
   const backup = value as Partial<ProjectBackup>;
   if (backup.format !== FORMAT || backup.version !== VERSION) throw new Error("不支持的 AisenLens 备份版本。");
-  if (!backup.project || typeof backup.project.title !== "string" || !Array.isArray(backup.project.mediaAssets) || !Array.isArray(backup.project.audioTracks) || !Array.isArray(backup.shots) || !Array.isArray(backup.groups) || !Array.isArray(backup.markers) || !Array.isArray(backup.screenshots)) throw new Error("备份缺少必要的项目数据。");
+  if (!backup.project || typeof backup.project.title !== "string" || !Array.isArray(backup.project.mediaAssets) || !Array.isArray(backup.project.audioTracks) || !Array.isArray(backup.shots) || !Array.isArray(backup.groups) || !Array.isArray(backup.markers) || !Array.isArray(backup.researchRanges) || !Array.isArray(backup.researchContexts) || !Array.isArray(backup.screenshots)) throw new Error("备份缺少必要的项目数据。");
   const screenshotIds = new Set(backup.screenshots.map(({ screenshot }) => screenshot?.id).filter((id): id is string => typeof id === "string"));
   if (screenshotIds.size !== backup.screenshots.length) throw new Error("备份包含重复或无效的截图引用。");
   const assetIds = new Set(backup.project.mediaAssets.map((asset) => asset?.id).filter((id): id is string => typeof id === "string"));
@@ -90,6 +91,9 @@ function validate(value: unknown): asserts value is ProjectBackup {
   }
   for (const group of backup.groups) if (!group || !Array.isArray(group.shotIds) || group.shotIds.some((id) => !shotIds.has(id))) throw new Error("备份包含失效的分组引用。");
   for (const marker of backup.markers) if (!marker || (marker.shotId !== null && !shotIds.has(marker.shotId))) throw new Error("备份包含失效的标记引用。");
+  const rangeIds = new Set(backup.researchRanges.map((range) => range?.id).filter((id): id is string => typeof id === "string"));
+  if (rangeIds.size !== backup.researchRanges.length || backup.researchRanges.some((range) => !Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs) || range.endUs <= range.startUs)) throw new Error("备份包含无效的研究范围。");
+  if (backup.researchContexts.some((context) => !context || !context.target || (context.target.kind === "range" && !rangeIds.has(context.target.id)))) throw new Error("备份包含失效的研究目标引用。");
 }
 
 function filename(title: string) { return `${title.trim().replace(/[\\/:*?"<>|]/g, "-") || "AisenLens-项目备份"}.aisenlens-backup.zip`; }
@@ -99,7 +103,7 @@ export async function downloadProjectBackup(projectId: string, onProgress?: (pro
   onProgress?.({ phase: "preparing", completed: 0, total: 1 });
   const project = await projectRepository.getProject(projectId);
   if (!project) throw new Error("项目不存在或已删除。");
-  const [shots, groups, markers, template, screenshots] = await Promise.all([projectRepository.listProjectShots(projectId), projectRepository.listProjectShotGroups(projectId), projectRepository.listProjectAnnotationMarkers(projectId), projectRepository.getProjectTemplate(projectId), projectRepository.listProjectScreenshots(projectId)]);
+  const [shots, groups, markers, template, screenshots, researchRanges, researchContexts] = await Promise.all([projectRepository.listProjectShots(projectId), projectRepository.listProjectShotGroups(projectId), projectRepository.listProjectAnnotationMarkers(projectId), projectRepository.getProjectTemplate(projectId), projectRepository.listProjectScreenshots(projectId), projectRepository.listProjectResearchRanges(projectId), projectRepository.listProjectResearchContexts(projectId)]);
   const total = screenshots.length || 1;
   const imageFiles: Array<{ path: string; data: Uint8Array }> = [];
   const screenshotEntries: BackupScreenshot[] = [];
@@ -109,7 +113,7 @@ export async function downloadProjectBackup(projectId: string, onProgress?: (pro
     screenshotEntries.push({ screenshot, path });
     onProgress?.({ phase: "packing", completed: index + 1, total });
   }
-  const backup: ProjectBackup = { format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(), project, shots, groups, markers, template, screenshots: screenshotEntries };
+  const backup: ProjectBackup = { format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(), project, shots, groups, markers, template, researchRanges, researchContexts, screenshots: screenshotEntries };
   onProgress?.({ phase: "saving", completed: total, total });
   download(new Blob([createZip([{ path: "manifest.json", data: encoder.encode(JSON.stringify(backup)) }, ...imageFiles])], { type: "application/zip" }), filename(project.title));
 }
@@ -128,7 +132,11 @@ export async function importProjectBackup(file: File) {
   const now = new Date().toISOString();
   const screenshotIdMap = new Map<string, string>(backup.screenshots.map(({ screenshot }) => [screenshot.id, crypto.randomUUID()]));
   const shotIdMap = new Map<string, string>(backup.shots.map((shot) => [shot.id, crypto.randomUUID()]));
+  const groupIdMap = new Map<string, string>(backup.groups.map((group) => [group.id, crypto.randomUUID()]));
+  const rangeIdMap = new Map<string, string>(backup.researchRanges.map((range) => [range.id, crypto.randomUUID()]));
+  const contextIdMap = new Map<string, string>(backup.researchContexts.map((context) => [context.id, crypto.randomUUID()]));
   const assetIdMap = new Map<string, string>(backup.project.mediaAssets.map((asset) => [asset.id, crypto.randomUUID()]));
+  const markerIdMap = new Map<string, string>(backup.markers.map((marker) => [marker.id, crypto.randomUUID()]));
   const created = await projectRepository.createProject({ title: `${backup.project.title}（已恢复）` });
   const project: ProjectRecord = {
     ...backup.project,
@@ -146,10 +154,21 @@ export async function importProjectBackup(file: File) {
   try {
     for (const { screenshot, path } of backup.screenshots) { const bytes = entries.get(path); if (!bytes) throw new Error("备份截图资源缺失。"); await projectRepository.saveScreenshot({ ...screenshot, id: screenshotIdMap.get(screenshot.id)!, projectId: created.id, capturedAt: now }, new Blob([new Uint8Array(bytes)], { type: screenshot.mimeType })); }
     const shots: StoredShotRecord[] = backup.shots.map((shot, order) => ({ ...shot, id: shotIdMap.get(shot.id)!, projectId: created.id, order, primaryScreenshotId: shot.primaryScreenshotId ? screenshotIdMap.get(shot.primaryScreenshotId) ?? null : null, screenshotIds: shot.screenshotIds.map((id) => screenshotIdMap.get(id)).filter((id): id is string => Boolean(id)), firstFrameScreenshotId: shot.firstFrameScreenshotId ? screenshotIdMap.get(shot.firstFrameScreenshotId) ?? null : null, lastFrameScreenshotId: shot.lastFrameScreenshotId ? screenshotIdMap.get(shot.lastFrameScreenshotId) ?? null : null, createdAt: now, updatedAt: now }));
-    const groups = backup.groups.map((group) => ({ ...group, id: crypto.randomUUID(), projectId: created.id, shotIds: group.shotIds.map((id) => shotIdMap.get(id)!), createdAt: now, updatedAt: now }));
-    const markers = backup.markers.map((marker) => ({ ...marker, id: crypto.randomUUID(), projectId: created.id, shotId: marker.shotId ? shotIdMap.get(marker.shotId) ?? null : null, createdAt: now, updatedAt: now }));
+    const groups = backup.groups.map((group) => ({ ...group, id: groupIdMap.get(group.id)!, projectId: created.id, shotIds: group.shotIds.map((id) => shotIdMap.get(id)!), createdAt: now, updatedAt: now }));
+    const markers = backup.markers.map((marker) => ({ ...marker, id: markerIdMap.get(marker.id)!, projectId: created.id, shotId: marker.shotId ? shotIdMap.get(marker.shotId) ?? null : null, createdAt: now, updatedAt: now }));
     const template = backup.template ? { ...backup.template, id: crypto.randomUUID(), projectId: created.id, createdAt: now, updatedAt: now } : null;
-    await projectRepository.saveProjectEditorState({ project, shots, groups, markers, template });
+    const researchRanges = backup.researchRanges.map((range) => ({ ...range, id: rangeIdMap.get(range.id)!, projectId: created.id, createdAt: now, updatedAt: now, revision: 1 }));
+    const researchContexts = backup.researchContexts.map((context) => ({
+      ...context,
+      id: contextIdMap.get(context.id)!,
+      projectId: created.id,
+      target: context.target.kind === "shot" ? { kind: "shot" as const, id: shotIdMap.get(context.target.id) ?? context.target.id } : context.target.kind === "group" ? { kind: "group" as const, id: groupIdMap.get(context.target.id) ?? context.target.id } : { kind: "range" as const, id: rangeIdMap.get(context.target.id) ?? context.target.id },
+      evidence: context.evidence.map((evidence) => evidence.kind === "screenshot" ? { ...evidence, projectId: created.id, screenshotId: screenshotIdMap.get(evidence.screenshotId) ?? evidence.screenshotId } : evidence.kind === "shot" ? { ...evidence, projectId: created.id, shotId: shotIdMap.get(evidence.shotId) ?? evidence.shotId } : evidence.kind === "marker" ? { ...evidence, projectId: created.id, markerId: markerIdMap.get(evidence.markerId) ?? evidence.markerId } : evidence.kind === "audio-range" ? { ...evidence, projectId: created.id, assetId: assetIdMap.get(evidence.assetId) ?? evidence.assetId } : evidence),
+      createdAt: now,
+      updatedAt: now,
+      revision: 1,
+    }));
+    await projectRepository.saveProjectEditorState({ project, shots, groups, markers, template, researchRanges, researchContexts });
     return project;
   } catch (error) { await projectRepository.deleteProject(created.id).catch(() => undefined); throw error; }
 }
