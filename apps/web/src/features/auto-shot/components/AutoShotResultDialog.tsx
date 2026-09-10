@@ -25,6 +25,7 @@ interface AutoShotResultDialogProps {
   onPause: () => void
   onRestart: () => void
   onApply: () => void
+  isApplying?: boolean
 }
 
 function formatFrameTime(frame: number, frameRate: number) {
@@ -39,7 +40,7 @@ function statusLabel(record: AutoShotTaskRecord | null, isActive: boolean) {
   return "等待开始"
 }
 
-export default function AutoShotResultDialog({ open, onOpenChange, record, frameRate, isActive, error, resolved, onStart, onPause, onRestart, onApply }: AutoShotResultDialogProps) {
+export default function AutoShotResultDialog({ open, onOpenChange, record, frameRate, isActive, error, resolved, onStart, onPause, onRestart, onApply, isApplying = false }: AutoShotResultDialogProps) {
   const candidates = record?.candidates ?? []
   const boundaryCount = candidates.filter((candidate) => candidate.kind !== "tail").length
   const completed = record?.status === "completed"
@@ -97,7 +98,7 @@ export default function AutoShotResultDialog({ open, onOpenChange, record, frame
           <p className="min-w-0 flex-1 text-[11px] text-text-muted">关闭弹窗不会中断扫描，稍后可从准备页重新打开。</p>
           <div className="flex shrink-0 gap-2">
             <DialogClose render={<Button type="button" variant="outline" size="sm" className="border-border text-text-dim hover:text-white" />}>关闭</DialogClose>
-            {completed && <Button type="button" size="sm" onClick={onApply} className="gap-2 bg-accent text-white hover:bg-accent/90">应用分镜<ArrowRight className="size-3.5" /></Button>}
+          {completed && <Button type="button" size="sm" onClick={onApply} disabled={isApplying} className="gap-2 bg-accent text-white hover:bg-accent/90">{isApplying ? "正在准备校准…" : "应用分镜"}<ArrowRight className="size-3.5" /></Button>}
           </div>
         </DialogFooter>
       </DialogContent>

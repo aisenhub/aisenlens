@@ -3,7 +3,7 @@ import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import type { StoredShotRecord, MediaSourceFingerprint } from "../../project/types"
 import projectRepository from "../../project/services/projectRepository"
-import { createCalibrationDraft, formalShotsSignature, shouldSeedCalibrationFromDetection } from "../services/calibrationDraftService"
+import { createCalibrationDraft, formalShotsSignature, isTransientFullFilmPlaceholder, shouldSeedCalibrationFromDetection } from "../services/calibrationDraftService"
 import { createCalibrationStore, type CalibrationStore } from "../stores/createCalibrationStore"
 import type { CalibrationDraft } from "../types"
 
@@ -18,6 +18,7 @@ interface UseCalibrationSessionInput {
   presentationDurations?: readonly number[]
   baseProjectUpdatedAt: string
   task: AutoShotTaskRecord | null
+  taskLoading: boolean
   shots: readonly StoredShotRecord[]
 }
 
@@ -42,6 +43,15 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
     // a completed auto-shot task is evaluated against an empty shot list and
     // its detected boundaries are lost for the rest of the session.
     if (input.shots.length === 0) {
+      storeRef.current = null
+      setState("loading")
+      return
+    }
+    // A completed auto-shot task is loaded asynchronously from the local
+    // repository. Do not persist the transient full-film placeholder before
+    // that read finishes, or the calibration page can open with one shot and
+    // never show the detected candidate boundaries for this visit.
+    if (input.taskLoading && isTransientFullFilmPlaceholder(input.shots)) {
       storeRef.current = null
       setState("loading")
       return
@@ -79,7 +89,7 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
       }
     })()
     return () => { cancelled = true }
-  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.shots, input.task?.candidates.length, input.task?.id, input.task?.status, input.task?.updatedAt, input.totalFrames])
+  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.shots, input.task?.candidates.length, input.task?.id, input.task?.status, input.task?.updatedAt, input.taskLoading, input.totalFrames])
 
   const store = storeRef.current
   const current = store?.getState()

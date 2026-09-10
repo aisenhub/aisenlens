@@ -40,6 +40,17 @@ export function shouldSeedCalibrationFromDetection(task: AutoShotTaskRecord | nu
   return task?.status === "completed" && task.candidates.length > 0 && isTransientFullFilmPlaceholder(shots)
 }
 
+// An explicit Apply action selects the completed task, regardless of whether
+// the editor's full-film shot already has screenshots or analysis fields.
+export function createDetectionCalibrationDraft(seed: CalibrationDraftSeed, stored: CalibrationDraft | null): CalibrationDraft {
+  const task = seed.task
+  if (!task || task.status !== "completed" || task.candidates.length === 0) throw new Error("请先完成自动分镜扫描。")
+  if (task.projectId !== seed.projectId || task.mediaIdentity.mediaIdentityDigest !== seed.mediaIdentity.mediaIdentityDigest) throw new Error("检测结果与当前素材不匹配。")
+  const sameBaseline = stored?.baseFormalShotsSignature === formalShotsSignature(seed.shots)
+  if (stored?.status === "editing" && sameBaseline && stored.initialSource === "detection" && stored.baseTaskId === task.id && stored.baseTaskUpdatedAt === task.updatedAt) return stored
+  return { ...createCalibrationDraft(seed), revision: (stored?.revision ?? -1) + 1 }
+}
+
 export function deriveCalibrationSegments(
   totalFrames: number,
   boundaries: readonly CalibrationBoundary[],
@@ -119,7 +130,8 @@ export function createCalibrationDraft(seed: CalibrationDraftSeed): CalibrationD
   assertInteger(seed.totalFrames, "视频总帧数", 1)
   if (!Number.isFinite(seed.frameRate) || seed.frameRate <= 0) throw new Error("帧率无效。")
   const taskBoundaries = boundariesFromTask(seed.task, seed.totalFrames)
-  const boundaries = taskBoundaries.length ? taskBoundaries : boundariesFromShots(seed.shots, seed.totalFrames)
+  const fromDetection = seed.task?.status === "completed" && seed.task.candidates.length > 0
+  const boundaries = fromDetection ? taskBoundaries : boundariesFromShots(seed.shots, seed.totalFrames)
   const presentationTimestamps = seed.presentationTimestamps?.length === seed.totalFrames
     ? [...seed.presentationTimestamps]
     : Array.from({ length: seed.totalFrames }, (_, frame) => frame / seed.frameRate)
@@ -138,7 +150,7 @@ export function createCalibrationDraft(seed: CalibrationDraftSeed): CalibrationD
     baseTaskId: seed.task?.id ?? null,
     baseTaskUpdatedAt: seed.task?.updatedAt ?? null,
     baseFormalShotsSignature: formalShotsSignature(seed.shots),
-    initialSource: taskBoundaries.length ? "detection" : "formal-shots",
+    initialSource: fromDetection ? "detection" : "formal-shots",
     revision: 0,
     status: "editing",
     boundaries,

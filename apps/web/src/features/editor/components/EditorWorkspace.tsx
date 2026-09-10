@@ -87,6 +87,7 @@ import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
 import { frameToTimestampFromArrays } from "../../video/services/mediaFrameTimeService"
 import useAutoShotTask from "../../auto-shot/hooks/useAutoShotTask"
+import prepareDetectionCalibration from "../../shot-calibration/services/prepareDetectionCalibration"
 import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
 import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
 import { listFrontendPresetDefinitions } from "../../auto-shot/config/presetRegistry"
@@ -3566,7 +3567,19 @@ export default function EditorWorkspace({
           isSelectingVideo={isSelectingVideo}
           onImportVideo={onImportVideo}
           onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
-          onGoToCalibrate={() => onWorkflowNavigate?.("calibrate", "candidates")}
+          onGoToCalibrate={async () => {
+            if (!videoUrl || !autoShotRun) throw new Error("当前视频或检测结果不可用。")
+            await prepareDetectionCalibration(videoUrl, {
+              projectId,
+              mediaIdentity: autoShotRun.mediaIdentity,
+              mediaSource: autoShotMediaFingerprint,
+              frameRate: editorFrameRate,
+              baseProjectUpdatedAt: project.updatedAt,
+              task: autoShotRun,
+              shots: calibrationFormalShots,
+            })
+            onWorkflowNavigate?.("calibrate", "candidates")
+          }}
           onOpenSettings={() => setIsTemplateEditorOpen(true)}
           settings={autoShotControl.settings}
           resolved={autoShotControl.resolved}
@@ -3669,6 +3682,7 @@ export default function EditorWorkspace({
           totalFrames={resolveAutoShotTotalFrames(autoShotRun?.candidates ?? [], durationSeconds, editorFrameRate)}
           durationSeconds={durationSeconds}
           task={autoShotRun}
+          taskLoading={autoShotTask.isLoading}
           formalShots={calibrationFormalShots}
           previewProps={{
             showCompositionGrid: maskOn,

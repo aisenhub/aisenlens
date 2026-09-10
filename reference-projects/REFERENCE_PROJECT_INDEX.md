@@ -13,6 +13,16 @@
 
 设计建议：一套正式镜头/结构/笔记数据；总览支持预览、选范围、同页建结构和回到上次研究；深拆支持全片顺序/范围研究切换、显式检查对象、前后镜关系与声音上下文；研究范围不强制成为 Scene。结构跨层覆盖规则和单镜场景须独立调整并同步校准后的引用重整，不从目前平面互斥模型伪造嵌套结构。情绪/人物/技法仅在存在真实标注或分析来源时展示。
 
+## 2026-09-10 分析字段安全闭环与模板入口
+
+| 模块 | 本轮查阅文件/来源 | 已确认事实 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| 字段语义与表单布局 | JSON Forms 官方 UI Schema、Controls、Layouts、Validation 文档；本项目 `docs/plans/AisenLens_Analysis_System_Upgrade_Plans/00-shared-contracts.md` | JSON Forms 将数据 schema 与 UI schema 分离，UI schema 负责控件顺序、布局和规则，校验由数据 schema/AJV 负责；这支持定义、usage、surface 设置分层，但不要求引入整套表单框架。 | 用本项目的冻结 `fieldDefinitions`、`fieldUsages` 与 resolver 表达运行时模型；保留 AisenLens 的 Tailwind/shadcn 输入组件，非法草稿阻止 Apply，已有数据读取不做破坏性清洗。 |
+| 任务驱动模板入口 | OpenReel `apps/web/src/components/welcome/{TemplateGallery,TemplateCard,TemplatePreviewModal}.tsx` | OpenReel 将模板浏览、卡片选择、预览和应用分成明确的 UI 边界；预览先展示实际可编辑内容，再执行应用。其模板是视频创作占位符，不是 AisenLens 分析字段模型。 | 采用“任务卡 → 字段/示例预览 → Apply”的交互骨架；应用只修改当前项目 profile draft，经唯一保存链提交，不复制 OpenReel 的云模板或引擎逻辑。 |
+| 属性渲染与领域命令 | OpenCut `apps/web/src/components/editor/panels/properties/{registry,index}.tsx`、`apps/web/src/commands/{base-command,batch-command}.ts` | OpenCut 用注册表按实体类型决定可见属性 tab，再由面板渲染；批量命令统一执行并逆序撤销，避免每个控件直接处理存储。其编辑器命令模型不能直接替代 AisenLens 的镜头字段模型。 | 保留“resolver/renderer/command”边界：Detail/Table/Focus 共享解析字段与 `analysisFieldCommands`，批量修改一次生成 history；UI 不直接访问 repository。 |
+
+本轮实际源码结论：现有 `TemplateField` 是定义、usage 和 value 约束的平面模型；`templateValidation` 会清洗未知/停用/类型错误值；`useEditorPersistence` 保存前读取最新 `updatedAt`；`ShotInspector` 尚未消费 profile。P1 将直接迁移正式模型，不增加 V1/V2 双写或 JSON Forms 依赖。
+
 ## 2026-09-08 校准流程：漏切巡视与边界微调（设计建议）
 
 先查阅 Adobe Premiere Scene Edit Detection 官方说明、Blackmagic Scene Cut Detection 官方培训资料及 PySceneDetect CLI/检测器文档，形成“连续巡视 + 就地补切 + 边界前后帧对照”的本地优先初案，再按 OpenReel → OpenCut 顺序读取下列模块相关文件。本轮不修改产品代码；建议尚未实现或经用户验证。

@@ -16,6 +16,7 @@ interface CalibrateViewProps {
   totalFrames: number
   durationSeconds: number
   task: AutoShotTaskRecord | null
+  taskLoading: boolean
   formalShots: readonly StoredShotRecord[]
   previewProps: VideoPreviewCanvasProps
   controlsProps: VideoPlaybackControlsProps

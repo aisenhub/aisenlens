@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { createCalibrationDraft, shouldSeedCalibrationFromDetection } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
+import { createCalibrationDraft, createDetectionCalibrationDraft, shouldSeedCalibrationFromDetection } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
 
 const identity = {
   identitySchema: "aisenlens-auto-shot-media-identity" as const,
@@ -56,4 +56,28 @@ test("自动分镜任务作为校准草稿来源时生成全部候选区段", ()
   })
   assert.equal(draft.initialSource, "detection")
   assert.deepEqual(draft.segments.map((segment) => [segment.startFrame, segment.endFrame]), [[0, 24], [24, 60], [60, 96]])
+
+  // A real editor shot can already have an automatically captured screenshot.
+  // Applying detection must not rely on the empty-placeholder heuristic.
+  const shots = [{ ...placeholder[0], primaryScreenshotId: "cover-frame", screenshotIds: ["cover-frame"] }]
+  const seed = { projectId: "project-1", mediaIdentity: identity, mediaSource: null, frameRate: 24, totalFrames: 96, baseProjectUpdatedAt: "now", task, shots }
+  assert.equal(shouldSeedCalibrationFromDetection(task, shots), false)
+  const oldDraft = createCalibrationDraft({ ...seed, task: null })
+  assert.equal(oldDraft.segments.length, 1)
+  const applied = createDetectionCalibrationDraft(seed, oldDraft)
+  assert.equal(applied.segments.length, 3)
+  assert.equal(applied.revision, oldDraft.revision + 1)
+  assert.equal(applied.initialSource, "detection")
+  assert.equal(createDetectionCalibrationDraft(seed, applied), applied, "重复应用同一任务保留草稿修改")
+  const newRun = createDetectionCalibrationDraft({ ...seed, task: { ...task, updatedAt: "later" } }, applied)
+  assert.notEqual(newRun, applied)
+  assert.equal(newRun.baseTaskUpdatedAt, "later")
+  assert.equal(createDetectionCalibrationDraft(seed, { ...oldDraft, status: "conflict" }).segments.length, 3)
+  const singleCandidate = { ...task, candidates: [{ ...task.candidates[2], startFrame: 0 }] }
+  const splitShots = [{ ...shots[0], endFrame: 24 }, { ...shots[0], id: "second", order: 1, startFrame: 24 }]
+  const singleDraft = createDetectionCalibrationDraft({ ...seed, task: singleCandidate, shots: splitShots }, null)
+  assert.equal(singleDraft.initialSource, "detection")
+  assert.equal(singleDraft.segments.length, 1, "单段检测结果也必须替换旧切点")
+  assert.throws(() => createDetectionCalibrationDraft({ ...seed, task: { ...task, projectId: "other-project" } }, null), /不匹配/)
+  assert.throws(() => createDetectionCalibrationDraft({ ...seed, task: { ...task, status: "running" } }, null), /完成/)
 })

@@ -27,6 +27,7 @@ function fpsRational(frameRate: number): { numerator: number; denominator: numbe
 export default function useAutoShotTask(input: UseAutoShotTaskInput) {
   const [record, setRecord] = useState<AutoShotTaskRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [mediaIdentity, setMediaIdentity] = useState<AutoShotMediaIdentity | null>(null);
   const handleRef = useRef<AutoShotTaskHandle | null>(null);
@@ -45,6 +46,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
     startingRef.current = false;
     setError(null);
     setRecord(null);
+    setIsLoading(Boolean(input.mediaFingerprint && input.sourceUrl));
     setIsActive(false);
     setMediaIdentity(null);
     if (!input.mediaFingerprint || !input.sourceUrl) return;
@@ -57,26 +59,38 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
       setMediaIdentity(identity);
       return projectRepository.getAutoShotTask(input.projectId, identity);
     }).then(async (existing) => {
-      if (!existing) return;
       if (!active || revision !== revisionRef.current) return;
+      if (!existing) {
+        setIsLoading(false);
+        return;
+      }
       // A user may start while the identity digest is still being computed.
       // Never let the late repository read overwrite that live task state.
-      if (handleRef.current || startingRef.current) return;
+      if (handleRef.current || startingRef.current) {
+        setIsLoading(false);
+        return;
+      }
       if (existing?.status === "running" || existing?.status === "paused") {
         const recoveredStatus = recoverAutoShotTaskStatus(existing.status, existing.checkpoint);
         if (recoveredStatus === existing.status) {
           setRecord(existing);
+          setIsLoading(false);
           return;
         }
         const interrupted = { ...existing, status: recoveredStatus, updatedAt: new Date().toISOString() };
         await projectRepository.saveAutoShotTask(interrupted);
         if (!active || revision !== revisionRef.current) return;
         setRecord(interrupted);
+        setIsLoading(false);
         return;
       }
       setRecord(existing);
+      setIsLoading(false);
     }).catch((cause) => {
-      if (active && revision === revisionRef.current) setError(cause instanceof Error ? cause.message : "无法读取自动分镜任务。");
+      if (active && revision === revisionRef.current) {
+        setIsLoading(false);
+        setError(cause instanceof Error ? cause.message : "无法读取自动分镜任务。");
+      }
     });
     return () => {
       active = false;
@@ -190,6 +204,7 @@ export default function useAutoShotTask(input: UseAutoShotTaskInput) {
     pause,
     cancel,
     isActive,
+    isLoading,
     mediaIdentity,
     mediaIdentityDigest: mediaIdentity?.mediaIdentityDigest ?? null,
   };

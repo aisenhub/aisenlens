@@ -1,5 +1,6 @@
 import { ArrowRight, FileCog, Map, RefreshCw, Settings2 } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 import { Button } from "../../../components/ui/button"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
 import AutoShotResultDialog from "../../auto-shot/components/AutoShotResultDialog"
@@ -15,7 +16,7 @@ interface PrepareViewProps {
   isSelectingVideo: boolean
   onImportVideo: () => void
   onGoToAnalyze: () => void
-  onGoToCalibrate: () => void
+  onGoToCalibrate: () => Promise<void>
   onOpenSettings: () => void
   settings: AutoShotControlSettings | null
   resolved: ResolvedAutoShotConfiguration | null
@@ -31,6 +32,19 @@ interface PrepareViewProps {
 
 export default function PrepareView({ project, media, videoUrl, isSelectingVideo, onImportVideo, onGoToAnalyze, onGoToCalibrate, onOpenSettings, settings, resolved, presets, record, isActive, error, onChange, onStart, onPause, onRestart }: PrepareViewProps) {
   const [isAutoShotDialogOpen, setIsAutoShotDialogOpen] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
+  const applyDetection = async () => {
+    if (isApplying) return
+    setIsApplying(true)
+    try {
+      await onGoToCalibrate()
+      setIsAutoShotDialogOpen(false)
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "无法准备校准草稿，请重试。")
+    } finally {
+      setIsApplying(false)
+    }
+  }
   const isRunning = isActive || record?.status === "running"
   const canRestart = Boolean(record && record.status !== "paused" && record.status !== "running")
   const scanActionLabel = record?.status === "completed" ? "重新扫描" : isRunning ? "查看扫描进度" : record?.status === "paused" ? "继续扫描" : "开始自动分镜"
@@ -58,7 +72,7 @@ export default function PrepareView({ project, media, videoUrl, isSelectingVideo
           <section className="border border-border bg-bg-panel p-4"><div className="mb-4 flex items-start gap-3"><Map className="mt-0.5 size-4 text-accent" /><div><h2 className="text-sm font-medium text-text-base">建立镜头地图</h2><p className="mt-1 text-xs leading-5 text-text-muted">自动分镜只提出候选区间；应用前会在校准阶段复核并创建恢复快照。</p></div></div><AutoShotControlPanel settings={settings} resolved={resolved} presets={presets} record={record} isActive={isActive} error={error} showRunStatus={false} onChange={onChange} onStart={onStart} onPause={onPause} onRestart={onRestart} /><Button type="button" size="sm" disabled={!resolved} onClick={openAutoShotDialog} className="mt-3 h-9 w-full gap-2 bg-accent text-white hover:bg-accent/90"><RefreshCw className="size-3.5" />{scanActionLabel}</Button></section>
         </div>
       </div>
-      <AutoShotResultDialog open={isAutoShotDialogOpen} onOpenChange={setIsAutoShotDialogOpen} record={record} frameRate={media.metadata?.frameRate ?? 30} isActive={isActive} error={error} resolved={resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} onApply={() => { setIsAutoShotDialogOpen(false); onGoToCalibrate() }} />
+      <AutoShotResultDialog open={isAutoShotDialogOpen} onOpenChange={setIsAutoShotDialogOpen} record={record} frameRate={media.metadata?.frameRate ?? 30} isActive={isActive} error={error} resolved={resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} isApplying={isApplying} onApply={() => void applyDetection()} />
     </main>
   )
 }

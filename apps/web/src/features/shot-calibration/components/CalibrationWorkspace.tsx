@@ -29,6 +29,7 @@ interface CalibrationWorkspaceProps {
   totalFrames: number
   durationSeconds: number
   task: AutoShotTaskRecord | null
+  taskLoading: boolean
   formalShots: readonly StoredShotRecord[]
   previewProps: VideoPreviewCanvasProps
   controlsProps: VideoPlaybackControlsProps
@@ -41,12 +42,12 @@ function formatTime(frame: number, frameRate: number) {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, "0")}`
 }
 
-export default function CalibrationWorkspace({ projectId, projectUpdatedAt, mediaIdentity, mediaSource, videoUrl, frameRate, totalFrames, durationSeconds, task, formalShots, previewProps, controlsProps, onApply, onBack }: CalibrationWorkspaceProps) {
+export default function CalibrationWorkspace({ projectId, projectUpdatedAt, mediaIdentity, mediaSource, videoUrl, frameRate, totalFrames, durationSeconds, task, taskLoading, formalShots, previewProps, controlsProps, onApply, onBack }: CalibrationWorkspaceProps) {
   const frameTimeline = useMediaFrameTimeline({ sourceUrl: videoUrl, mediaKey: mediaIdentity?.mediaIdentityDigest ?? "", declaredFrameRate: frameRate })
   const verifiedTotalFrames = frameTimeline.timeline?.totalFrames ?? 0
   const presentationTimestamps = useMemo(() => frameTimeline.timeline?.points.map((point) => point.timestamp), [frameTimeline.timeline])
   const presentationDurations = useMemo(() => frameTimeline.timeline?.points.map((point) => point.duration), [frameTimeline.timeline])
-  const session = useCalibrationSession({ projectId, mediaIdentity, mediaSource, frameRate, totalFrames: verifiedTotalFrames, timingMode: frameTimeline.timeline?.timingMode, presentationTimestamps, presentationDurations, baseProjectUpdatedAt: projectUpdatedAt, task, shots: formalShots })
+  const session = useCalibrationSession({ projectId, mediaIdentity, mediaSource, frameRate, totalFrames: verifiedTotalFrames, timingMode: frameTimeline.timeline?.timingMode, presentationTimestamps, presentationDurations, baseProjectUpdatedAt: projectUpdatedAt, task, taskLoading, shots: formalShots })
   const draft = session.draft
   const [selectedBoundaryId, setSelectedBoundaryId] = useState<string | null>(null)
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
