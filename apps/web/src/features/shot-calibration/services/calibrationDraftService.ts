@@ -27,7 +27,13 @@ export function formalShotsSignature(shots: readonly StoredShotRecord[]): string
 
 export function isTransientFullFilmPlaceholder(shots: readonly StoredShotRecord[]): boolean {
   const [shot] = shots
-  return shots.length === 1 && shot?.startFrame === 0 && shot.endFrame > 0 && shot.status === "draft" && shot.detection === null && shot.primaryScreenshotId === null && shot.screenshotIds.length === 0 && shot.firstFrameScreenshotId === null && shot.lastFrameScreenshotId === null && Object.keys(shot.analysisFields).length === 0 && shot.description === "" && shot.notes === ""
+  const hasMeaningfulAnalysisValue = (value: StoredShotRecord["analysisFields"][string]) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === "string") return value.trim().length > 0
+    if (Array.isArray(value)) return value.length > 0
+    return true
+  }
+  return shots.length === 1 && shot?.startFrame === 0 && shot.endFrame > 0 && shot.status === "draft" && (shot.detection === null || shot.detection.source === "manual") && shot.primaryScreenshotId === null && shot.screenshotIds.length === 0 && shot.firstFrameScreenshotId === null && shot.lastFrameScreenshotId === null && Object.values(shot.analysisFields).every((value) => !hasMeaningfulAnalysisValue(value)) && shot.description.trim() === "" && shot.notes.trim() === ""
 }
 
 export function shouldSeedCalibrationFromDetection(task: AutoShotTaskRecord | null, shots: readonly StoredShotRecord[]): boolean {

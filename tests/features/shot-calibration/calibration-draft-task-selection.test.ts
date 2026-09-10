@@ -43,6 +43,7 @@ test("自动分镜任务作为校准草稿来源时生成全部候选区段", ()
   }
   const placeholder = [{ id: "placeholder", projectId: "project-1", order: 0, startFrame: 0, endFrame: 96, status: "draft" as const, detection: null, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: "now", updatedAt: "now" }]
   assert.equal(shouldSeedCalibrationFromDetection(task, placeholder), true)
+  assert.equal(shouldSeedCalibrationFromDetection(task, [{ ...placeholder[0], detection: { source: "manual" }, analysisFields: { shot_description: "", shot: null, motion: null, color: null, sound: null, rhythm: null } }]), true)
   const draft = createCalibrationDraft({
     projectId: "project-1",
     mediaIdentity: identity,
