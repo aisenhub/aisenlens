@@ -92,10 +92,7 @@ export default function CalibrationTimeline({ segments, boundaries, frameRate, t
   }
 
   return <section className="rounded-lg border border-border bg-bg-input/20 p-3" aria-label="校准时间轴">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="min-w-0">
-        <h2 className="text-xs font-medium">校准时间轴</h2>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1 rounded-md border border-border bg-bg-panel p-0.5" aria-label="时间轴范围">
         <Button type="button" size="xs" variant={scope === "film" ? "secondary" : "ghost"} aria-pressed={scope === "film"} onClick={() => setScope("film")}>全片</Button>
         <Button type="button" size="xs" variant={scope === "segment" ? "secondary" : "ghost"} aria-pressed={scope === "segment"} disabled={!activeSegment} onClick={() => setScope("segment")}>当前分镜</Button>

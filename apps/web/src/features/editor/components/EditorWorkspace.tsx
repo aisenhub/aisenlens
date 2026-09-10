@@ -1,15 +1,9 @@
 import { lazy, Suspense, useCallback, useMemo, useState, useRef, useEffect } from "react"
 import { toast } from "sonner"
 import {
-  Bookmark,
-  Code2,
-  Grid3X3,
-  Keyboard,
   LoaderCircle,
-  Settings2,
   TriangleAlert,
 } from "lucide-react"
-import type { LucideIcon } from "lucide-react"
 import { FRAMES_PER_SECOND } from "../constants/editor"
 import {
   Panel,
@@ -24,6 +18,7 @@ import EditorTimeline from "./EditorTimeline"
 import VideoPreviewCanvas, {
   closestCanvasAspectPreset,
 } from "./VideoPreviewCanvas"
+import WorkspaceSettingsDialog from "./WorkspaceSettingsDialog"
 import useVideoPlayback from "../hooks/useVideoPlayback"
 import useEditorHistory from "../hooks/useEditorHistory"
 import useEditorSaveState from "../hooks/useEditorSaveState"
@@ -87,7 +82,6 @@ import useAutoShotControl from "../../auto-shot/hooks/useAutoShotControl"
 import { getProductionPresetRegistry } from "../../auto-shot/config/resolveAutoShotConfig"
 import { listFrontendPresetDefinitions } from "../../auto-shot/config/presetRegistry"
 import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
-const AdvancedSettings = lazy(() => import("../../auto-shot/components/AdvancedSettings"))
 const CalibrationWorkbench = lazy(() => import("../../scene-calibration/components/CalibrationWorkbench"))
 import { addUncertainRange, attachCalibrationResearchRun, createCalibrationAnnotation, serializeCalibrationAnnotation, updateHardCutAnnotation } from "../../scene-calibration/services/calibrationService"
 import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
@@ -171,6 +165,8 @@ interface EditorWorkspaceProps {
   workflowStage?: WorkflowStage
   workflowView?: WorkflowView
   onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
+  settingsOpen: boolean
+  onSettingsOpenChange: (open: boolean) => void
 }
 
 interface EditorHistorySnapshot {
@@ -218,6 +214,8 @@ export default function EditorWorkspace({
   workflowStage = "prepare",
   workflowView = "scenes",
   onWorkflowNavigate,
+  settingsOpen,
+  onSettingsOpenChange,
 }: EditorWorkspaceProps) {
   const setSessionSelection = useProjectSession((state) => state.setSelection)
   const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
@@ -2010,25 +2008,6 @@ export default function EditorWorkspace({
     )
   }
 
-  /* Toolbar order: home / mask / markers */
-  const PANEL_TOOLS: {
-    id: Exclude<PanelToolId, null>
-    icon: string
-    label: string
-    short: string
-  }[] = [
-    { id: "mask", icon: "▥", label: "视频蒙版", short: "蒙版" },
-    { id: "markers", icon: "●", label: "时间线标记", short: "标记" },
-  ]
-
-  const TOOL_ICONS: Record<Exclude<PanelToolId, null>, LucideIcon> = {
-    settings: Settings2,
-    markers: Bookmark,
-    mask: Grid3X3,
-    shortcuts: Keyboard,
-    developer: Code2,
-  }
-
   const activeShotId = shots[activeShot]?.id ?? ""
   const detectedEditorFrameRate = media.metadata?.frameRate
   const editorFrameRate =
@@ -2612,10 +2591,12 @@ export default function EditorWorkspace({
             <Button type="button" variant="ghost" size="xs" onClick={() => setDataLoadRevision((revision) => revision + 1)} className="shrink-0 px-1.5 text-red-100 hover:bg-red-500/15 hover:text-white">重试读取</Button>
           </div>
         )}
-        <div className="editor-mobile-panel-switcher ml-1 hidden items-center gap-1">
-          <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "shots" ? null : "shots")} aria-pressed={mobilePanel === "shots"} className={mobilePanel === "shots" ? "bg-accent/15 text-accent" : "text-text-muted"}>分镜</Button>
-          <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "analysis" ? null : "analysis")} aria-pressed={mobilePanel === "analysis"} className={mobilePanel === "analysis" ? "bg-accent/15 text-accent" : "text-text-muted"}>分析</Button>
-        </div>
+        {workflowStage !== "calibrate" && (
+          <div className="editor-mobile-panel-switcher ml-1 hidden items-center gap-1">
+            <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "shots" ? null : "shots")} aria-pressed={mobilePanel === "shots"} className={mobilePanel === "shots" ? "bg-accent/15 text-accent" : "text-text-muted"}>分镜</Button>
+            <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "analysis" ? null : "analysis")} aria-pressed={mobilePanel === "analysis"} className={mobilePanel === "analysis" ? "bg-accent/15 text-accent" : "text-text-muted"}>分析</Button>
+          </div>
+        )}
       </header>
 
       {/* ══ Main body ══ */}
@@ -2641,6 +2622,8 @@ export default function EditorWorkspace({
         firstScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.first : null}
         lastScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.last : null}
         onViewChange={(view) => onWorkflowNavigate?.("analyze", view)}
+        activeTool={activeTool === "mask" || activeTool === "markers" ? activeTool : null}
+        onToggleTool={(tool) => toggleTool(tool)}
         onLocateShot={(index) => {
           setSelectedGroupId(null)
           setActiveShot(index)
@@ -2670,69 +2653,20 @@ export default function EditorWorkspace({
         researchError={researchWorkbench.error}
       >
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* ── Far left: tool column ── */}
-        <div className="flex shrink-0 border-r border-border">
-          <div className="w-16 flex flex-col items-center py-2 gap-0.5 bg-bg-panel">
-            {/* Home button */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-lg"
-              onClick={() => void leaveEditor()}
-              aria-label="返回项目列表"
-              className="h-12 w-14 text-text-muted hover:bg-white/6 hover:text-white"
-            >
-              <span className="text-xl leading-none">⌂</span>
-            </Button>
-            <div className="w-10 h-px bg-border my-0.5" />
-            {PANEL_TOOLS.map((tool) => {
-              const ToolIcon = TOOL_ICONS[tool.id]
-              return (
-                <Button
-                  key={tool.id}
-                  type="button"
-                  variant="ghost"
-                  size="icon-lg"
-                  onClick={() => toggleTool(tool.id)}
-                  aria-label={tool.label}
-                  className={`h-14 w-14 flex-col gap-1 ${
-                    activeTool === tool.id
-                      ? "bg-accent/20 text-accent"
-                      : "text-text-muted hover:text-white hover:bg-white/6"
-                  }`}
-                >
-                  <ToolIcon className="size-[18px]" strokeWidth={1.7} />
-                  <span className="editor-micro leading-none font-mono tracking-tight">
-                    {tool.short}
-                  </span>
-                </Button>
-              )
-            })}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-lg"
-              onClick={() => toggleTool("settings")}
-              aria-label="设置"
-              title="设置"
-              className={`mt-auto h-12 w-14 ${
-                activeTool === "settings"
-                  ? "bg-accent/20 text-accent"
-                  : "text-text-muted hover:bg-white/6 hover:text-white"
-              }`}
-            >
-              <Settings2 className="size-[18px]" strokeWidth={1.7} />
-            </Button>
-          </div>
-
-          {/* Expandable detail panel */}
+        {/* Expandable detail panel */}
           {activeTool !== null && (
-            <div className="editor-tool-panel w-52 border-l border-border bg-bg-panel flex flex-col overflow-hidden">
+            <div className="editor-tool-panel w-52 shrink-0 border-r border-border bg-bg-panel flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
                 <span className="editor-heading font-mono text-text-muted">
                   {activeTool === "settings"
                     ? "设置"
-                    : PANEL_TOOLS.find((t) => t.id === activeTool)?.label}
+                    : activeTool === "markers"
+                      ? "时间线标记"
+                      : activeTool === "mask"
+                        ? "视频蒙版"
+                        : activeTool === "shortcuts"
+                          ? "快捷键"
+                          : "开发者工具"}
                 </span>
                 {/* collapse icon — only click here folds the panel */}
                 <Button
@@ -2824,30 +2758,6 @@ export default function EditorWorkspace({
                         className="mt-0.5"
                       />
                     </label>
-                    <label className="flex items-start justify-between gap-3 rounded-lg border border-border bg-bg-input/20 px-2.5 py-2.5">
-                      <span className="min-w-0">
-                        <span className="block text-xs font-medium text-text">启用高级检测参数</span>
-                        <span className="mt-0.5 block text-[10px] leading-4 text-text-dim">
-                          开启后可调整检测器、阈值、窗口和淡入淡出参数，仅用于开发调试。
-                        </span>
-                      </span>
-                      <Checkbox
-                        checked={advancedDetectionEnabled}
-                        onCheckedChange={(checked) => setAdvancedDetectionEnabled(checked === true)}
-                        aria-label="启用高级检测参数"
-                        className="mt-0.5"
-                      />
-                    </label>
-                    {advancedDetectionEnabled && autoShotControl.settings && (
-                      <Suspense fallback={null}>
-                        <AdvancedSettings
-                          settings={autoShotControl.settings}
-                          baseHardCut={autoShotControl.resolved?.engineConfig.hardCut}
-                          disabled={autoShotTask.isActive || autoShotRun?.status === "running"}
-                          onChange={autoShotControl.updateSettings}
-                        />
-                      </Suspense>
-                    )}
                     {!calibrationModeEnabled ? (
                       <p className="rounded-lg bg-bg-input/25 px-2.5 py-2 text-[10px] leading-4 text-text-dim">
                         标定模式已关闭。普通自动分镜不会显示标定内容。
@@ -2875,83 +2785,6 @@ export default function EditorWorkspace({
                         请先在分镜面板完成一次自动分镜，完成后这里会出现候选标注和真值编辑工具。
                       </p>
                     )}
-                  </div>
-                )}
-
-                {/* ── 设置 (theme + cache) ── */}
-                {activeTool === "settings" && (
-                  <div className="flex flex-col gap-3">
-                    <p className="editor-heading text-text-muted font-mono tracking-wider">
-                      缓存管理
-                    </p>
-                    <div className="p-3 rounded-xl border border-border bg-bg-deep">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-white editor-body font-medium">
-                          本地缓存
-                        </p>
-                        <span className="editor-meta font-mono text-accent">
-                          {liteCache} MB
-                        </span>
-                      </div>
-                      <div className="w-full h-1 rounded-full bg-border mb-2">
-                        <div
-                          className="h-full rounded-full bg-accent/60 transition-all"
-                          style={{ width: `${(liteCache / 500) * 100}%` }}
-                        />
-                      </div>
-                      <p className="text-text-muted editor-meta font-mono">
-                        {liteCache} / 500 MB
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setLiteCache(0)}
-                      className="h-7 w-full editor-body font-normal text-red-400 hover:text-red-400"
-                    >
-                      清除缓存
-                    </Button>
-                    <div className="h-px bg-border" />
-                    <p className="editor-heading text-text-muted font-mono tracking-wider">
-                      自动分镜
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={autoShotTask.isActive || autoShotRun?.status === "running" || !autoShotControl.dirty}
-                      onClick={autoShotControl.resetSettings}
-                      className="h-7 w-full text-text-muted hover:text-text"
-                    >
-                      恢复自动分镜默认设置
-                    </Button>
-                    <div className="h-px bg-border" />
-                    <p className="editor-heading text-text-muted font-mono tracking-wider">
-                      辅助工具
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveTool("shortcuts")}
-                        className="h-9 justify-start gap-2 border-border text-text-muted hover:text-text"
-                      >
-                        <Keyboard className="size-4" strokeWidth={1.7} />
-                        快捷键
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setActiveTool("developer")}
-                        className="h-9 justify-start gap-2 border-border text-text-muted hover:text-text"
-                      >
-                        <Code2 className="size-4" strokeWidth={1.7} />
-                        开发者工具
-                      </Button>
-                    </div>
                   </div>
                 )}
 
@@ -3004,7 +2837,6 @@ export default function EditorWorkspace({
               </div>
             </div>
           )}
-        </div>
 
         {/* ── Center: canvas + timeline ── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -3497,6 +3329,10 @@ export default function EditorWorkspace({
           onStart={() => void startAutoShotDetection()}
           onPause={() => void autoShotTask.pause()}
           onRestart={() => void startAutoShotDetection(true)}
+          onResetSettings={autoShotControl.resetSettings}
+          settingsDirty={autoShotControl.dirty}
+          advancedDetectionEnabled={advancedDetectionEnabled}
+          onAdvancedDetectionChange={setAdvancedDetectionEnabled}
         />
       ) : workflowStage === "overview" ? (
         <OverviewView
@@ -3657,6 +3493,15 @@ export default function EditorWorkspace({
       )
       ) : null}
       </Suspense>
+      <WorkspaceSettingsDialog
+        open={settingsOpen}
+        onOpenChange={onSettingsOpenChange}
+        liteCache={liteCache}
+        onClearCache={() => setLiteCache(0)}
+        calibrationModeEnabled={calibrationModeEnabled}
+        onCalibrationModeChange={setCalibrationModeEnabled}
+        shortcuts={EDITOR_SHORTCUT_DEFINITIONS}
+      />
       {isTemplateEditorOpen && template && (
         <TemplateEditorModal
           template={template}

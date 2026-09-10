@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import EditorWorkspace from "../features/editor/components/EditorWorkspace";
 import ProjectMediaGate from "../features/project/components/ProjectMediaGate";
@@ -19,6 +19,7 @@ interface Props {
 export default function EditorPage({ projectId, onProjectLoaded, ...editorProps }: Props) {
   const location = useLocation()
   const workflow = useWorkflowNavigation(projectId)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     if (location.pathname !== "/app") return
@@ -44,7 +45,11 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
       return (
         <ProjectSessionProvider projectId={project.id}>
           <ProjectSessionRuntime isLoading={false} hasError={false}>
-            <ProjectWorkspaceShell activeStage={workflow.stage} onStageChange={workflow.goTo}>
+            <ProjectWorkspaceShell
+              activeStage={workflow.stage}
+              onStageChange={workflow.goTo}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+            >
           <EditorWorkspace
                 key={project.id}
                 {...editorProps}
@@ -62,6 +67,8 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
             workflowStage={workflow.stage}
             workflowView={workflow.view}
             onWorkflowNavigate={workflow.goTo}
+            settingsOpen={isSettingsOpen}
+            onSettingsOpenChange={setIsSettingsOpen}
           />
             </ProjectWorkspaceShell>
           </ProjectSessionRuntime>

@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import type { AutoShotControlSettings, DetectionDetail, TransitionSelection } from "../config/types";
@@ -6,6 +7,8 @@ interface BasicSettingsProps {
   settings: AutoShotControlSettings;
   presetDefaultMinimumSceneDurationSeconds?: number;
   disabled?: boolean;
+  resetSettingsDisabled?: boolean;
+  onResetSettings?: () => void;
   onChange: (patch: Partial<AutoShotControlSettings>) => void;
 }
 
@@ -15,7 +18,7 @@ const details: Array<{ value: DetectionDetail; label: string; hint: string }> = 
   { value: "detailed", label: "细致", hint: "提高召回" },
 ];
 
-export default function BasicSettings({ settings, presetDefaultMinimumSceneDurationSeconds, disabled = false, onChange }: BasicSettingsProps) {
+export default function BasicSettings({ settings, presetDefaultMinimumSceneDurationSeconds, disabled = false, resetSettingsDisabled = false, onResetSettings, onChange }: BasicSettingsProps) {
   const customDuration = settings.minimumSceneDuration.mode === "custom"
     ? settings.minimumSceneDuration.seconds
     : undefined;
@@ -25,6 +28,24 @@ export default function BasicSettings({ settings, presetDefaultMinimumSceneDurat
   const displayedDuration = customDuration ?? presetDuration;
   return (
     <div className="space-y-3 rounded-xl border border-border bg-bg-deep p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="editor-meta text-text-dim">分镜参数</span>
+        {onResetSettings && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            disabled={disabled || resetSettingsDisabled}
+            onClick={onResetSettings}
+            title="恢复自动分镜默认设置"
+            aria-label="恢复自动分镜默认设置"
+            className="h-6 gap-1 px-1.5 text-[10px] text-text-muted hover:text-text-base"
+          >
+            <RotateCcw className="size-3" />
+            恢复默认
+          </Button>
+        )}
+      </div>
       <div>
         <span className="editor-meta text-text-dim">检出程度</span>
         <div className="mt-1.5 grid grid-cols-3 gap-1.5">

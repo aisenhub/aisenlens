@@ -117,11 +117,6 @@ export default function EditorTimeline(props: Props) {
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
   const [scrubTime, setScrubTime] = useState<number | null>(null)
   const [isPanning, setIsPanning] = useState(false)
-  const [draggedTrackId, setDraggedTrackId] = useState<TimelineTrackId | null>(
-    null,
-  )
-  const [dropTargetTrackId, setDropTargetTrackId] =
-    useState<TimelineTrackId | null>(null)
   const safeDuration = Math.max(1, durationSeconds)
   const viewport = useTimelineViewport({
     durationSeconds: safeDuration,
@@ -351,12 +346,6 @@ export default function EditorTimeline(props: Props) {
     [groups, shots],
   )
   const activeShotId = shots[activeShotIndex]?.id
-  const moveTrack = (source: TimelineTrackId, target: TimelineTrackId) => {
-    if (source === target) return
-    const next = prefs.order.filter((id) => id !== source)
-    next.splice(next.indexOf(target), 0, source)
-    prefs.setOrder(next)
-  }
   const moveTrackByStep = (trackId: TimelineTrackId, direction: -1 | 1) => {
     const index = prefs.order.indexOf(trackId)
     const targetIndex = index + direction
@@ -535,32 +524,6 @@ export default function EditorTimeline(props: Props) {
             label={labels[id]}
             visible={prefs.preferences[id].visible}
             height={heightOf(id)}
-            draggable
-            isDragging={draggedTrackId === id}
-            isDropTarget={dropTargetTrackId === id && draggedTrackId !== id}
-            onDragStart={(event) => {
-              event.dataTransfer.effectAllowed = "move"
-              event.dataTransfer.setData("text/plain", id)
-              setDraggedTrackId(id)
-            }}
-            onDragOver={(event) => {
-              event.preventDefault()
-              event.dataTransfer.dropEffect = "move"
-              setDropTargetTrackId(id)
-            }}
-            onDrop={(event) => {
-              event.preventDefault()
-              const source = event.dataTransfer.getData(
-                "text/plain",
-              ) as TimelineTrackId
-              if (prefs.order.includes(source)) moveTrack(source, id)
-              setDraggedTrackId(null)
-              setDropTargetTrackId(null)
-            }}
-            onDragEnd={() => {
-              setDraggedTrackId(null)
-              setDropTargetTrackId(null)
-            }}
             onHeightChange={(height) => prefs.setHeight(id, height)}
           />
         ))}

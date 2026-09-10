@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type SyntheticEvent } from "react"
 import { toast } from "sonner"
 import { Check, ChevronRight, Flag, Redo2, Scissors, Trash2, Undo2 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
@@ -137,11 +137,14 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     setSelectedBoundaryId(boundary?.id ?? null)
     moveToFrame(segment.startFrame)
   }
+  const focusSegmentButton = (segmentId: string) => {
+    window.requestAnimationFrame(() => segmentButtonRefs.current[segmentId]?.focus())
+  }
   useEffect(() => {
     if (session.state !== "ready" || !draft?.segments.length || selectedSegmentId) return
     const segment = draft.segments.find((candidate) => candidate.id === rememberedSegmentId) ?? draft.segments[0]
     selectSegment(segment)
-    window.requestAnimationFrame(() => segmentButtonRefs.current[segment.id]?.focus())
+    focusSegmentButton(segment.id)
   }, [draft, rememberedSegmentId, selectedSegmentId, session.state])
   useEffect(() => {
     if (selectedSegmentId) setRememberedSegmentId(selectedSegmentId)
@@ -154,7 +157,25 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
       : draft.segments.findIndex((segment) => currentFrame >= segment.startFrame && currentFrame < segment.endFrame)
     const nextIndex = Math.min(draft.segments.length - 1, Math.max(0, (currentIndex >= 0 ? currentIndex : direction > 0 ? -1 : draft.segments.length) + direction))
     const nextSegment = draft.segments[nextIndex]
-    if (nextSegment) selectSegment(nextSegment)
+    if (nextSegment) {
+      selectSegment(nextSegment)
+      focusSegmentButton(nextSegment.id)
+    }
+  }
+  const stopSelectedSegmentPlayback = (endFrame: number) => {
+    previewProps.videoRef.current?.pause()
+    shotPlaybackRef.current = null
+    moveToFrame(endFrame)
+    controlsProps.onPlayingChange(false)
+  }
+  const handleCalibrationTimeUpdate = (event: SyntheticEvent<HTMLVideoElement>) => {
+    const playback = shotPlaybackRef.current
+    const timeline = frameTimeline.timeline
+    if (playback && timeline && timestampToFrame(timeline, event.currentTarget.currentTime) >= playback.endFrame) {
+      stopSelectedSegmentPlayback(playback.endFrame)
+      return
+    }
+    previewProps.onTimeUpdate(event)
   }
   const toggleSelectedSegmentPlayback = () => {
     if (!selectedSegment || !frameTimeline.timeline || controlsProps.isUnavailable) return
@@ -167,7 +188,31 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     moveToFrame(selectedSegment.startFrame)
     controlsProps.onPlayingChange(true)
   }
+  const moveSelectedSegmentByFrames = (delta: number) => {
+    if (!selectedSegment || !frameTimeline.timeline) return
+    shotPlaybackRef.current = null
+    if (previewProps.status === "playing") controlsProps.onPlayingChange(false)
+    const currentFrame = timestampToFrame(frameTimeline.timeline, controlsProps.currentTime)
+    const startFrame = selectedSegment.startFrame
+    const endFrame = Math.max(startFrame, selectedSegment.endFrame - 1)
+    moveToFrame(Math.min(endFrame, Math.max(startFrame, currentFrame + delta)))
+  }
   const handleShotPlaybackKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if ((event.key === "ArrowUp" || event.key === "ArrowDown") && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault()
+      event.stopPropagation()
+      selectAdjacentSegment(event.key === "ArrowUp" ? -1 : 1)
+      return
+    }
+    const isArrowFrameKey = event.key === "ArrowLeft" || event.key === "ArrowRight"
+    const isPunctuationFrameKey = event.key === "," || event.key === "."
+    if ((isArrowFrameKey || isPunctuationFrameKey) && !event.altKey && !event.ctrlKey && !event.metaKey && (!event.shiftKey || isArrowFrameKey)) {
+      event.preventDefault()
+      event.stopPropagation()
+      const direction = event.key === "ArrowLeft" || event.key === "," ? -1 : 1
+      moveSelectedSegmentByFrames(direction * (event.shiftKey ? 5 : 1))
+      return
+    }
     if (event.key !== " ") return
     event.preventDefault()
     event.stopPropagation()
@@ -178,9 +223,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
     if (!playback || previewProps.status !== "playing" || !frameTimeline.timeline) return
     const currentFrame = timestampToFrame(frameTimeline.timeline, controlsProps.currentTime)
     if (currentFrame < playback.endFrame) return
-    moveToFrame(playback.endFrame)
-    shotPlaybackRef.current = null
-    controlsProps.onPlayingChange(false)
+    stopSelectedSegmentPlayback(playback.endFrame)
   }, [controlsProps.currentTime, frameTimeline.timeline, previewProps.status])
   const splitAtPlayhead = () => {
     if (!draft) return
@@ -273,7 +316,7 @@ export default function CalibrationWorkspace({ projectId, projectUpdatedAt, medi
         </div>
       </aside>
       <section className="order-1 flex h-max min-w-0 flex-col overflow-visible lg:order-2 lg:h-auto lg:min-h-0 lg:overflow-hidden">
-        <div className="h-[clamp(12rem,52vw,28rem)] min-h-48 shrink-0 p-3 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink"><VideoPreviewCanvas {...previewProps} /></div>
+        <div className="h-[clamp(12rem,52vw,28rem)] min-h-48 shrink-0 p-3 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink"><VideoPreviewCanvas {...previewProps} onTimeUpdate={handleCalibrationTimeUpdate} /></div>
         <div className="shrink-0 border-t border-border bg-bg-panel px-3 py-2"><VideoPlaybackControls {...controlsProps} isPreviousShotDisabled={selectedSegmentIndex <= 0} isNextShotDisabled={selectedSegmentIndex < 0 || selectedSegmentIndex >= draft.segments.length - 1} onPreviousShot={() => selectAdjacentSegment(-1)} onNextShot={() => selectAdjacentSegment(1)} /></div>
         <div className="shrink-0 border-t border-border bg-bg-panel p-3"><CalibrationTimeline segments={draft.segments} boundaries={draft.boundaries} frameRate={frameRate} totalFrames={verifiedTotalFrames} currentFrame={frameTimeline.timeline ? timestampToFrame(frameTimeline.timeline, controlsProps.currentTime) : 0} selectedSegment={selectedSegment} selectedSegmentIndex={selectedSegmentIndex} onSelectSegment={selectSegment} onPlaySelectedSegment={toggleSelectedSegmentPlayback} onSeekFrame={seekToFrame} /></div>
       </section>
