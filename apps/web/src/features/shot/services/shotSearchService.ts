@@ -1,6 +1,6 @@
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupKind, ShotGroupRecord } from "../../group/types";
-import type { AnalysisFieldValue } from "../../template/types";
+import type { AnalysisFieldEntry } from "../../template/types";
 import type { ShotData } from "../../editor/constants/editorData";
 
 export type ShotSearchStatus = "all" | "with-notes" | "with-screenshot" | "marked";
@@ -15,15 +15,17 @@ interface SearchableShotContext {
   shots: ShotData[];
   groups: ShotGroupRecord[];
   notesByShotId: Record<string, { content: string; analysis: string }>;
-  fieldsByShotId: Record<string, Record<string, AnalysisFieldValue>>;
+  fieldsByShotId: Record<string, Record<string, AnalysisFieldEntry>>;
   screenshotIdsByShotId: Record<string, string[]>;
   primaryScreenshotIdsByShotId: Record<string, string | null>;
   markers: AnnotationMarker[];
 }
 
-function valueToSearchText(value: AnalysisFieldValue): string {
-  if (Array.isArray(value)) return value.join(" ");
-  return value === null ? "" : String(value);
+function valueToSearchText(value: AnalysisFieldEntry): string {
+  if (value.state === "unknown") return "待判断 unknown"
+  if (value.state === "not_applicable") return "不适用 not applicable"
+  if (Array.isArray(value.value)) return value.value.join(" ")
+  return String(value.value)
 }
 
 function normalized(value: string): string {

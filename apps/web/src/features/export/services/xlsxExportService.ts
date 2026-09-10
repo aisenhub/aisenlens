@@ -1,6 +1,6 @@
 import { buildShotGroupExportChapters } from "../../group/services/groupExportService";
 import projectRepository from "../../project/services/projectRepository";
-import type { AnalysisFieldValue, TemplateField } from "../../template/types";
+import type { AnalysisFieldEntry, ResolvedAnalysisField } from "../../template/types";
 import type { ReportExportInput } from "../types";
 
 const encoder = new TextEncoder();
@@ -20,10 +20,19 @@ function columnName(index: number) {
   return name;
 }
 
-function valueText(value: AnalysisFieldValue) {
-  if (Array.isArray(value)) return value.join("、");
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return value == null ? "" : String(value);
+function valueText(value: AnalysisFieldEntry | undefined, field: ResolvedAnalysisField) {
+  if (!value) return "";
+  if (value.state === "unknown") return "待判断";
+  if (value.state === "not_applicable") return "不适用";
+  if (field.definition.kind === "single-select" && typeof value.value === "string") {
+    return field.definition.options.find((option) => option.id === value.value)?.label ?? "已停用选项";
+  }
+  if (field.definition.kind === "multi-select" && Array.isArray(value.value)) {
+    return value.value.map((optionId) => field.definition.options.find((option) => option.id === optionId)?.label ?? "已停用选项").join("、");
+  }
+  if (Array.isArray(value.value)) return value.value.join("、");
+  if (typeof value.value === "boolean") return value.value ? "是" : "否";
+  return String(value.value);
 }
 
 function timecode(seconds: number) {
@@ -76,15 +85,15 @@ function baseName(title: string) {
 }
 
 export async function downloadXlsxReport(input: ReportExportInput) {
-  const fields = input.fields.filter((field) => !field.isFixed).sort((left, right) => left.order - right.order);
+  const fields = input.fields.filter((field) => field.definition.fieldId !== "shot_description" && field.usage.presentation.report?.visible !== false).sort((left, right) => left.usage.order - right.usage.order);
   const groupByShotId = new Map(input.groups.flatMap((group) => group.shotIds.map((shotId) => [shotId, group] as const)));
   const screenshots = await Promise.all(input.shots.map(async (shot) => shot.screenshotId ? projectRepository.getScreenshot(shot.screenshotId) : null));
-  const headers = ["镜号", "起始时间", "结束时间", "时长（秒）", "分组", "代表截图", "画面内容", "镜头分析", ...fields.map((field) => field.label)];
+  const headers = ["镜号", "起始时间", "结束时间", "时长（秒）", "分组", "代表截图", "画面内容", "镜头分析", ...fields.map((field) => field.definition.label)];
   const widths = [8, 13, 13, 12, 18, 27, 34, 38, ...fields.map(() => 18)];
   const rows = [`<row r="1" ht="28" customHeight="1">${cell("A1", `${input.projectTitle} · 拉片分镜表`, 1)}</row>`, `<row r="2" ht="28" customHeight="1">${headers.map((header, index) => cell(`${columnName(index)}2`, header, 3)).join("")}</row>`];
   input.shots.forEach((shot, index) => {
     const row = index + 3;
-    const values: Array<string | number> = [index + 1, timecode(shot.start), timecode(shot.start + shot.duration), Number(shot.duration.toFixed(2)), groupByShotId.get(shot.id)?.title ?? "", "", shot.description, shot.notes, ...fields.map((field) => valueText(shot.analysisFields[field.id] ?? null))];
+    const values: Array<string | number> = [index + 1, timecode(shot.start), timecode(shot.start + shot.duration), Number(shot.duration.toFixed(2)), groupByShotId.get(shot.id)?.title ?? "", "", shot.description, shot.notes, ...fields.map((field) => valueText(shot.analysisFields[field.definition.fieldId], field))];
     rows.push(`<row r="${row}" ht="78" customHeight="1">${values.map((value, column) => cell(`${columnName(column)}${row}`, value, 2, column === 0 || column === 3)).join("")}</row>`);
   });
   const lastColumn = columnName(headers.length - 1);

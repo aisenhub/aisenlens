@@ -1,7 +1,7 @@
 import { buildShotGroupExportChapters } from "../../group/services/groupExportService";
 import projectRepository from "../../project/services/projectRepository";
 import { downloadXlsxReport } from "./xlsxExportService";
-import type { AnalysisFieldValue, TemplateField } from "../../template/types";
+import type { AnalysisFieldEntry, ResolvedAnalysisField } from "../../template/types";
 import type { ExportFormat, ReportExportInput } from "../types";
 
 function escapeCsv(value: string | number) {
@@ -13,10 +13,15 @@ function escapeHtml(value: string | number) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 }
 
-function formatValue(value: AnalysisFieldValue) {
-  if (Array.isArray(value)) return value.join("、");
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return value == null ? "" : String(value);
+function formatValue(value: AnalysisFieldEntry | undefined, field?: ResolvedAnalysisField) {
+  if (!value) return "";
+  if (value.state === "unknown") return "待判断";
+  if (value.state === "not_applicable") return "不适用";
+  if (field && field.definition.kind === "single-select" && typeof value.value === "string") return field.definition.options.find((option) => option.id === value.value)?.label ?? "已停用选项";
+  if (field && field.definition.kind === "multi-select" && Array.isArray(value.value)) return value.value.map((optionId) => field.definition.options.find((option) => option.id === optionId)?.label ?? "已停用选项").join("、");
+  if (Array.isArray(value.value)) return value.value.join("、");
+  if (typeof value.value === "boolean") return value.value ? "是" : "否";
+  return String(value.value);
 }
 
 function formatTime(seconds: number) {
@@ -30,8 +35,8 @@ function fileBaseName(title: string) {
   return name || "AisenLens-拉片报告";
 }
 
-function orderedFields(fields: TemplateField[]) {
-  return fields.filter((field) => !field.isFixed).sort((left, right) => left.order - right.order);
+function orderedFields(fields: ResolvedAnalysisField[]) {
+  return fields.filter((field) => field.definition.fieldId !== "shot_description" && field.usage.presentation.report?.visible !== false).sort((left, right) => left.usage.order - right.usage.order);
 }
 
 function researchRows(input: ReportExportInput) {
@@ -46,8 +51,8 @@ function researchRows(input: ReportExportInput) {
 export function createReportCsv(input: ReportExportInput) {
   const fields = orderedFields(input.fields);
   const groupByShotId = new Map(input.groups.flatMap((group) => group.shotIds.map((shotId) => [shotId, group] as const)));
-  const header = ["镜号", "起始时间", "结束时间", "时长（秒）", "分组", "画面内容", "镜头分析", ...fields.map((field) => field.label)];
-  const rows = input.shots.map((shot, index) => [index + 1, formatTime(shot.start), formatTime(shot.start + shot.duration), shot.duration.toFixed(2), groupByShotId.get(shot.id)?.title ?? "", shot.description, shot.notes, ...fields.map((field) => formatValue(shot.analysisFields[field.id] ?? null))]);
+  const header = ["镜号", "起始时间", "结束时间", "时长（秒）", "分组", "画面内容", "镜头分析", ...fields.map((field) => field.definition.label)];
+  const rows = input.shots.map((shot, index) => [index + 1, formatTime(shot.start), formatTime(shot.start + shot.duration), shot.duration.toFixed(2), groupByShotId.get(shot.id)?.title ?? "", shot.description, shot.notes, ...fields.map((field) => formatValue(shot.analysisFields[field.definition.fieldId], field))]);
   const appendix = researchRows(input)
   const appendixRows = appendix.length ? [["研究附录"], ["范围", "开始", "结束", "状态", "问题", "观察", "解释", "摘要", "证据数"], ...appendix] : []
   return `\uFEFF${[header, ...rows, ...(appendixRows.length ? [[""]] : []), ...appendixRows].map((row) => row.map(escapeCsv).join(",")).join("\r\n")}`;
@@ -61,7 +66,7 @@ export function createReportHtml(input: ReportExportInput) {
   const shots = input.shots.map((shot, index) => {
     const image = shot.screenshotId ? input.screenshotUrls[shot.screenshotId] : null;
     const group = groupByShotId.get(shot.id);
-    const values = fields.map((field) => `<dt>${escapeHtml(field.label)}</dt><dd>${escapeHtml(formatValue(shot.analysisFields[field.id] ?? null)) || "—"}</dd>`).join("");
+    const values = fields.map((field) => `<dt>${escapeHtml(field.definition.label)}</dt><dd>${escapeHtml(formatValue(shot.analysisFields[field.definition.fieldId], field)) || "—"}</dd>`).join("");
     return `<article class="shot"><div class="shot-image">${image ? `<img src="${image}" alt="分镜 ${index + 1} 代表图">` : "<span>暂无代表图</span>"}</div><div class="shot-content"><p class="eyebrow">镜头 ${String(index + 1).padStart(2, "0")}${group ? ` · ${escapeHtml(group.title)}` : ""}</p><h3>${escapeHtml(formatTime(shot.start))} – ${escapeHtml(formatTime(shot.start + shot.duration))} <small>${shot.duration.toFixed(2)} 秒</small></h3>${shot.description ? `<p>${escapeHtml(shot.description)}</p>` : ""}${shot.notes ? `<p><strong>分析：</strong>${escapeHtml(shot.notes)}</p>` : ""}${values ? `<dl>${values}</dl>` : ""}</div></article>`;
   }).join("");
   const research = researchRows(input)

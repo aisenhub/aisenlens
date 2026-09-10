@@ -34,11 +34,11 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 | 阶段 | 技术状态 | 技术前置 | 剩余 | Git 状态 | commit / remote 证据 |
 | --- | --- | --- | --- | --- | --- |
-| P1 安全字段闭环 | 未开始 | 本地/研究核实 | 全部 | 未提交 | 无 |
-| P2 模板管理 | 未开始 | P1 通过 | 全部 | 未提交 | 无 |
-| P3 连续录入 | 未开始 | P2 通过 | 全部 | 未提交 | 无 |
-| P4 最小 AI 契约 | 未开始 | P3 通过 | 全部 | 未提交 | 无 |
-| P5 验证清理 | 未开始 | P1–P4 通过 | 全部 | 未提交 | 无 |
+| P1 安全字段闭环 | 进行中 | 本地/研究核实 | fault/旧数据/并发矩阵 | 未提交 | HEAD 0dbc104；本轮无 commit |
+| P2 模板管理 | 进行中 | P1 技术代码已接入 | 浏览器草稿与 Apply 验收 | 未提交 | HEAD 0dbc104；本轮无 commit |
+| P3 连续录入 | 进行中 | P2 技术代码已接入 | Focus/Batch/IME/性能验收 | 未提交 | HEAD 0dbc104；本轮无 commit |
+| P4 最小 AI 契约 | 进行中 | 纯函数与接缝实现 | 完成阶段交接与更完整矩阵 | 未提交 | HEAD 0dbc104；本轮无 commit |
+| P5 验证清理 | 进行中 | 首轮 typecheck/lint/build/回归 | 全量数据与浏览器收口 | 未提交 | HEAD 0dbc104；本轮无 commit |
 
 ## 4. 每阶段追加模板
 
@@ -140,9 +140,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 ## 10. 当前交接
 
-下一步 P1 本地核实。产品实现未开始；文档修订不算阶段通过。执行时重查正在变化的工作区、真实旧数据范围、保存链和测试命令。
-
-数据处理需授权只在确认存在真实转换需求时触发，不因假设阻塞所有工作。Git 操作依据执行时用户授权，文档不自授权限。
+2026-09-10 执行 agent 已完成 P1–P4 的首轮实现，尚未宣称阶段验收通过。下一步应继续做真实模板/保存失败/跨标签页数据矩阵与模板/Focus/Batch 浏览器验收；没有旧项目数据盘点，不执行默认转换或清库。Git 操作依据执行时用户授权，文档不自授权限。
 
 ## 11. 本次文档检查（非产品验收）
 
@@ -153,4 +151,52 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 - 架构副本已改为指向唯一正文的入口；旧阶段文件名保留便于交接，P4 正文已明确缩减范围。
 - 本次仅修改计划文档，没有修改产品代码，没有执行产品 build/test、安装、提交或推送。
 - 上述文档检查不改变 P1–P5 的“未开始/未验证”状态。
+
+## 12. 2026-09-10 执行记录
+
+### 实施基线与范围
+
+- cwd：`E:\Projects\Aisenlens`；branch：`main`；执行核实时 HEAD：`0dbc1046fb45e0a07444a92d9d9326463638e902`；remote：`origin https://github.com/aisenhub/aisenlens.git`。
+- Node：`v24.19.0`；pnpm：`11.24.0`；Windows；Chrome/Edge 未通过 PATH 探测，但仓库浏览器 harness 能自行找到可用浏览器。
+- 执行期间 HEAD 从先前只读基线推进到 `0dbc104`，该提交不是本轮创建；本轮未 commit、未 push，未覆盖其既有自动分镜/校准与计划文档修改。
+- 当前工作区保留既有产品修改，并新增分析系统相关未提交修改；未安装依赖，未处理真实旧 IndexedDB 数据。
+
+### 阶段状态更新
+
+| 阶段 | 技术状态 | 本轮已完成 | 尚未完成 | Git 状态 |
+| --- | --- | --- | --- | --- |
+| P1 安全字段闭环 | 进行中 | definitions/usages/冻结 Profile、结构化 entry、命令写入、普通事务保存基线、History 纳入 template、Overlay/Export 读取新模型 | fault 注入矩阵、旧数据范围、完整 Recovery/并发真实链路 | 未提交 |
+| P2 模板管理 | 进行中 | Profile 选择、三栏草稿、Apply/版本校验/无变化不提交、字段库复用、移除保留 definition/value | 浏览器 dirty draft、完整 Apply/Undo/Redo 与受影响数量 diff 验收 | 未提交 |
+| P3 连续录入 | 进行中 | Detail/Focus 共用 resolver/entry、队列导航、复制上一镜、显式 Batch 预览/一次写入/一次 History | IME/弹层/多视口及 Batch 全矩阵浏览器验收、专业 profiler 记录 | 未提交 |
+| P4 最小 AI 契约 | 进行中 | AICandidate、stale/conflict/非法值/证据/confidence 守卫、幂等 Accept、唯一命令接缝与 4 项专项测试 | 未接入 provider/Review UI（按计划本期不做） | 未提交 |
+| P5 验证清理 | 进行中 | 旧 renderer/`DIM_REFS` 删除、旧 optionId 输出路径清理、类型/构建/既有浏览器回归 | 全量数据矩阵、verification 完整收口、用户授权后的提交/推送 | 未提交 |
+
+### 已执行验证
+
+- `corepack pnpm --filter @aisenlens/web typecheck`：exit 0。
+- `corepack pnpm lint`：exit 0。
+- `corepack pnpm build`：exit 0；Vite 构建和 public route prerender 完成。保留 scene-engine 的既有 `node:module` browser externalization warning，未将其误判为本轮失败。
+- `corepack pnpm --filter @aisenlens/web test:editor-history`：exit 0，4 tests passed。
+- `corepack pnpm --filter @aisenlens/web test:overview-analyze`：exit 0，8 tests passed。
+- `corepack pnpm --filter @aisenlens/web test:analysis-contract`：exit 0，4 tests passed；该脚本为本轮新增专项命令。
+- `corepack pnpm --filter @aisenlens/web test:overview-analyze-browser`：最终复跑 exit 0，3 tests passed，包含 1440/1280/768/390 视口、Sound 研究范围 IndexedDB 往返/URL 恢复与 1,000/3,000 镜头有界 DOM 压力场景。此前一次复跑出现 Sound 创建等待超时；同一 harness 的手动路径可复现成功，随后完整复跑通过，按时序波动记录，不作为产品失败证据。
+- 首次 `corepack pnpm verify:web` 在新增代码尚未收敛时发现 `useState`、export 类型、system profile helper、Error cause 与集合比较等问题；已修复并由上述独立命令复测。
+- 最终 `corepack pnpm verify:web`：exit 0；在最后一轮 History 输入合并修复后重新执行，包含 typecheck、lint、editor history、retain shot map、auto-shot 全套契约/服务测试、scene calibration、platform integration、video export boundary、workflow tests 与 build/prerender。
+- Impeccable detector 对本轮改动的模板、Detail/Focus/Batch 输入与 EditorWorkspace 执行：零 findings；`git diff --check`：无 whitespace error。
+
+### 本轮实际架构决定
+
+- 系统 Registry 只负责创作，项目 Profile snapshot 负责解释运行时；系统定义不可直接覆盖已冻结项目定义。
+- `AnalysisFieldEntry` 区分 `set`/`unknown`/`not_applicable`；清空是删除 entry，不再把空文本/空多选伪装成未知。
+- 模板编辑器只在本地 draft 中变更，Apply 才推进 Profile version 并进入 Editor History；required 只提供完成度，不阻止保存。
+- 普通 editor save 使用加载/上次成功保存的 expectedUpdatedAt，不在保存前读取最新 DB token；事务 fault point 覆盖 project/shots/groups/markers/template/research。
+- P4 没有生产 AI provider、候选 store、Review 页面或假请求；只保留纯校验与字段命令接缝。
+
+### 仍未验证与明确限制
+
+- 尚未核查用户真实旧项目、Recovery、导出数据格式，也未提供 V1 fallback；当前格式读取校验失败会报错并保留原库，不做隐式迁移。
+- 尚未用真实两标签页 hook 交错复现冲突，也未逐个触发普通保存 fault injector 并检查 IndexedDB rollback；校准事务成功不作为该项证据。
+- 尚未完成模板 dirty draft、Focus/Batch/IME、保存失败与跨标签页冲突的浏览器脚本验收。
+- 未承诺跨设备毫秒级 SLA；压力浏览器测试仅证明已有研究队列 DOM 有界，不等于 1,000×20 全部交互性能通过。
+- 已完成 Analyze 浏览器回归的当前代码复跑；模板 dirty draft、Focus/Batch/IME、保存失败与跨标签页冲突的专项脚本仍需补齐。
 

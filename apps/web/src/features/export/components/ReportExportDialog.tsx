@@ -13,7 +13,7 @@ interface ReportExportDialogProps {
 }
 
 export default function ReportExportDialog({ input, isExporting, onClose, onExport, onOpenVideoExport }: ReportExportDialogProps) {
-  const fieldCount = input.fields.filter((field) => !field.isFixed).length;
+  const fieldCount = input.fields.filter((field) => field.definition.fieldId !== "shot_description" && field.usage.presentation.report?.visible !== false).length;
   return <ModalShell title="导出拉片报告" description="所有内容只在当前浏览器中生成，不会上传视频或分析数据。" onClose={onClose} closeDisabled={isExporting} className="max-w-2xl">
     <div className="space-y-5">
       <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-bg-deep p-3 text-center text-xs text-text-muted"><div><p className="font-mono text-base text-white">{input.shots.length}</p><p>分镜</p></div><div><p className="font-mono text-base text-white">{input.groups.length}</p><p>分组章节</p></div><div><p className="font-mono text-base text-white">{fieldCount}</p><p>分析维度</p></div></div>

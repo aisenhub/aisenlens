@@ -99,6 +99,13 @@ function transactionResult(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+function nextProjectUpdatedAt(previous: string): string {
+  const now = new Date()
+  const previousTime = Date.parse(previous)
+  if (Number.isFinite(previousTime) && now.getTime() <= previousTime) now.setTime(previousTime + 1)
+  return now.toISOString()
+}
+
 function deleteProjectShotRecords(store: IDBObjectStore, projectId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
@@ -480,33 +487,47 @@ export function createProjectRepository(): ProjectRepository {
     async saveProjectEditorState(state, expectedUpdatedAt) {
       const database = await openDatabase();
       const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
+      const completion = transactionResult(transaction);
       const projectStore = transaction.objectStore(PROJECTS_STORE);
-      const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
-      if (!current) throw new Error("项目不存在或已删除。");
-      if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开后再保存。");
-      const now = new Date().toISOString();
-      const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
-      projectStore.put(updatedProject);
-      await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
-      await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
-      await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
-      const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
-      const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
-      if (existingTemplate) templateStore.delete(existingTemplate.id);
-      state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
-      state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
-      state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
-      if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
-      if (state.researchRanges !== undefined) {
-        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
-        state.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId: state.project.id, updatedAt: now }));
+      try {
+        const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
+        if (!current) throw new Error("项目不存在或已删除。");
+        if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开后再保存。");
+        const now = nextProjectUpdatedAt(current.updatedAt);
+        const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
+        injectProjectRepositoryFault("project-write");
+        projectStore.put(updatedProject);
+        await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
+        await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
+        const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
+        const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
+        if (existingTemplate) templateStore.delete(existingTemplate.id);
+        injectProjectRepositoryFault("shots-write");
+        state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
+        injectProjectRepositoryFault("groups-write");
+        state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
+        injectProjectRepositoryFault("markers-write");
+        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
+        injectProjectRepositoryFault("template-write");
+        if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
+        if (state.researchRanges !== undefined) {
+          await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
+          injectProjectRepositoryFault("research-range-write");
+          state.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId: state.project.id, updatedAt: now }));
+        }
+        if (state.researchContexts !== undefined) {
+          await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id);
+          injectProjectRepositoryFault("research-context-write");
+          state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
+        }
+        await completion;
+        return updatedProject;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
       }
-      if (state.researchContexts !== undefined) {
-        await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id);
-        state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
-      }
-      await transactionResult(transaction);
-      return updatedProject;
     },
 
     async deleteProject(projectId: string) {

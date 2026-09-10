@@ -3,6 +3,7 @@ import { loadMediaAssetBlob } from "../../media/services/mediaAssetResourceServi
 import { mixAudioOffline, resolveAudioMixClips } from "../../media/services/audioMixService";
 import projectRepository from "../../project/services/projectRepository";
 import type { MediaAsset, ProjectRecord, ProjectTemplateSnapshotRecord, StoredShotRecord } from "../../project/types";
+import resolveAnalysisProfile from "../../template/services/resolveAnalysisProfile";
 import type { VideoExportAudioData, VideoExportFormat, VideoExportOverlaySegment, VideoExportPhase, VideoExportSettings, VideoExportWorkerResponse, VideoExportWriteChunk } from "./videoExportProtocol";
 
 export interface VideoExportProgress {
@@ -97,7 +98,7 @@ function formatTimecode(seconds: number): string {
 
 function createOverlaySegments(project: ProjectRecord, shots: StoredShotRecord[], template: ProjectTemplateSnapshotRecord | null, settings: VideoExportSettings): VideoExportOverlaySegment[] {
   if (!settings.includeContentOverlay || !project.contentOverlay.enabled) return [];
-  const fields = template?.fields ?? [];
+  const fields = template ? resolveAnalysisProfile(template).fields : [];
   return shots.slice().sort((left, right) => left.order - right.order).map((shot, index) => ({
     startFrame: shot.startFrame,
     endFrame: shot.endFrame,

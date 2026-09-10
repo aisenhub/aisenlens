@@ -1,4 +1,4 @@
-import type { AnalysisFieldValue, TemplateField } from "../../template/types";
+import type { AnalysisFieldEntry, ResolvedAnalysisField } from "../../template/types";
 import type { ContentOverlaySettings } from "../types";
 
 export interface ContentOverlayItem {
@@ -16,7 +16,12 @@ export interface ContentOverlayViewModel {
   items: ContentOverlayItem[];
 }
 
-function formatFieldValue(value: AnalysisFieldValue | undefined): string | null {
+function formatFieldValue(field: ResolvedAnalysisField, entry: AnalysisFieldEntry | undefined): string | null {
+  if (!entry || entry.state === "unknown") return entry?.state === "unknown" ? "待判断" : null;
+  if (entry.state === "not_applicable") return "不适用";
+  const value = entry.value;
+  if (field.definition.kind === "single-select" && typeof value === "string") return field.definition.options.find((option) => option.id === value)?.label ?? "已停用选项";
+  if (field.definition.kind === "multi-select" && Array.isArray(value)) return value.map((item) => field.definition.options.find((option) => option.id === item)?.label ?? "已停用选项").join(" · ") || null;
   if (typeof value === "string") return value.trim() || null;
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
   if (typeof value === "boolean") return value ? "是" : "否";
@@ -27,12 +32,12 @@ function formatFieldValue(value: AnalysisFieldValue | undefined): string | null 
   return null;
 }
 
-export function resolveContentOverlay({ settings, fields, values, description, analysis, shotIndex, currentTimecode, durationSeconds }: { settings: ContentOverlaySettings; fields: TemplateField[]; values: Record<string, AnalysisFieldValue>; description: string; analysis: string; shotIndex: number; currentTimecode: string; durationSeconds: number; }): ContentOverlayViewModel {
-  const fieldById = new Map(fields.map((field) => [field.id, field]));
+export function resolveContentOverlay({ settings, fields, values, description, analysis, shotIndex, currentTimecode, durationSeconds }: { settings: ContentOverlaySettings; fields: ResolvedAnalysisField[]; values: Record<string, AnalysisFieldEntry>; description: string; analysis: string; shotIndex: number; currentTimecode: string; durationSeconds: number; }): ContentOverlayViewModel {
+  const fieldById = new Map(fields.map((field) => [field.definition.fieldId, field]));
   const items = settings.fieldIds.flatMap((fieldId) => {
     const field = fieldById.get(fieldId);
-    const value = formatFieldValue(values[fieldId]);
-    return field && value ? [{ id: field.id, label: field.label, value }] : [];
+    const value = field ? formatFieldValue(field, values[fieldId]) : null;
+    return field && value ? [{ id: field.definition.fieldId, label: field.definition.label, value }] : [];
   });
   const normalizedDescription = description.trim();
   const normalizedAnalysis = analysis.trim();

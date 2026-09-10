@@ -12,16 +12,10 @@ import {
 import type { LucideIcon } from "lucide-react"
 import { FRAMES_PER_SECOND } from "../constants/editor"
 import {
-  COLORS,
-  DIMS,
-  MOTIONS,
   Panel,
   PanelToolId,
   ShotData,
-  SHOT_TYPES,
 } from "../constants/editorData"
-import AnalysisDimensionCard from "./AnalysisDimensionCard"
-import AnalysisFieldInput from "./AnalysisFieldInput"
 import FrameCapture from "./FrameCapture"
 import ShotList from "./ShotList"
 import ShotScreenshotGallery from "../../shot/components/ShotScreenshotGallery"
@@ -69,12 +63,13 @@ import { loadOrCreateProjectTemplate } from "../../template/services/templateSer
 import { resolveAutoShotTotalFrames } from "../../auto-shot/applyAutoShotCandidates"
 import {
   getShotAnalysisCompleteness,
-  normalizeProjectTemplate,
-  normalizeShotAnalysisFields,
+  validateProjectAnalysisProfile,
 } from "../../template/services/templateValidation"
+import resolveAnalysisProfile from "../../template/services/resolveAnalysisProfile"
+import { applyAnalysisFieldCommand, copyPreviousAnalysisField, type AnalysisFieldCommand } from "../../analysis/services/analysisFieldCommands"
 import TemplateEditorModal from "../../template/components/TemplateEditorModal"
 import type {
-  AnalysisFieldValue,
+  AnalysisFieldEntry,
   ProjectTemplateSnapshot,
 } from "../../template/types"
 import AnnotationMarkerPanel from "../../annotation/components/AnnotationMarkerPanel"
@@ -156,6 +151,9 @@ const CreateView = lazy(() => import("../../workflow/components/CreateView"))
 import type { LearningSource } from "../../learn/services/deriveLearningSources"
 import useResearchWorkbench from "../../analysis/hooks/useResearchWorkbench"
 import type { EvidenceRef, ResearchContext, ResearchRange, ResearchTarget } from "../../analysis/types.ts"
+import AnalysisFieldEntryInput from "../../analysis/components/AnalysisFieldEntryInput"
+import BatchAnalysisPanel from "../../analysis/components/BatchAnalysisPanel"
+import { applyAnalysisBatch } from "../../analysis/services/analysisFieldCommands"
 
 interface EditorWorkspaceProps {
   onNavigate: (page: number) => void
@@ -185,7 +183,9 @@ interface EditorHistorySnapshot {
     last: string | null
   }>
   shotNotes: Record<string, { content: string; analysis: string }>
-  shotDims: Record<string, Record<string, AnalysisFieldValue>>
+  shotDims: Record<string, Record<string, AnalysisFieldEntry>>
+  shotStatuses: Record<string, "draft" | "confirmed">
+  template: ProjectTemplateSnapshot | null
   shotDetection: Record<string, ShotDetectionMeta>
   annotationMarkers: AnnotationMarker[]
   shotGroups: ShotGroupRecord[]
@@ -198,49 +198,6 @@ interface EditorHistorySnapshot {
 }
 
 /* ── constants ── */
-const DIM_REFS: Record<string, { val: string; hint: string }[]> = {
-  shot: [
-    { val: "大远景", hint: "极端疏离，建立宏观环境" },
-    { val: "远景", hint: "人物为环境一部分" },
-    { val: "全景", hint: "完整人物，动作清晰" },
-    { val: "中景", hint: "常见叙事，互动关系" },
-    { val: "近景", hint: "情绪与表情聚焦" },
-    { val: "特写", hint: "局部特征，情绪强化" },
-    { val: "大特写", hint: "极端聚焦，戏剧张力" },
-  ],
-  motion: [
-    { val: "固定", hint: "稳定叙事，观察视角" },
-    { val: "推镜", hint: "聚焦强调，建立悬念" },
-    { val: "拉镜", hint: "揭示背景，疏离感" },
-    { val: "摇镜", hint: "扫视空间，建立关联" },
-    { val: "移镜", hint: "流动跟随，动感强" },
-    { val: "跟镜", hint: "主观跟随，代入感" },
-    { val: "升降", hint: "垂直运动，全知视角" },
-  ],
-  color: [
-    { val: "冷蓝调", hint: "疏离、忧郁、理性" },
-    { val: "暖黄调", hint: "温暖、怀旧、亲密" },
-    { val: "中性", hint: "客观叙事、写实" },
-    { val: "高饱和", hint: "活力、张扬、超现实" },
-    { val: "脱色", hint: "压抑、沉重、末日感" },
-    { val: "绿调", hint: "病态、诡异、监控感" },
-    { val: "红调", hint: "激情、危险、紧迫" },
-  ],
-  sound: [
-    { val: "同期声", hint: "真实感、临场感" },
-    { val: "旁白", hint: "叙事引导、距离感" },
-    { val: "音乐主导", hint: "情绪渲染、主观性" },
-    { val: "静默", hint: "张力营造、留白" },
-    { val: "混合", hint: "层次丰富、真实" },
-  ],
-  rhythm: [
-    { val: "急促", hint: "紧张、动感、不安" },
-    { val: "中速", hint: "平稳、标准叙事" },
-    { val: "舒缓", hint: "写意、抒情、沉思" },
-    { val: "呼吸", hint: "自然流动、纪录感" },
-  ],
-}
-
 const FPS = FRAMES_PER_SECOND
 /* ─────────────────────────────────────────────
    EDITOR
@@ -319,10 +276,16 @@ export default function EditorWorkspace({
   const [liteCache, setLiteCache] = useState(128)
   const [openRef, setOpenRef] = useState<string | null>(null)
 
-  useEffect(() => setMediaProject(project), [project])
+  const editorSaveBaselineRef = useRef(project.updatedAt)
+
+  useEffect(() => {
+    setMediaProject(project)
+    editorSaveBaselineRef.current = project.updatedAt
+  }, [project, projectId])
   const handleMediaProjectUpdated = useCallback(
     (updatedProject: ProjectRecord) => {
       setMediaProject(updatedProject)
+      editorSaveBaselineRef.current = updatedProject.updatedAt
       onProjectUpdated(updatedProject)
     },
     [onProjectUpdated],
@@ -368,11 +331,14 @@ export default function EditorWorkspace({
     analysis: string
   }>>({})
   const [shotDims, setShotDims] =
-    useState<Record<string, Record<string, AnalysisFieldValue>>>({})
+    useState<Record<string, Record<string, AnalysisFieldEntry>>>({})
+  const [shotStatuses, setShotStatuses] = useState<Record<string, "draft" | "confirmed">>({})
+  const [isBatchAnalysisOpen, setIsBatchAnalysisOpen] = useState(false)
   const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null)
   const [editorLoadError, setEditorLoadError] = useState<string | null>(null)
   const [dataLoadRevision, setDataLoadRevision] = useState(0)
   const [template, setTemplate] = useState<ProjectTemplateSnapshot | null>(null)
+  const templateRef = useRef<ProjectTemplateSnapshot | null>(null)
   const [isTemplateEditorOpen, setIsTemplateEditorOpen] = useState(false)
   const [annotationMarkers, setAnnotationMarkers] =
     useState<AnnotationMarker[]>([])
@@ -415,6 +381,10 @@ export default function EditorWorkspace({
   const videoExportJobRef = useRef<VideoExportJob | null>(null)
   const videoExportCancelledRef = useRef(false)
   const editorLoadRequestRef = useRef(0)
+
+  useEffect(() => {
+    templateRef.current = template
+  }, [template])
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const {
@@ -567,6 +537,8 @@ export default function EditorWorkspace({
       shotBoundaryScreenshotIds: structuredClone(shotBoundaryScreenshotIds),
       shotNotes: structuredClone(shotNotes),
       shotDims: structuredClone(shotDims),
+      shotStatuses: structuredClone(shotStatuses),
+      template: template ? structuredClone(template) : null,
       shotDetection: structuredClone(autoShotDetectionRef.current),
       annotationMarkers: structuredClone(annotationMarkers),
       shotGroups: structuredClone(shotGroups),
@@ -589,8 +561,10 @@ export default function EditorWorkspace({
       shotFrames,
       shotGroups,
       shotNotes,
+      shotStatuses,
       shotScreenshotIds,
       shots,
+      template,
     ],
   )
 
@@ -603,6 +577,8 @@ export default function EditorWorkspace({
       setShotBoundaryScreenshotIds(snapshot.shotBoundaryScreenshotIds)
       setShotNotes(snapshot.shotNotes)
       setShotDims(snapshot.shotDims)
+      setShotStatuses(snapshot.shotStatuses)
+      setTemplate(snapshot.template)
       autoShotDetectionRef.current = structuredClone(snapshot.shotDetection)
       setAnnotationMarkers(snapshot.annotationMarkers)
       setShotGroups(snapshot.shotGroups)
@@ -678,7 +654,9 @@ export default function EditorWorkspace({
 
   useEffect(() => {
     if (!template) return
-    const validFieldIds = new Set(template.fields.map((field) => field.id))
+    const validFieldIds = new Set(
+      resolveAnalysisProfile(template).fields.map((field) => field.definition.fieldId),
+    )
     setContentOverlay((current) => {
       const fieldIds = current.fieldIds.filter((fieldId) =>
         validFieldIds.has(fieldId),
@@ -768,6 +746,8 @@ export default function EditorWorkspace({
 
   const saveCurrentProject = useEditorPersistence({
     projectId,
+    currentProject: mediaProject,
+    expectedUpdatedAt: editorSaveBaselineRef.current,
     projectTitle,
     compositionOverlay,
     contentOverlay,
@@ -778,7 +758,8 @@ export default function EditorWorkspace({
     primaryShotScreenshotIds,
     shotBoundaryScreenshotIds,
     shotNotes,
-    shotDims,
+    shotEntries: shotDims,
+    shotStatuses,
     shotGroups,
     annotationMarkers,
     template,
@@ -787,7 +768,11 @@ export default function EditorWorkspace({
     autoShotDetection: autoShotDetectionRef.current,
     researchRanges: researchWorkbench.ranges,
     researchContexts: researchWorkbench.contexts,
-    onProjectUpdated: (updatedProject) => onProjectUpdatedRef.current(updatedProject),
+    onProjectUpdated: (updatedProject) => {
+      setMediaProject(updatedProject)
+      editorSaveBaselineRef.current = updatedProject.updatedAt
+      onProjectUpdatedRef.current(updatedProject)
+    },
   })
 
   const {
@@ -864,6 +849,7 @@ export default function EditorWorkspace({
       shotFrames,
       shotGroups,
       shotNotes,
+      shotStatuses,
       shotScreenshotIds,
       shots,
       researchWorkbench.contexts,
@@ -926,6 +912,7 @@ export default function EditorWorkspace({
     setHasLoadedScreenshotFrames(false)
     setShotNotes({})
     setShotDims({})
+    setShotStatuses({})
     setShotGroups([])
     setSelectedShotIds([])
     setSelectedGroupId(null)
@@ -937,23 +924,21 @@ export default function EditorWorkspace({
       if (!isCurrent()) return
       if (savedShots.length) {
         const frameRate = media.metadata?.frameRate ?? FPS
+        const displayFieldValue = (shot: (typeof savedShots)[number], fieldId: string) => {
+          const entry = shot.analysisFields[fieldId]
+          if (!entry || entry.state !== "set") return "未分析"
+          if (typeof entry.value !== "string") return "已记录"
+          const definition = templateRef.current?.fieldDefinitions.find((field) => field.fieldId === fieldId)
+          return definition?.options.find((option) => option.id === entry.value)?.label ?? "已记录"
+        }
         setShots(
           savedShots.map((shot) => ({
             id: shot.id,
             start: shot.startFrame / frameRate,
             duration: (shot.endFrame - shot.startFrame) / frameRate,
-            type:
-              typeof shot.analysisFields.shot === "string"
-                ? shot.analysisFields.shot
-                : "未分析",
-            motion:
-              typeof shot.analysisFields.motion === "string"
-                ? shot.analysisFields.motion
-                : "未分析",
-            color:
-              typeof shot.analysisFields.color === "string"
-                ? shot.analysisFields.color
-                : "未分析",
+            type: displayFieldValue(shot, "shot"),
+            motion: displayFieldValue(shot, "motion"),
+            color: displayFieldValue(shot, "color"),
           })),
         )
         setShotFrames(
@@ -992,6 +977,7 @@ export default function EditorWorkspace({
             savedShots.map((shot) => [shot.id, shot.analysisFields]),
           ),
         )
+        setShotStatuses(Object.fromEntries(savedShots.map((shot) => [shot.id, shot.status])))
         setShotNotes(
           Object.fromEntries(
             savedShots.map((shot) => [
@@ -1459,96 +1445,20 @@ export default function EditorWorkspace({
     }
   }
 
-  const setAnalysisField = (
-    shotId: string,
-    key: string,
-    value: AnalysisFieldValue,
-  ) => {
-    const field = template?.fields.find((item) => item.id === key)
-    const nextValues = field
-      ? normalizeShotAnalysisFields([field], { [key]: value })
-      : { [key]: value }
-    editorHistory.commit()
-    setShotDims((current) => ({
-      ...current,
-      [shotId]: { ...current[shotId], ...nextValues },
-    }))
-  }
-
-  const saveTemplate = (nextTemplate: ProjectTemplateSnapshot) => {
-    const persistedTemplate = {
-      ...normalizeProjectTemplate(nextTemplate),
-      updatedAt: new Date().toISOString(),
+  const saveTemplate = (nextTemplate: ProjectTemplateSnapshot, baseVersion: number): boolean => {
+    if (!template || template.version !== baseVersion) {
+      toast.error("模板已在其他编辑流程中更新，请重新打开设置后再应用。")
+      return false
     }
-    setTemplate(persistedTemplate)
-  }
-
-  const updateTemplateField = (
-    fieldId: string,
-    updates: Partial<ProjectTemplateSnapshot["fields"][number]>,
-  ) => {
-    if (!template) return
-    saveTemplate({
-      ...template,
-      fields: template.fields.map((field) =>
-        field.id === fieldId ? { ...field, ...updates } : field,
-      ),
-    })
-  }
-
-  const addTemplateField = () => {
-    if (!template) return
-    saveTemplate({
-      ...template,
-      fields: [
-        ...template.fields,
-        {
-          id: `field_${crypto.randomUUID()}`,
-          label: "新字段",
-          kind: "single-select",
-          order: template.fields.length,
-          options: [],
-          referenceTerms: [],
-          required: false,
-          isFixed: false,
-        },
-      ],
-    })
-  }
-
-  const moveTemplateField = (fieldId: string, direction: -1 | 1) => {
-    if (!template) return
-    const fields = [...template.fields].sort(
-      (left, right) => left.order - right.order,
-    )
-    const index = fields.findIndex((field) => field.id === fieldId)
-    const destinationIndex = index + direction
-    if (
-      index < 0 ||
-      destinationIndex < 0 ||
-      destinationIndex >= fields.length ||
-      fields[destinationIndex].isFixed
-    )
-      return
-    ;[fields[index], fields[destinationIndex]] = [
-      fields[destinationIndex],
-      fields[index],
-    ]
-    saveTemplate({
-      ...template,
-      fields: fields.map((field, order) => ({ ...field, order })),
-    })
-  }
-
-  const deleteTemplateField = (fieldId: string) => {
-    if (!template) return
-    saveTemplate({
-      ...template,
-      fields: template.fields
-        .filter((field) => field.id !== fieldId)
-        .sort((left, right) => left.order - right.order)
-        .map((field, order) => ({ ...field, order })),
-    })
+    if (JSON.stringify(nextTemplate) === JSON.stringify(template)) return true
+    const issues = validateProjectAnalysisProfile(nextTemplate)
+    if (issues.length) {
+      toast.error(issues[0]?.message ?? "模板配置无效，请修正后重试。")
+      return false
+    }
+    editorHistory.commit()
+    setTemplate({ ...structuredClone(nextTemplate), updatedAt: new Date().toISOString(), version: template.version + 1 })
+    return true
   }
 
   const handleBoundaryCommit = (
@@ -2003,7 +1913,7 @@ export default function EditorWorkspace({
               null,
           })),
           groups: shotGroups,
-          fields: template?.fields ?? [],
+          fields: resolvedProfile?.fields ?? [],
           screenshotUrls: shotScreenshotUrls,
         },
         format,
@@ -2141,15 +2051,49 @@ export default function EditorWorkspace({
     : { first: 0, last: 0 }
   const currentDims = shotDims[activeShotId] ?? {}
   const currentNotes = shotNotes[activeShotId] ?? { content: "", analysis: "" }
+  const resolvedProfile = template ? resolveAnalysisProfile(template, "detail_panel") : null
+  const handleAnalysisFieldCommand = useCallback((command: AnalysisFieldCommand) => {
+    if (!template || !activeShotId) return
+    const result = applyAnalysisFieldCommand(template, shotDims[activeShotId] ?? {}, command)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    if (!result.changed) return
+    if (!historyInputActiveRef.current) editorHistory.commit()
+    setShotDims((current) => ({ ...current, [activeShotId]: result.values }))
+  }, [activeShotId, editorHistory, shotDims, template])
+  const handleCopyPreviousAnalysis = useCallback((fieldId: string, previousShotId: string) => {
+    if (!template || !activeShotId) return
+    const result = copyPreviousAnalysisField(template, shotDims[previousShotId], shotDims[activeShotId] ?? {}, fieldId)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    if (!result.changed) return
+    editorHistory.commit()
+    setShotDims((current) => ({ ...current, [activeShotId]: result.values }))
+  }, [activeShotId, editorHistory, shotDims, template])
+  const handleBatchAnalysisCommand = useCallback((command: AnalysisFieldCommand, shotIds: string[]) => {
+    if (!template || !shotIds.length) return
+    const result = applyAnalysisBatch(template, shotDims, shotIds, command)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    if (!result.changed) return
+    editorHistory.commit()
+    setShotDims(result.valuesByShotId)
+  }, [editorHistory, shotDims, template])
   const currentCompleteness = getShotAnalysisCompleteness(
-    template?.fields ?? [],
+    template ?? { schemaVersion: 2, id: "empty", projectId, name: "", version: 0, sourceProfile: null, fieldDefinitions: [], sections: [], fieldUsages: [], createdAt: "", updatedAt: "" },
     currentDims,
     currentNotes.content,
   )
   const currentShot = shots[activeShot]
   const contentOverlayModel = resolveContentOverlay({
     settings: contentOverlay,
-    fields: template?.fields ?? [],
+    fields: resolvedProfile?.fields ?? [],
     values: currentDims,
     description: currentNotes.content,
     analysis: currentNotes.analysis,
@@ -2157,20 +2101,15 @@ export default function EditorWorkspace({
     currentTimecode: formatTimecode(currentTime),
     durationSeconds: currentShot?.duration ?? 0,
   })
-  const suggestedContentOverlayFieldIds = (template?.fields ?? [])
+  const suggestedContentOverlayFieldIds = (resolvedProfile?.fields ?? [])
     .filter((field) => {
-      const value = currentDims[field.id]
+      const value = currentDims[field.definition.fieldId]
       return (
-        field.id !== "shot_description" &&
-        (typeof value === "string"
-          ? Boolean(value.trim())
-          : Array.isArray(value)
-            ? value.length > 0
-            : value !== null && value !== undefined)
+        field.definition.fieldId !== "shot_description" && value?.state === "set"
       )
     })
     .slice(0, 5)
-    .map((field) => field.id)
+    .map((field) => field.definition.fieldId)
   const selectedGroup =
     shotGroups.find((group) => group.id === selectedGroupId) ?? null
   const selectedGroupIndexes = selectedGroup
@@ -2187,7 +2126,7 @@ export default function EditorWorkspace({
   const completionByShotId = Object.fromEntries(
     shots.map((shot) => {
       const completeness = getShotAnalysisCompleteness(
-        template?.fields ?? [],
+        template ?? { schemaVersion: 2, id: "empty", projectId, name: "", version: 0, sourceProfile: null, fieldDefinitions: [], sections: [], fieldUsages: [], createdAt: "", updatedAt: "" },
         shotDims[shot.id] ?? {},
         shotNotes[shot.id]?.content ?? "",
       )
@@ -2689,6 +2628,8 @@ export default function EditorWorkspace({
         activeShotIndex={activeShot}
         selectedGroupId={selectedGroupId}
         notes={shotNotes}
+        entries={shotDims}
+        resolvedProfile={resolvedProfile}
         project={mediaProject}
         frameRate={media.metadata?.frameRate ?? FPS}
         currentFrame={Math.round(currentTime * (media.metadata?.frameRate ?? FPS))}
@@ -2714,6 +2655,10 @@ export default function EditorWorkspace({
             [activeShotId]: { ...current[activeShotId], ...patch },
           }))
         }}
+        onAnalysisFieldCommand={handleAnalysisFieldCommand}
+        onCopyPreviousAnalysis={handleCopyPreviousAnalysis}
+        onEditingStart={beginHistoryInput}
+        onEditingEnd={endHistoryInput}
         onProjectUpdated={handleMediaProjectUpdated}
         onUpdateResearchContext={updateResearchContext}
         onAddEvidence={addResearchEvidence}
@@ -3031,7 +2976,7 @@ export default function EditorWorkspace({
                     />
                     <ContentOverlayPanel
                       settings={contentOverlay}
-                      fields={template?.fields ?? []}
+                      fields={resolvedProfile?.fields ?? []}
                       suggestedFieldIds={suggestedContentOverlayFieldIds}
                       onChange={updateContentOverlay}
                     />
@@ -3431,6 +3376,8 @@ export default function EditorWorkspace({
           {/* ── 维度 tab ── */}
           {panel === "dims" && (
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+              {template && <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-bg-card/50 px-3 py-2"><p className="text-[11px] text-text-muted">批量替换只作用于明确选择的镜头，并保留一次完整撤销。</p><Button type="button" variant="outline" size="xs" onClick={() => { setSelectedShotIds([]); setIsBatchAnalysisOpen((current) => !current) }}>{isBatchAnalysisOpen ? "关闭批量" : "批量记录"}</Button></div>}
+              {isBatchAnalysisOpen && <BatchAnalysisPanel profile={resolvedProfile} shots={shots} valuesByShotId={shotDims} selectedShotIds={selectedShotIds} onSelectionChange={updateShotSelection} onApply={handleBatchAnalysisCommand} onClose={() => setIsBatchAnalysisOpen(false)} />}
               {template && (
                 <div
                   className={`rounded-xl border px-3 py-2 editor-meta ${
@@ -3448,49 +3395,8 @@ export default function EditorWorkspace({
                   </span>
                 </div>
               )}
-              {(
-                template?.fields
-                  .filter((field) => !field.isFixed)
-                  .sort((left, right) => left.order - right.order) ?? []
-              ).map((field) =>
-                field.kind === "single-select" ? (
-                  <AnalysisDimensionCard
-                    key={field.id}
-                    label={field.label}
-                    value={
-                      typeof currentDims[field.id] === "string"
-                        ? String(currentDims[field.id])
-                        : null
-                    }
-                    options={field.options}
-                    references={
-                      field.referenceTerms.length
-                        ? field.referenceTerms.map((term) => ({
-                            val: term.label,
-                            hint: term.hint,
-                          }))
-                        : (DIM_REFS[field.id] ?? [])
-                    }
-                    isOpen={openRef === field.id}
-                    onToggle={() =>
-                      setOpenRef(openRef === field.id ? null : field.id)
-                    }
-                    onSelect={(value) => {
-                      setAnalysisField(activeShotId, field.id, value)
-                      setOpenRef(null)
-                    }}
-                  />
-                ) : (
-                  <AnalysisFieldInput
-                    key={field.id}
-                    field={field}
-                    value={currentDims[field.id]}
-                    onChange={(value) =>
-                      setAnalysisField(activeShotId, field.id, value)
-                    }
-                  />
-                ),
-              )}
+              {resolvedProfile?.fields.filter((field) => field.definition.fieldId !== "shot_description" && field.surface.visible).map((field) => <AnalysisFieldEntryInput key={field.definition.fieldId} definition={field.definition} surface={field.surface} entry={currentDims[field.definition.fieldId]} onCommand={handleAnalysisFieldCommand} onEditingStart={beginHistoryInput} onEditingEnd={endHistoryInput} issue={field.issues[0]} />)}
+              {template && !resolvedProfile?.fields.some((field) => field.definition.fieldId !== "shot_description" && field.surface.visible) && <p className="rounded-lg border border-border bg-bg-card p-4 text-xs leading-5 text-text-muted">当前模板未配置额外字段，可通过设置选择分析任务。</p>}
             </div>
           )}
 
@@ -3755,11 +3661,7 @@ export default function EditorWorkspace({
         <TemplateEditorModal
           template={template}
           onClose={() => setIsTemplateEditorOpen(false)}
-          onChangeTemplate={saveTemplate}
-          onUpdateField={updateTemplateField}
-          onAddField={addTemplateField}
-          onMoveField={moveTemplateField}
-          onDeleteField={deleteTemplateField}
+          onApplyTemplate={saveTemplate}
         />
       )}
       {isExportDialogOpen && (
@@ -3778,7 +3680,7 @@ export default function EditorWorkspace({
                   null,
               })),
               groups: shotGroups,
-              fields: template?.fields ?? [],
+              fields: resolvedProfile?.fields ?? [],
               screenshotUrls: shotScreenshotUrls,
               researchRanges: researchWorkbench.ranges,
               researchContexts: researchWorkbench.contexts,

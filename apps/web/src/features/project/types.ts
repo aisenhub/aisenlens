@@ -1,4 +1,4 @@
-import type { AnalysisFieldValue } from "../template/types";
+import type { AnalysisFieldEntry, ProjectAnalysisProfileSnapshot } from "../template/types";
 import type { ShotDetectionMeta } from "../shot/types";
 import type { AnnotationMarker } from "../annotation/types";
 import type { ShotGroupRecord } from "../group/types";
@@ -117,31 +117,14 @@ export interface StoredShotRecord {
   screenshotIds: string[];
   firstFrameScreenshotId: string | null;
   lastFrameScreenshotId: string | null;
-  analysisFields: Record<string, AnalysisFieldValue>;
+  analysisFields: Record<string, AnalysisFieldEntry>;
   description: string;
   notes: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ProjectTemplateSnapshotRecord {
-  id: string;
-  projectId: string;
-  name: string;
-  version: number;
-  fields: Array<{
-    id: string;
-    label: string;
-    kind: "single-select" | "multi-select" | "text" | "number" | "boolean";
-    order: number;
-    options: string[];
-    referenceTerms: Array<{ label: string; hint: string }>;
-    required: boolean;
-    isFixed: boolean;
-  }>;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ProjectTemplateSnapshotRecord = ProjectAnalysisProfileSnapshot;
 
 export interface ProjectRecord {
   id: string;

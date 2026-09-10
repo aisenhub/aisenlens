@@ -1,12 +1,12 @@
 import { Check } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "../../../components/ui/button";
-import type { TemplateField } from "../../template/types";
+import type { ResolvedAnalysisField } from "../../template/types";
 import type { ContentOverlaySettings } from "../types";
 
 interface ContentOverlayPanelProps {
   settings: ContentOverlaySettings;
-  fields: TemplateField[];
+  fields: ResolvedAnalysisField[];
   suggestedFieldIds: string[];
   onChange: (settings: ContentOverlaySettings) => void;
 }
@@ -26,7 +26,7 @@ function Switch({ checked, label, onChange }: { checked: boolean; label: string;
 
 export default function ContentOverlayPanel({ settings, fields, suggestedFieldIds, onChange }: ContentOverlayPanelProps) {
   const update = (patch: Partial<ContentOverlaySettings>) => onChange({ ...settings, ...patch });
-  const availableFields = fields.filter((field) => field.id !== "shot_description").sort((left, right) => left.order - right.order);
+  const availableFields = fields.filter((field) => field.definition.fieldId !== "shot_description" && field.surface.visible).sort((left, right) => left.usage.order - right.usage.order);
   const toggleField = (fieldId: string) => {
     const selected = settings.fieldIds.includes(fieldId);
     if (!selected && settings.fieldIds.length >= 6) return;
@@ -55,9 +55,9 @@ export default function ContentOverlayPanel({ settings, fields, suggestedFieldId
         <div className="mb-1.5 flex items-center justify-between"><p className="font-mono editor-heading tracking-wider text-text-muted">分析字段</p><span className="font-mono editor-meta text-text-muted">{settings.fieldIds.length}/6</span></div>
         <div className="flex flex-wrap gap-1">
           {availableFields.map((field) => {
-            const selected = settings.fieldIds.includes(field.id);
+            const selected = settings.fieldIds.includes(field.definition.fieldId);
             const disabled = !selected && settings.fieldIds.length >= 6;
-            return <Button key={field.id} type="button" variant="outline" size="xs" aria-pressed={selected} disabled={disabled} onClick={() => toggleField(field.id)} className={selected ? "h-6 border-accent/50 bg-accent/15 px-1.5 editor-meta font-normal text-accent hover:bg-accent/20 hover:text-accent" : "h-6 border-border px-1.5 editor-meta font-normal text-text-muted hover:text-white"}>{selected && <Check className="size-2.5" />}{field.label}</Button>;
+            return <Button key={field.definition.fieldId} type="button" variant="outline" size="xs" aria-pressed={selected} disabled={disabled} onClick={() => toggleField(field.definition.fieldId)} className={selected ? "h-6 border-accent/50 bg-accent/15 px-1.5 editor-meta font-normal text-accent hover:bg-accent/20 hover:text-accent" : "h-6 border-border px-1.5 editor-meta font-normal text-text-muted hover:text-white"}>{selected && <Check className="size-2.5" />}{field.definition.label}</Button>;
           })}
         </div>
       </div>

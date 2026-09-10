@@ -1,4 +1,4 @@
-import type { AnalysisFieldValue } from "../template/types";
+import type { AnalysisFieldEntry } from "../template/types";
 
 export type ShotStatus = "draft" | "confirmed";
 
@@ -28,7 +28,7 @@ export interface ShotRecord {
   screenshotIds: string[];
   firstFrameScreenshotId: string | null;
   lastFrameScreenshotId: string | null;
-  analysisFields: Record<string, AnalysisFieldValue>;
+  analysisFields: Record<string, AnalysisFieldEntry>;
   description: string;
   notes: string;
   createdAt: string;

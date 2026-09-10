@@ -6,7 +6,7 @@ import { Input } from "../../../components/ui/input";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
 import type { ShotData } from "../constants/editorData";
-import type { AnalysisFieldValue } from "../../template/types";
+import type { AnalysisFieldEntry } from "../../template/types";
 import { findMatchingShotIds, type ShotSearchFilters, type ShotSearchStatus } from "../../shot/services/shotSearchService";
 
 interface ShotListProps {
@@ -21,7 +21,7 @@ interface ShotListProps {
   selectedShotIds: string[];
   isSelectingShots: boolean;
   shotNotes: Record<string, { content: string; analysis: string }>;
-  shotFields: Record<string, Record<string, AnalysisFieldValue>>;
+  shotFields: Record<string, Record<string, AnalysisFieldEntry>>;
   screenshotIdsByShotId: Record<string, string[]>;
   primaryScreenshotIdsByShotId: Record<string, string | null>;
   markers: AnnotationMarker[];

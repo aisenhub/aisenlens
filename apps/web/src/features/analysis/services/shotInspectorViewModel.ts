@@ -1,5 +1,5 @@
 import type { ShotData } from "../../editor/constants/editorData.ts"
-import type { AnalysisFieldValue } from "../../template/types"
+import type { AnalysisFieldEntry } from "../../template/types"
 import type { ShotDetectionMeta } from "../../shot/types"
 
 export interface ShotInspectorViewModel {
@@ -9,12 +9,12 @@ export interface ShotInspectorViewModel {
   durationSeconds: number
   description: string
   interpretation: string
-  fields: Record<string, AnalysisFieldValue>
+  fields: Record<string, AnalysisFieldEntry>
   detection: ShotDetectionMeta | null
   sourceLabels: string[]
 }
 
-export function createShotInspectorViewModel(input: { shot: ShotData; index: number; frameRate: number; frames?: { first: number; last: number }; notes?: { content: string; analysis: string }; fields?: Record<string, AnalysisFieldValue>; detection?: ShotDetectionMeta | null }): ShotInspectorViewModel {
+export function createShotInspectorViewModel(input: { shot: ShotData; index: number; frameRate: number; frames?: { first: number; last: number }; notes?: { content: string; analysis: string }; fields?: Record<string, AnalysisFieldEntry>; detection?: ShotDetectionMeta | null }): ShotInspectorViewModel {
   const { shot, index, frameRate, frames, notes, fields, detection = null } = input
   const startFrame = frames?.first ?? Math.round(shot.start * frameRate)
   const endFrame = frames?.last ?? Math.max(startFrame, Math.round((shot.start + shot.duration) * frameRate) - 1)
