@@ -56,7 +56,11 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
         const baseShotsChanged = stored ? stored.baseFormalShotsSignature !== formalShotsSignature(input.shots) : false
         const baseTaskChanged = stored ? stored.baseTaskUpdatedAt !== (input.task?.updatedAt ?? null) : false
         const useDetectionTask = shouldSeedCalibrationFromDetection(input.task, input.shots)
-        const storedMatchesDetectionTask = !useDetectionTask || (stored?.initialSource === "detection" && stored.baseTaskId === input.task?.id)
+        const storedMatchesDetectionTask = !useDetectionTask || (
+          stored?.initialSource === "detection" &&
+          stored.baseTaskId === input.task?.id &&
+          stored.baseTaskUpdatedAt === input.task?.updatedAt
+        )
         const draft = stored?.status === "editing" && stored.baseProjectUpdatedAt !== input.baseProjectUpdatedAt && (baseShotsChanged || baseTaskChanged)
           ? { ...stored, status: "conflict" as const }
           : stored?.status === "editing" && storedMatchesDetectionTask
@@ -75,7 +79,7 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
       }
     })()
     return () => { cancelled = true }
-  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.shots.length, input.task?.id, input.totalFrames])
+  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.shots, input.task?.candidates.length, input.task?.id, input.task?.status, input.task?.updatedAt, input.totalFrames])
 
   const store = storeRef.current
   const current = store?.getState()
