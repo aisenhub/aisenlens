@@ -203,6 +203,12 @@ test("P1 只读盘点当前 IndexedDB schema 与 legacy 字段形态", { timeout
   assert.ok(inventory.stores.includes("recovery-snapshots"))
   assert.ok(inventory.stores.includes("research-ranges"))
   assert.equal(typeof inventory.counts.projects, "number")
+  const shape = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.readProjectEditorState('${projectId}').then((state) => ({ project: Object.keys(state.project).sort(), shot: Object.keys(state.shots[0]).sort(), template: Object.keys(state.template ?? {}).sort() })))`)
+  assert.ok(shape.project.includes("mediaAssets"))
+  assert.ok(shape.project.includes("primaryVideoAssetId"))
+  assert.ok(shape.shot.includes("analysisFields"))
+  assert.ok(shape.template.includes("fieldDefinitions"))
+  assert.ok(shape.template.includes("fieldUsages"))
   await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.deleteProject('${projectId}')))()`)
 })
 
@@ -326,6 +332,16 @@ test("P3 1,000 镜头 × 20 字段记录 resolver、命令、序列化与事务�
     const commandStart = performance.now()
     const commandResult = applyAnalysisBatch(profile, valuesByShotId, allShotIds, { kind: 'set', fieldId: 'perf_0', value: 'updated' })
     const commandMs = performance.now() - commandStart
+    const inputStart = performance.now()
+    let inputValues = {}
+    for (let index = 0; index < 20; index += 1) inputValues = (await import('/src/features/analysis/services/analysisFieldCommands.ts')).applyAnalysisFieldCommand(profile, inputValues, { kind: 'set', fieldId: 'perf_' + (index % 20), value: 'typed-' + index }).values
+    const inputPathMs = performance.now() - inputStart
+    const { createEditorHistoryState, pushEditorHistorySnapshot } = await import('/src/features/editor/hooks/editorHistoryState.ts')
+    const historyStart = performance.now()
+    let history = createEditorHistoryState()
+    for (let index = 0; index < 10; index += 1) history = pushEditorHistorySnapshot(history, structuredClone(commandResult.valuesByShotId), 10)
+    const historyMs = performance.now() - historyStart
+    const historySerializedBytes = JSON.stringify(history.past).length
     const serializationStart = performance.now()
     const serialized = JSON.stringify(commandResult.valuesByShotId)
     const serializationMs = performance.now() - serializationStart
@@ -337,10 +353,13 @@ test("P3 1,000 镜头 × 20 字段记录 resolver、命令、序列化与事务�
     const saved = await repository.saveProjectEditorState(transactionState, state.project.updatedAt)
     const transactionMs = performance.now() - transactionStart
     await repository.deleteProject('${projectId}')
-    return { shotCount: allShotIds.length, fieldCount: fields.length, resolverMs, commandMs, serializationMs, serializedBytes: serialized.length, transactionMs, savedTitle: saved.title }
+    return { shotCount: allShotIds.length, fieldCount: fields.length, resolverMs, commandMs, inputPathMs, historyMs, historySnapshotCount: history.past.length, historySerializedBytes, serializationMs, serializedBytes: serialized.length, transactionMs, savedTitle: saved.title }
   }))()`)
   assert.equal(report.shotCount, 1000)
   assert.equal(report.fieldCount, 20)
+  assert.ok(Number.isFinite(report.inputPathMs))
+  assert.equal(report.historySnapshotCount, 10)
+  assert.ok(report.historySerializedBytes > 0)
   assert.ok(report.serializedBytes > 0)
   assert.equal(report.savedTitle, "性能验收")
   console.log("analysis-system-performance", JSON.stringify(report))
