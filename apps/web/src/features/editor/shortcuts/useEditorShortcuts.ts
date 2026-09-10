@@ -52,7 +52,8 @@ export default function useEditorShortcuts(handlers: ShortcutHandlers) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.isComposing || event.repeat) return;
       const action = getShortcutAction(event);
-      if ((isTypingTarget(event.target) || document.querySelector('[role="dialog"]')) && action !== "file.save") return;
+      const hasInteractionOwner = document.querySelector('[role="dialog"], [role="menu"], [data-focus-analysis]')
+      if ((isTypingTarget(event.target) || hasInteractionOwner) && action !== "file.save") return;
       const handler = action ? handlers[action] : undefined;
       if (!handler) return;
       event.preventDefault();

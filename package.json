@@ -24,6 +24,8 @@
     "test:retain-shot-map": "pnpm --filter @aisenlens/web test:retain-shot-map",
     "test:overview-analyze": "pnpm --filter @aisenlens/web test:overview-analyze",
     "test:overview-analyze-browser": "pnpm --filter @aisenlens/web test:overview-analyze-browser",
+    "test:analysis-system-browser": "pnpm --filter @aisenlens/web test:analysis-system-browser",
+    "test:analysis-consumer-browser": "pnpm --filter @aisenlens/web test:analysis-consumer-browser",
     "test:auto-shot-baseline": "pnpm --filter @aisenlens/web test:auto-shot-baseline",
     "generate:auto-shot-fixture": "node scripts/generate-auto-shot-fixture.mjs",
     "scene-engine:configure": "pnpm --filter @aisenlens/scene-engine configure:native",

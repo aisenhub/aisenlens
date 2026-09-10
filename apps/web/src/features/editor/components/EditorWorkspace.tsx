@@ -1600,6 +1600,7 @@ export default function EditorWorkspace({
     })
 
   useEffect(() => {
+    if (!shots.length || durationSeconds <= 0) return
     const frameRate = media.metadata?.frameRate ?? FPS
     const ranges = getShotRanges(frameRate)
     const lastFrame = Math.max(0, Math.round(durationSeconds * frameRate) - 1)
