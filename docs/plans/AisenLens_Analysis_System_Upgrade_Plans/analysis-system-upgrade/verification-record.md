@@ -2,6 +2,7 @@
 
 > 2026-09-10 文档修订版；首轮实施、专项验收与远程交付已完成。
 > 初始审查基线和失败历史保留在本文前半部分，当前真实状态以第 14 节和阶段表为准。
+> 本阶段明确不兼容旧项目、旧 Recovery 或旧导出格式；相关兼容性盘点不是当前验收目标。
 
 ## 1. 审查记录（不是实施基线）
 
@@ -23,7 +24,7 @@
 | Node/pnpm / 浏览器 / OS | Node `v24.19.0` / pnpm `11.24.0` / Windows / harness 可找到浏览器 |
 | package scripts 是否存在 | 已核实；typecheck/lint/build/verify:web/专项测试可执行 |
 | 已知基线失败 | Overview/Analyze 三测并行或串行整组时 Sound 用例两次达到 120s；单独运行通过（约 12.7s），记录为 harness 资源/时序问题，不冒称整组全绿 |
-| 真实旧项目/Recovery/导出数据保留范围 | 尚未核查；未执行隐式迁移、fallback 或清库 |
+| 真实旧项目/Recovery/导出数据保留范围 | 不在本阶段范围；不实现兼容迁移、fallback 或清库逻辑 |
 | 数据处理方案、备份和范围授权（如有需要） | 未开始；不默认转换或清库 |
 | 本轮 commit/push 授权范围 | 用户已明确授权提交并推送当前工作区全部修改 |
 
@@ -34,11 +35,11 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 | 阶段 | 技术状态 | 技术前置 | 剩余 | Git 状态 | commit / remote 证据 |
 | --- | --- | --- | --- | --- | --- |
-| P1 安全字段闭环 | 技术验收通过（当前格式） | fault rollback、UI 保存失败/重试、并发冲突、Recovery 全量、当前 IndexedDB 只读 schema | 真实用户旧库/旧导出范围需用户提供或明确授权 | 已推送 | `45b60dd` / `origin/main` |
-| P2 模板管理 | 技术验收通过 | dirty draft、Apply、Undo/Redo/重载、定义/usage/选项保留、数量与 Batch 预览 | 无本地技术遗留；真实旧数据范围另计 | 已推送 | `45b60dd` / `origin/main` |
+| P1 安全字段闭环 | 技术验收通过（当前格式） | fault rollback、UI 保存失败/重试、并发冲突、Recovery 全量、当前 IndexedDB 只读 schema | 无；旧项目兼容不在本阶段范围 | 已推送 | `45b60dd` / `origin/main` |
+| P2 模板管理 | 技术验收通过 | dirty draft、Apply、Undo/Redo/重载、定义/usage/选项保留、数量与 Batch 预览 | 无本地技术遗留；旧数据兼容不在本阶段范围 | 已推送 | `45b60dd` / `origin/main` |
 | P3 连续录入 | 技术验收通过（性能为观测值） | Focus 逐镜/选段、跳过/最后一镜/复制、Batch/一次 Undo、IME/重复键/焦点/菜单 Escape、三视口、1,000×20 | 不承诺跨设备毫秒 SLA；无真实硬件长期 profiler | 已推送 | `45b60dd` / `origin/main` |
 | P4 最小 AI 契约 | 技术验收通过（最小范围） | 类型、守卫、幂等 Accept 与 4 项专项测试 | 生产 AI/Review/provider 按计划延期 | 已推送 | `45b60dd` / `origin/main` |
-| P5 验证清理 | 技术验收通过（本期可验证范围） | Overlay/Export/Learn/Evidence、暗色/description-only/无 shot、既有导出、文档矩阵 | 真实用户旧数据只读盘点仍需外部数据范围 | 已推送 | `45b60dd` / `origin/main` |
+| P5 验证清理 | 技术验收通过（本期可验证范围） | Overlay/Export/Learn/Evidence、暗色/description-only/无 shot、既有导出、文档矩阵 | Overview/Analyze harness 稳定性与真实硬件性能证据仍可补强；旧数据兼容不在范围 | 已推送 | `45b60dd` / `origin/main` |
 
 ## 4. 每阶段追加模板
 
@@ -94,7 +95,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 | abort/请求失败无部分提交、无未处理 rejection | 部分验证 | throw fault 与 UI retry 通过；AbortController 专项未做 |
 | 失败内存/dirty/基线保留与重试 | 已验证 | P1 UI 浏览器：失败显示“重试保存”、库内仍为旧值，清除 fault 后重试写入新值 |
 | 当前格式 Recovery 全量一致 | 已验证 | 模板、entries、description、notes、Research range/context、Evidence 全部恢复 |
-| 旧数据范围已核查并按授权处理 | 未完成（安全保留） | 当前只读 schema/字段盘点已做；未访问真实用户浏览器 profile/旧导出，未迁移/清库 |
+| 旧数据兼容/迁移 | 不适用（明确排除） | 本阶段只维护当前格式；不访问、迁移或清理真实旧库，不增加 fallback |
 | Overlay/Export/Learn 新模型回归 | 已验证 | P5 浏览器消费者矩阵：Overlay label、CSV/HTML、Learn shot/group/range、Evidence 附录 |
 | AI stale/幂等/非法值/Reject 守卫 | 已验证（专项） | `test:analysis-contract`，4 tests，HEAD `a6c57e5` |
 | 无生产 fixture/运行按钮/假请求 | 部分验证 | P4 仅保留纯校验与命令接缝；未做完整 Review UI |
@@ -138,7 +139,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 ## 10. 当前交接
 
-2026-09-10 首轮实现已提交并推送至 `origin/main`，但 P1–P5 尚未全部技术验收通过。下一步应继续做真实旧数据/Recovery 核查、普通保存 fault/并发矩阵、模板/Focus/Batch/IME 浏览器验收和 1,000×20 性能记录；没有旧项目数据盘点，不执行默认转换或清库。
+2026-09-10 首轮实现历史交接记录。后续应继续完成普通保存 fault/并发矩阵、模板/Focus/Batch/IME 浏览器验收和 1,000×20 性能记录；旧项目、旧 Recovery 和旧导出兼容明确不属于本阶段。
 
 ## 11. 本次文档检查（非产品验收）
 
@@ -198,13 +199,15 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 - 未承诺跨设备毫秒级 SLA；压力浏览器测试仅证明已有研究队列 DOM 有界，不等于 1,000×20 全部交互性能通过。
 - 已完成 Analyze 浏览器回归的当前代码复跑；模板 dirty draft、Focus/Batch/IME、保存失败与跨标签页冲突的专项脚本仍需补齐。
 
-## 13. 2026-09-10 推送后审查（当前状态）
+## 13. 2026-09-10 推送后审查（历史快照）
+
+> 本节保留当时的审查状态；当前状态以第 14 节为准。
 
 - 审查基线：`main` / `a6c57e59820076e12c2e2e2ae13c094ecfdd4af4`；`origin/main` 与本地 HEAD 一致；工作区 clean。
 - 代码唯一性复核：未发现生产引用 `DIM_REFS`、`AnalysisDimensionCard`、`AnalysisFieldInput` 或旧 `setAnalysisField` writer；`AICandidate`、`expectedUpdatedAt`、`isComposing` 等新接缝存在且与计划一致。
 - 自动验证复核：typecheck、lint、build、`verify:web`、Editor History、Overview/Analyze、AI contract 和 Analyze 浏览器回归均有通过记录。
 - 已完成但尚未形成完整证据的任务：真实字段保存重载、模板 dirty draft/Apply/Undo/Redo、Focus/Batch/IME/弹层、普通保存失败回滚、跨标签页冲突、Recovery 全量恢复、Overlay/Export/Learn 全消费者矩阵。
-- 尚未完成的真实数据任务：旧项目、Recovery 和导出数据格式只读盘点；在获得具体处理授权前不迁移、不清库、不增加隐式 fallback。
+- 当时记录的真实数据任务现已明确排除：本阶段不做旧项目、旧 Recovery 和旧导出格式兼容，不迁移、不清库、不增加 fallback。
 - 尚未完成的性能任务：1,000×20 fields 以及连续输入、批量 Undo、History 内存、resolver、序列化和事务耗时的 profiler 记录。当前 1,000/3,000 镜头验证仅证明研究列表 DOM 有界。
 - 按本期边界明确延期：生产 AI provider、候选持久化、完整 Review UI、provenance、模型校准、多 subject/Relation/Derived、跨项目模板库、新报告和原生平台验收。
 - 文档维护结论：本节覆盖了此前记录中 `0dbc104`、未提交/未推送等过期状态；后续每次补测必须更新本节或追加新的带 HEAD、命令、exit code 和证据的记录。
@@ -215,7 +218,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 - 当前代码/测试基线为 `45b60dd3bbd68b67cf2a85a1f9666f0088f96d6e`；`main` 已推送至 `origin/main`。本节记录的文档维护提交将在本节之后单独提交，不 amend 既有代码提交。
 - P1：普通保存 7 个 fault point 均验证为原子回滚；失败后 dirty、保存基线和“重试保存”均保留；两标签页旧 `expectedUpdatedAt` 被拒绝；当前格式 Recovery 恢复模板、字段值、description、notes、Research range/context 和 Evidence。
-- P1 只读盘点：已盘点当前临时浏览器库的 IndexedDB version `17`、store/count 和 `mediaAssets`、`primaryVideoAssetId`、shot `analysisFields`、template `fieldDefinitions/fieldUsages` 形状。未访问用户真实浏览器 profile 或旧导出文件，因此没有执行迁移、fallback、覆盖或清库。
+- P1 当前格式只读盘点：已盘点当前临时浏览器库的 IndexedDB version `17`、store/count 和 `mediaAssets`、`primaryVideoAssetId`、shot `analysisFields`、template `fieldDefinitions/fieldUsages` 形状；旧用户库和旧导出格式不属于本阶段目标。
 - P2：dirty draft 关闭保护、Apply、仓库重载、Undo/Redo、字段/选项移除后重新启用并恢复值、字段影响数量和 Batch 预览均已通过浏览器或契约测试。
 - P3：Focus 逐镜/范围队列、跳过、清空、最后一镜、Batch 覆盖/范围外镜头/多选/一次 Undo、IME/重复键/焦点/Popover Escape、1440/768/390 三视口均已通过专项浏览器测试。
 - P3 性能观测已补齐 1,000 shots × 20 fields：resolver `1.70ms`、Batch command `28.50ms`、输入写入路径 `1.60ms`、10 个 retained History snapshot `294.70ms`、序列化 `3.90ms`、IndexedDB 事务 `409.40ms`；另一次复跑事务为 `543.30ms`，仅作当前主机观测值，不作为跨设备 SLA。
@@ -234,7 +237,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 ### 14.3 阶段收口与仍未完成事项
 
 - P1–P5 在“当前格式、当前代码、当前测试数据”的范围内完成技术验收；P4 仍按计划只交付最小 AI 契约，不包含生产 provider、候选持久化或 Review UI。
-- 唯一仍需用户数据范围才能完成的 P1/P5 项：真实旧项目、真实 Recovery 和真实导出格式的只读盘点。需要用户提供具体导出样本或明确可访问的浏览器 profile；在此之前保持库原样，不迁移、不清库、不新增隐式 fallback。
+- 旧项目、旧 Recovery 和旧导出格式兼容明确不在本阶段范围，不构成未完成项；当前代码只服务当前格式，不保留迁移、fallback 或冗余兼容层。
 - 仍开放的工程质量项：修复或隔离 Overview/Analyze 三测试整组的 Sound harness 超时，并在真实 Chrome Performance profiler、目标硬件和真实长文本输入下补充 1,000×20 输入延迟与内存证据。当前代码验收不受该观测限制阻断，但不能把现有观测值当作生产 SLA。
-- 上述之外，本轮用户列出的 P1、P2、P3、P5 当前代码验收项没有未完成的本地实施任务；所有已完成代码、测试和本记录均纳入 Git 提交并推送。
+- 除上述工程质量补强外，本轮用户列出的 P1、P2、P3、P5 当前代码验收项没有未完成的本地实施任务；所有已完成代码、测试和本记录均纳入 Git 提交并推送。
 
