@@ -37,6 +37,15 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
       setState("idle")
       return
     }
+    // EditorWorkspace loads formal shots asynchronously. Do not create a
+    // fallback full-film draft while that load is still in flight; otherwise
+    // a completed auto-shot task is evaluated against an empty shot list and
+    // its detected boundaries are lost for the rest of the session.
+    if (input.shots.length === 0) {
+      storeRef.current = null
+      setState("loading")
+      return
+    }
     setState("loading")
     setError(null)
     const mediaIdentity = input.mediaIdentity
@@ -66,7 +75,7 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
       }
     })()
     return () => { cancelled = true }
-  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.task?.id, input.totalFrames])
+  }, [input.baseProjectUpdatedAt, input.mediaIdentity, input.projectId, input.shots.length, input.task?.id, input.totalFrames])
 
   const store = storeRef.current
   const current = store?.getState()
