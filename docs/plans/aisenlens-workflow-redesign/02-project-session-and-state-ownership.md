@@ -8,7 +8,7 @@
 
 ## Non-goals
 
-不把全部业务重写为新命令框架，不规范化重建 Shot DB，不改 Group 规则、不实现 Overview/Calibrate，不增加兼容层或新 Schema，不迁移账号 store。不能把整个 EditorWorkspace 原封不动搬成一个4000行 hook。
+不把全部业务重写为新命令框架，不规范化重建 Shot DB，不改 Group 规则、不实现 Overview/Calibrate，不增加兼容层或新 Schema，不迁移无关的全局状态。不能把整个 EditorWorkspace 原封不动搬成一个4000行 hook。
 
 ## Current Files
 

@@ -61,7 +61,7 @@ export const PAGE_METADATA: Record<string, SeoPageMetadata> = {
   },
   "/privacy": {
     title: "隐私政策｜AisenLens",
-    description: "了解 AisenLens 如何处理本地项目数据、账户信息与反馈内容。",
+    description: "了解 AisenLens 如何处理本地项目数据。",
     indexable: true,
   },
   "/terms": {
@@ -71,9 +71,6 @@ export const PAGE_METADATA: Record<string, SeoPageMetadata> = {
   },
   "/app": { ...DEFAULT_PAGE_METADATA, indexable: false },
   "/projects": { ...DEFAULT_PAGE_METADATA, indexable: false },
-  "/feedback": { ...DEFAULT_PAGE_METADATA, indexable: false },
-  "/support": { ...DEFAULT_PAGE_METADATA, indexable: false },
-  "/reset-password": { ...DEFAULT_PAGE_METADATA, indexable: false },
 };
 
 export const getPageMetadata = (pathname: string) => PAGE_METADATA[pathname] ?? DEFAULT_PAGE_METADATA;

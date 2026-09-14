@@ -1,0 +1,108 @@
+project: aisenhub/aisenlens
+plan: webhome-webapp-split
+version: 1
+date: 2026-09-14
+
+target:
+  webhome:
+    path: apps/webhome
+    package: "@aisenlens/webhome"
+    domain: "https://lens.aisenhub.com"
+  webapp:
+    path: apps/webapp
+    package: "@aisenlens/webapp"
+    domain: "https://app.lens.aisenhub.com"
+  desktop_renderer: apps/webapp/dist
+  mobile_webdir: ../webapp/dist
+
+phases:
+  - id: P0
+    file: phases/PHASE_0_BASELINE.md
+    depends_on: []
+    mutation: none_expected
+    exit:
+      - baseline_known
+      - old_references_classified
+      - indexeddb_risk_confirmed
+
+  - id: P1
+    file: phases/PHASE_1_RENAME_TO_WEBAPP.md
+    depends_on: [P0]
+    mutation: code
+    output:
+      - apps/webapp
+      - package_rename
+      - desktop_webapp_binding
+      - mobile_webapp_binding
+    forbidden:
+      - create_webhome
+      - remove_marketing
+      - production_deploy
+
+  - id: P2
+    file: phases/PHASE_2_CREATE_WEBHOME.md
+    depends_on: [P1]
+    mutation: code
+    output:
+      - apps/webhome
+      - public_router
+      - webhome_prerender
+      - VITE_WEBAPP_URL
+    forbidden:
+      - remove_webapp_marketing
+      - production_cutover
+
+  - id: P3
+    file: phases/PHASE_3_SEPARATE_BOUNDARIES.md
+    depends_on: [P2]
+    mutation: code
+    output:
+      - product_only_webapp
+      - VITE_WEBHOME_URL
+      - webapp_noindex
+      - webapp_spa_rewrite
+
+  - id: P4
+    file: phases/PHASE_4_VERIFICATION_AND_PLATFORM.md
+    depends_on: [P3]
+    mutation: code_and_docs
+    output:
+      - verify_webhome
+      - verify_webapp
+      - verify_boundaries
+      - updated_docs
+
+  - id: P5
+    file: phases/PHASE_5_DEPLOYMENT_AND_MIGRATION.md
+    depends_on: [P4]
+    mutation: preview_external
+    stop_if:
+      - production_local_projects_unknown
+    output:
+      - webhome_preview_verified
+      - webapp_preview_verified
+      - local_data_decision
+      - cutover_ready
+
+  - id: P6
+    file: phases/PHASE_6_PRODUCTION_CUTOVER.md
+    depends_on: [P5]
+    mutation: production_external
+    requires_explicit_approval:
+      - vercel_production
+      - custom_domains
+      - supabase_production_auth
+      - dns
+    output:
+      - webhome_production
+      - webapp_production
+      - redirects
+      - rollback_anchors
+
+hard_rules:
+  - no_indexeddb_delete
+  - no_framework_migration
+  - no_ui_redesign
+  - no_dependency_upgrade_scope_creep
+  - no_blind_global_replace
+  - no_phase_skipping

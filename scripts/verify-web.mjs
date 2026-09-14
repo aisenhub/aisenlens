@@ -12,7 +12,6 @@ const commands = [
   ["test:auto-shot-task-service"],
   ["test:scene-calibration"],
   ["test:auto-shot-contract"],
-  ["test:platform-integration"],
   ["test:video-export-boundary"],
   ["root:test:workflow"],
   ["build"],

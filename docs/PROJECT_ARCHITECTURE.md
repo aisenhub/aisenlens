@@ -15,7 +15,6 @@ apps/
   web/       React + Vite 的唯一 UI 与业务实现
   desktop/   Electron 外壳，打包 web 的构建产物
   mobile/    Capacitor Android/iOS 外壳，同步 web 的构建产物
-supabase/    数据库迁移与服务端配置
 packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边界的基础引擎
 ```
 
@@ -25,7 +24,7 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 2. 前端分层
 
-`apps/web/src` 按应用、页面、可复用 UI、功能模块、服务和共享类型组织。页面只负责组合，领域逻辑与特性 UI 位于 `features/<feature>/`；可复用的无业务 UI 位于 `components/` 与 `components/ui/`。外部通信统一收敛在 `services/`，组件不得直接访问 Supabase。
+`apps/web/src` 按应用、页面、可复用 UI、功能模块、服务和共享类型组织。页面只负责组合，领域逻辑与特性 UI 位于 `features/<feature>/`；可复用的无业务 UI 位于 `components/` 与 `components/ui/`。浏览器存储、媒体能力和其他外部通信统一收敛在 `services/`，组件不得直接跨越服务边界。
 
 当前主要功能边界包括：
 
@@ -35,7 +34,6 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 - `auto-shot`：当前自动分镜任务与候选结果流程。
 - `export`：报告和视频导出；视频导出在 Worker 中运行。
 - `workflow` / `overview` / `analysis` / `learn`：项目工作流导航、全片总览、深拆对象视图和真实笔记回看。
-- `auth`、`feedback`、`support`：身份、反馈和支持者流程。
 
 全局视觉 token 在 `apps/web/src/index.css`；UI 沿用 Tailwind 与现有 `components/ui/`，不得把业务逻辑放进通用组件。
 
@@ -83,5 +81,5 @@ React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”
 
 - 新功能进入所属 feature，跨域能力先建立清晰服务接口。
 - 不复制桌面或移动端业务实现，不为了推测的复用提前拆包。
-- 数据模型、浏览器存储或 Supabase 结构变更必须同时更新相应迁移、类型和本文件。
+- 数据模型或浏览器存储变更必须同时更新相应版本化升级、类型和本文件。
 - 对参考项目的调研结论只记录在 `reference-projects/REFERENCE_PROJECT_INDEX.md`，不得直接迁移其实现。

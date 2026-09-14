@@ -9,7 +9,6 @@ apps/
   web/       Shared React application and Vite build
   desktop/   Electron shell that packages apps/web/dist
   mobile/    Capacitor Android and iOS shells that sync apps/web/dist
-supabase/    Supabase migrations and functions
 ```
 
 ## Development
@@ -25,9 +24,9 @@ corepack pnpm dev:desktop
 corepack pnpm sync:mobile
 ```
 
-Use the pnpm version pinned in `package.json` through Corepack. For Web features
-that connect to Supabase, copy `apps/web/.env.example` to `apps/web/.env.local`
-and provide the public Supabase URL and anonymous key; do not commit that file.
+Use the pnpm version pinned in `package.json` through Corepack. AisenLens is
+local-first and does not require an account or cloud credentials; keep
+`apps/web/.env.example` as the empty local configuration template.
 
 Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android Studio is required for Android builds; Xcode on macOS is required for iOS builds.
 
@@ -41,8 +40,8 @@ Current feature validation scope is Web; Desktop and Mobile remain optional
 platform checks.
 
 `verify:web` is the release gate for the Web application. It runs TypeScript
-checking, lint, core logic tests, platform adapter checks, the exclusive-frame
-export boundary test, and the production build in one command.
+checking, lint, core logic tests, the exclusive-frame export boundary test,
+and the production build in one command.
 
 ## Deployment
 
@@ -52,7 +51,6 @@ Vercel deploys the Web application from the repository root with `pnpm --filter 
 
 - [Project architecture](docs/PROJECT_ARCHITECTURE.md)
 - [Web audit and remediation record](docs/WEB_AUDIT_2026-09-07.md)
-- [Operations and Supabase constraints](docs/OPERATIONS.md)
 - [AisenShot documentation index](docs/auto-shot/README.md)
 - [AisenShot Scene Engine architecture](docs/auto-shot/ARCHITECTURE.md)
 - [AisenShot Scene Engine implementation plan](docs/auto-shot/IMPLEMENTATION_PLAN.md)

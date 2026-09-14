@@ -31,14 +31,12 @@
     "test:overview-analyze-browser": "node --test ../../tests/features/overview-analyze/overview-analyze.browser.test.js",
     "test:auto-shot-baseline": "node --test test/auto-shot-baseline.browser.test.js",
     "test:video-export": "node --test test/video-export.browser.test.js",
-    "test:video-export-boundary": "node --experimental-strip-types --test test/video-export-boundary.test.ts",
-    "test:platform-integration": "node --experimental-strip-types --test test/platform-integration.test.ts"
+    "test:video-export-boundary": "node --experimental-strip-types --test test/video-export-boundary.test.ts"
   },
   "dependencies": {
     "@aisenlens/scene-engine": "workspace:*",
     "@base-ui/react": "^1.7.0",
     "@fontsource-variable/geist": "^5.3.0",
-    "@supabase/supabase-js": "^2.112.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.31.0",

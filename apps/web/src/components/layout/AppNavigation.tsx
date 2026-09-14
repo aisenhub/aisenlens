@@ -1,51 +1,26 @@
-import { useState } from "react";
 import BrandLogo from "../branding/BrandLogo";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NAVIGATION_ITEMS } from "../../constants/navigation";
 import type { ThemePreference } from "../../types/theme";
-import { Heart, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
+import { Monitor, Moon, Settings, Sun } from "lucide-react";
 
 interface AppNavigationProps {
   activePage: number;
-  isLoggedIn: boolean;
-  userName?: string;
-  userEmail?: string;
   onNavigate: (page: number) => void;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
-  onOpenAuth: () => void;
   onOpenLiteSettings: () => void;
-  onOpenUserCenter: () => void;
-  onSignOut: () => void;
 }
 
 export default function AppNavigation({
   activePage,
-  isLoggedIn,
-  userName,
-  userEmail,
   onNavigate,
   theme,
   onThemeChange,
-  onOpenAuth,
   onOpenLiteSettings,
-  onOpenUserCenter,
-  onSignOut,
 }: AppNavigationProps) {
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const avatarLetter = userName?.slice(0, 1) || "A";
   const nextThemeLabel = theme === "dark" ? "切换到浅色主题" : "切换到深色主题";
-
-  const openUserCenter = () => {
-    setIsAccountMenuOpen(false);
-    onOpenUserCenter();
-  };
-
-  const signOut = () => {
-    setIsAccountMenuOpen(false);
-    onSignOut();
-  };
 
   return (
     <>
@@ -74,13 +49,6 @@ export default function AppNavigation({
             <TooltipContent>{nextThemeLabel}</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="支持 AisenLens" className={`hover:bg-red-500/10 ${activePage === 5 ? "text-red-500" : "text-red-400"}`} />} onClick={() => onNavigate(5)}>
-              <Heart className="fill-red-500 text-red-500" />
-            </TooltipTrigger>
-            <TooltipContent>支持 AisenLens</TooltipContent>
-          </Tooltip>
-
           {activePage === 2 && (
             <Tooltip>
               <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" aria-label="项目库设置" className="text-text-muted hover:bg-white/6 hover:text-white" />} onClick={onOpenLiteSettings}>
@@ -90,39 +58,6 @@ export default function AppNavigation({
             </Tooltip>
           )}
 
-          {!isLoggedIn ? (
-            <Button type="button" variant="outline" size="sm" onClick={onOpenAuth} className="border-border text-text-dim hover:border-border-mid hover:bg-white/4 hover:text-white">
-              登录 / 注册
-            </Button>
-          ) : (
-            <div className="relative">
-              <Button type="button" variant="ghost" size="icon" aria-expanded={isAccountMenuOpen} aria-haspopup="menu" aria-label="打开用户菜单" onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)} className="rounded-full border border-border-mid bg-accent/20 text-accent hover:border-accent/40 hover:bg-accent/25 hover:text-accent">
-                {avatarLetter}
-              </Button>
-              {isAccountMenuOpen && (
-                <>
-                  <button type="button" aria-label="关闭用户菜单" className="fixed inset-0 z-40 cursor-default" onClick={() => setIsAccountMenuOpen(false)} />
-                  <div role="menu" className="absolute right-0 top-10 z-50 w-56 overflow-hidden rounded-xl border border-border bg-bg-card shadow-2xl">
-                    <div className="border-b border-border px-4 py-3">
-                      <p className="text-sm font-medium text-white">{userName || "AisenLens 用户"}</p>
-                      {userEmail && <p className="mt-0.5 font-mono text-xs text-text-muted">{userEmail}</p>}
-                    </div>
-                    <div className="p-1">
-                      <Button type="button" variant="ghost" size="sm" role="menuitem" onClick={openUserCenter} className="h-9 w-full justify-start px-3 text-text-dim hover:bg-white/5 hover:text-white">
-                        <UserRound />
-                        用户中心
-                      </Button>
-                      <div className="mt-1 border-t border-border pt-1">
-                        <Button type="button" variant="ghost" size="sm" role="menuitem" onClick={signOut} className="h-9 w-full justify-start px-3 text-red-400/80 hover:bg-red-500/5 hover:text-red-400">
-                          退出登录
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
       </header>
 

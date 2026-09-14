@@ -588,7 +588,7 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
         <div className="max-w-6xl mx-auto px-6 pt-14 pb-10">
 
           {/* Top: brand + columns */}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-10 md:gap-16 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-10 md:gap-16 mb-12">
 
             {/* Brand */}
             <div className="flex flex-col gap-4">
@@ -602,10 +602,9 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
               </p>
             </div>
 
-            {/* Help — header smaller/dimmer, links larger/brighter */}
+            {/* Resources */}
             <div className="flex flex-col gap-2">
-              <p className="text-white text-sm font-medium mb-1">帮助</p>
-              <button onClick={() => onNavigate(6)} className="text-xs text-text-muted hover:text-white transition-colors text-left">反馈</button>
+              <p className="text-white text-sm font-medium mb-1">资源</p>
               <button onClick={() => onNavigate(4)} className="text-xs text-text-muted hover:text-white transition-colors text-left">术语</button>
               <button onClick={() => onNavigate(8)} className="text-xs text-text-muted hover:text-white transition-colors text-left">更新日志</button>
               <a href="https://www.bilibili.com" target="_blank" rel="noreferrer"
@@ -619,11 +618,6 @@ export default function LandingContent({ onNavigate }: LandingContentProps) {
               <button onClick={() => onNavigate(10)} className="text-xs text-text-muted hover:text-white transition-colors text-left">隐私政策</button>
             </div>
 
-            {/* Support */}
-            <div className="flex flex-col gap-2">
-              <p className="text-white text-sm font-medium mb-1">支持</p>
-              <button onClick={() => onNavigate(5)} className="text-xs text-text-muted hover:text-white transition-colors text-left">赞助我们</button>
-            </div>
           </div>
 
           {/* Bottom bar */}

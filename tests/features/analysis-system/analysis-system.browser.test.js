@@ -396,10 +396,6 @@ test("P3 Focus/Batch 在宽、中、窄视口处理 IME、重复键与 Escape", 
     await until(async () => await evaluate(client, sessionId, "document.body.innerText.includes('本轮队列 2/4')"), `${viewport.width} 视口正常方向键未推进 Focus`)
     await evaluate(client, sessionId, "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))")
     await until(async () => await evaluate(client, sessionId, "!document.body.innerText.includes('FOCUS ANALYSIS')"), `${viewport.width} 视口 Focus Escape 未关闭`)
-    await evaluate(client, sessionId, "document.querySelector('[aria-label=\"打开临时用户菜单\"]')?.click()")
-    await until(async () => await evaluate(client, sessionId, "document.querySelector('[data-slot=\"dropdown-menu-content\"][data-open]') !== null"), `${viewport.width} 视口菜单未打开`)
-    await evaluate(client, sessionId, "document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))")
-    await until(async () => await evaluate(client, sessionId, "document.querySelector('[data-slot=\"dropdown-menu-content\"][data-open]') === null"), `${viewport.width} 视口菜单 Escape 未关闭`)
   }
   await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.deleteProject('${projectId}'))`)
 })

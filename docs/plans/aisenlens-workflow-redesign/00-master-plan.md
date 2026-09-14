@@ -154,7 +154,7 @@ Shot Browser 选独立 Analyze/Shots 页面，因为全片搜索需要横向空�
 
 | 分类 | 本轮决定 | 数据边界 |
 |---|---|---|
-| No DB Change | P01–P08 全部保持 IndexedDB v15、Shot/Group/Template/Marker/Screenshot/Project 格式 | 无 Supabase schema 改动，无历史格式迁移；P03 允许扩大现有 stores 的事务参与范围 |
+| No DB Change | P01–P08 全部保持 IndexedDB v15、Shot/Group/Template/Marker/Screenshot/Project 格式 | 无远端 schema 改动，无历史格式迁移；P03 允许扩大现有 stores 的事务参与范围 |
 | UI-derived State | 当前阶段/子视图/选择/面板、Film Map、时长统计、笔记聚合、可用状态 | URL/会话 Zustand/selectors；不写入 ProjectRecord，不放 Blob、峰值大数组到全局状态 |
 | Small Schema Extension | 逐项人工 review、真实 studyIntent、模板字段语义/来源、独立 Learning 文本 | 本轮不实施。确需时单独决策、数据读写/备份/恢复/回滚方案齐备后才排期；不能塞进 notes 的 JSON 字符串 |
 | New Domain Required Later | 跨项目 Technique、Pattern 与证据引用、Transcript/Speaker/OCR、层级 StructureNode、CreativeAsset | 不用 Group.summary 或 Template 冒充正式实体，不预建空表 |
@@ -177,7 +177,7 @@ EditorWorkspace 收敛路线：P01 单实例过渡宿主 → P02 移走共享会
 
 | 状态 | 唯一 owner | 消费者 / 生命周期 |
 |---|---|---|
-| Project metadata / 文档草稿 | 项目作用域 editor document store + 既有 projectRepository | ProjectSessionProvider 每 projectId 一个实例；服务端账号状态不进入 |
+| Project metadata / 文档草稿 | 项目作用域 editor document store + 既有 projectRepository | ProjectSessionProvider 每 projectId 一个实例；仅保留本地项目作用域状态 |
 | Workflow stage/view | URL；workflow store 只持有非 URL 临时 UI | Shell/导航；无同步双向 effect 循环，页面统计不写 stage |
 | Playback | 现有 useVideoPlayback 迁入稳定 MediaRuntime；video element 为时间权威 | 高频时间订阅只驱动 Viewer/Timeline/音频；Blob/AudioContext/ref 不进入文档 store |
 | Selection | session selection slice：shotId/groupId/selectedShotIds | SceneBoard/Strip/Browser/Inspector 共享；播放中 activeShotIndex 为派生适配值 |
@@ -341,4 +341,4 @@ P01 回退 Shell；P02 回退 owner 提取；P03 回退新视图及事务接口�
 
 完整交付为本文件及01–08阶段计划。每个阶段自包含 Scope/Non-goals/Current Files/New Files/Data Changes/Component Changes/User Flow/UI States/Theme Requirements/Migration/Acceptance Criteria/Tests/Manual QA/Regression Checklist/Completion Gate，并包含独立回滚方法。所有阶段必须先读取当前代码，处理基线之后的真实变动，不能机械用本文件行号覆盖其他人的改动。
 
-执行只验收 Web；不要求 Desktop/Android/iOS 构建。不修改 AisenShot 核心、WASM ABI、production preset、时间线引擎、账号后端；不装新 UI 框架，不生成 Fake AI，不恢复用户废弃的预览。每次引入或修改组件运行 `corepack pnpm build`，检查结果与未验证项如实写在实施任务中。
+执行只验收 Web；不要求 Desktop/Android/iOS 构建。不修改 AisenShot 核心、WASM ABI、production preset、时间线引擎或远端业务后端；不装新 UI 框架，不生成 Fake AI，不恢复用户废弃的预览。每次引入或修改组件运行 `corepack pnpm build`，检查结果与未验证项如实写在实施任务中。

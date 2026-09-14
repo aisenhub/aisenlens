@@ -97,7 +97,6 @@
   * Video player logic
   * Timeline logic
   * Database queries
-  * Authentication logic
   * AI requests
   * Complex UI components
   
@@ -111,8 +110,6 @@
   ├── Video Player
   ├── Timeline
   ├── Analysis Panel
-  ├── Supabase Query
-  ├── User Logic
   └── AI Request
   
   After:
@@ -184,7 +181,6 @@
   * Video analysis
   * Timeline
   * User projects
-  * Authentication
   
   Static Resources
   
@@ -233,7 +229,6 @@
   Move:
   
   * Video related code → features/video
-  * User related code → features/auth
   * Project related code → features/project
   
   ⸻
@@ -244,7 +239,7 @@
   
   Move:
   
-  * Supabase operations
+  * Browser storage and external service operations
   * API requests
   
   into:
@@ -341,7 +336,7 @@
 
   Follow the existing project structure.
 
-  The application uses a scalable React + Supabase architecture.
+  The application uses a scalable local-first React architecture.
 
   Do not create random folders.
 
@@ -365,8 +360,6 @@ project-root/
 │   ├── desktop/
 │   └── mobile/
 ├── packages/
-├── supabase/
-│
 ├── docs/
 │
 ├── reference-projects
@@ -432,83 +425,6 @@ Rules:
 * Do not store application images here.
 * Do not store user uploaded files here.
 * Do not store videos here.
-
-⸻
-
-supabase/
-
-Supabase backend configuration.
-
-Contains:
-
-* Database migrations
-* Edge Functions
-* Supabase settings
-
-Structure:
-
-supabase/
-├── migrations/
-├── functions/
-└── config.toml
-
-Rules:
-
-* All backend-related Supabase code belongs here.
-* Do not put Supabase server logic inside React components.
-
-⸻
-
-supabase/migrations/
-
-Database migration files.
-
-Contains:
-
-* Table creation
-* Table changes
-* Database policies
-* Index creation
-
-Examples:
-
-migrations/
-001_create_profiles.sql
-002_create_projects.sql
-003_create_video_tables.sql
-
-Rules:
-
-* Every database structure change must have a migration file.
-* Do not manually modify database structure without migration.
-
-⸻
-
-supabase/functions/
-
-Server-side functions.
-
-Used for operations that cannot run safely in the browser.
-
-Contains:
-
-* AI API calls
-* Secure backend logic
-* Video processing tasks
-* Third-party API integrations
-
-Examples:
-
-functions/
-├── analyze-video/
-├── generate-report/
-└── process-video/
-
-Rules:
-
-* Never expose private API keys in frontend code.
-* Sensitive operations must run here.
-* Keep functions independent and focused.
 
 ⸻
 
@@ -590,14 +506,9 @@ Environment configuration file.
 
 Contains:
 
-* Supabase URL
-* Public keys
 * Environment variables
 
 Example:
-
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
 
 Rules:
 
@@ -735,7 +646,6 @@ When adding new files:
 1. First check if an existing directory is suitable.
 2. Avoid creating new root folders without a clear purpose.
 3. Keep frontend code inside `apps/web/src/`.
-4. Keep Supabase backend code inside supabase/.
 5. Keep documentation inside docs/.
 6. Keep development tools inside scripts/.
 7. Create a package under `packages/` only for a stable shared capability or an independently built/tested foundation with a clear runtime or cross-language ABI boundary. A second product consumer is preferred but is not mandatory for such an engine.
@@ -820,7 +730,7 @@ src/
 
   Examples:
 
-  * Login page
+  * Landing page
   * Dashboard page
   * Project page
   * Settings page
@@ -867,7 +777,7 @@ src/
 
   * Components should be reusable.
   * Do not contain business logic.
-  * Do not directly access Supabase.
+  * Do not directly access external services.
   * Do not directly modify global data.
 
   ⸻
@@ -881,7 +791,6 @@ src/
   Examples:
 
   features/
-  auth/
   video/
   timeline/
   annotation/
@@ -901,31 +810,6 @@ src/
   * New product features must be created inside features.
   * Do not put feature logic inside components.
   * Keep each feature independent.
-
-  ⸻
-
-  src/features/auth/
-
-  User authentication module.
-
-  Contains:
-
-  * Login
-  * Register
-  * User session
-  * Permission management
-
-  Handles:
-
-  * Supabase Auth
-  * User state
-  * Authentication flow
-
-  Rules:
-
-  * Never store passwords manually.
-  * Never implement custom authentication.
-  * Use Supabase Auth.
 
   ⸻
 
@@ -1072,7 +956,6 @@ src/
 
   Stores:
 
-  * User state
   * Current project
   * Video state
   * UI preferences
@@ -1091,21 +974,18 @@ src/
 
   Contains:
 
-  * Supabase connection
-  * Database operations
+  * Browser storage operations
   * Storage operations
-  * API requests
+  * Media and file operations
 
   Example:
 
   services/
-  supabase/
-  auth/
   storage/
 
   Rules:
 
-  * Components cannot directly call Supabase.
+  * Components cannot directly call external services.
   * All external communication goes through services.
 
   ⸻
@@ -1116,13 +996,12 @@ src/
 
   Contains:
 
-  * Supabase generated types
   * Database models
   * Table definitions
 
   Rules:
 
-  * Keep database types synchronized with Supabase.
+  * Keep persisted data types synchronized with the repository format.
   * Do not duplicate database structures.
 
   ⸻
@@ -1133,7 +1012,6 @@ src/
 
   Contains:
 
-  * User types
   * Project types
   * Common interfaces
 
@@ -1284,22 +1162,11 @@ src/
 
   Current API layer:
 
-  - Supabase Client SDK
-  - Supabase Edge Functions when server-side logic is required
+  - Browser APIs
+  - IndexedDB repositories and local services
 
-
-  Backend API should not be created unless:
-
-  - Sensitive operations are required.
-  - AI processing requires server execution.
-  - Third-party API keys must be protected.
-
-
-  Preferred backend technology:
-
-  - TypeScript
-  - Supabase Edge Functions
-  - Deno runtime
+  Keep product data local unless a future feature explicitly establishes a
+  separate backend boundary with a documented security requirement.
 
 ---
 

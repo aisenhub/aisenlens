@@ -8,17 +8,10 @@ import { Toaster } from "../components/ui/sonner"
 
 import { TooltipProvider } from "../components/ui/tooltip"
 
-import AuthModal from "../features/auth/components/AuthModal"
-
-import PasswordResetPage from "../features/auth/components/PasswordResetPage"
-
-import UserCenterModal from "../features/auth/components/UserCenterModal"
-
 import LiteSettingsModal from "../features/editor/components/LiteSettingsModal"
 
 import type { ProjectRecord } from "../features/project/types"
 
-import useAppSession from "../features/auth/hooks/useAppSession"
 import useAppTheme from "../hooks/useAppTheme"
 
 import SeoContentPage from "../features/marketing/components/SeoContentPage"
@@ -39,10 +32,6 @@ const PAGE_PATHS: Record<number, string> = {
   3: "/app",
 
   4: "/tutorials",
-
-  5: "/support",
-
-  6: "/feedback",
 
   8: "/changelog",
 
@@ -73,12 +62,6 @@ export default function App() {
   const navigate = useNavigate()
 
   const [page, setPage] = useState(() => getPageForPath(location.pathname))
-
-  const { isLoggedIn, currentProfile, setIsLoggedIn, setCurrentProfile, handleSignOut } = useAppSession()
-
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-
-  const [isUserCenterOpen, setIsUserCenterOpen] = useState(false)
 
   const [isLiteSettingsOpen, setIsLiteSettingsOpen] = useState(false)
 
@@ -131,10 +114,6 @@ export default function App() {
     if (path) navigate(path)
   }
 
-  if (location.pathname === "/reset-password") {
-    return <PasswordResetPage />
-  }
-
   if (!isKnownPath) {
     return <Navigate to="/" replace />
   }
@@ -145,16 +124,10 @@ export default function App() {
         {!isEditor && (
           <AppNavigation
             activePage={page}
-            isLoggedIn={isLoggedIn}
-            userName={currentProfile?.displayName}
-            userEmail={currentProfile?.email}
             onNavigate={handleNavigate}
             theme={theme}
             onThemeChange={setTheme}
-            onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenLiteSettings={() => setIsLiteSettingsOpen(true)}
-            onOpenUserCenter={() => setIsUserCenterOpen(true)}
-            onSignOut={() => void handleSignOut()}
           />
         )}
         <main className={isEditor ? "" : "pt-14"}>
@@ -175,25 +148,11 @@ export default function App() {
 
                 setProjectTitle(project.title)
               }}
-              isLoggedIn={isLoggedIn}
-              onRequireAuth={() => setIsAuthModalOpen(true)}
               theme={theme}
               onThemeChange={setTheme}
             />
           )}
         </main>
-        {isAuthModalOpen && (
-          <AuthModal
-            onClose={() => setIsAuthModalOpen(false)}
-            onComplete={() => setIsLoggedIn(true)}
-          />
-        )}
-        {isUserCenterOpen && (
-          <UserCenterModal
-            onClose={() => setIsUserCenterOpen(false)}
-            onProfileUpdated={setCurrentProfile}
-          />
-        )}
         {isLiteSettingsOpen && (
           <LiteSettingsModal onClose={() => setIsLiteSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />
         )}

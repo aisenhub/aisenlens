@@ -1,6 +1,5 @@
-import { Check, ChevronRight, CircleUserRound, Settings2 } from "lucide-react"
+import { Check, ChevronRight, Settings2 } from "lucide-react"
 import { Button } from "../../../components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu"
 import { WORKFLOW_STAGE_DEFINITIONS } from "../constants/workflowStages.ts"
 import type { WorkflowStage } from "../types.ts"
 
@@ -11,29 +10,21 @@ interface WorkflowSidebarProps {
   variant?: "desktop" | "mobile"
 }
 
-const TEMPORARY_USER_NAME = "临时用户"
-
 export default function WorkflowSidebar({ activeStage, onStageChange, onOpenSettings, variant = "desktop" }: WorkflowSidebarProps) {
   const isMobile = variant === "mobile"
-  const accountMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" aria-label="打开临时用户菜单" title="临时用户" className={isMobile ? "h-10 shrink-0 gap-2 rounded-md border-l border-border px-3 text-text-dim hover:bg-bg-hover hover:text-text-base" : "h-auto w-full justify-start gap-2 rounded-md px-2.5 py-2 text-left text-text-dim hover:bg-bg-hover hover:text-text-base"} />}>
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-accent/40 bg-accent/15 text-accent">
-          <CircleUserRound className="size-4" />
-        </span>
-        <span className="truncate text-xs font-medium">{TEMPORARY_USER_NAME}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side={isMobile ? "bottom" : "right"} align={isMobile ? "end" : "start"} className="w-44 border border-border bg-bg-panel text-text-dim">
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 py-1.5 text-xs text-text-muted">{TEMPORARY_USER_NAME}</DropdownMenuLabel>
-          <DropdownMenuItem onClick={onOpenSettings} className="h-8 gap-2 text-xs text-text-dim focus:bg-white/6 focus:text-white">
-            <Settings2 className="size-3.5" />
-            设置
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+  const settingsButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      aria-label="打开工作区设置"
+      title="工作区设置"
+      onClick={onOpenSettings}
+      className={isMobile ? "h-10 shrink-0 gap-2 rounded-md border-l border-border px-3 text-text-dim hover:bg-bg-hover hover:text-text-base" : "h-auto w-full justify-start gap-2 rounded-md px-2.5 py-2 text-left text-text-dim hover:bg-bg-hover hover:text-text-base"}
+    >
+      <Settings2 className="size-4 shrink-0" />
+      <span className="truncate text-xs font-medium">设置</span>
+    </Button>
   )
 
   return (
@@ -71,7 +62,7 @@ export default function WorkflowSidebar({ activeStage, onStageChange, onOpenSett
         })}
       </div>
       <div className={isMobile ? "shrink-0 py-2 pr-2" : "shrink-0 border-t border-border p-3"}>
-        {accountMenu}
+        {settingsButton}
       </div>
     </nav>
   )

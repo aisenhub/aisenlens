@@ -12,7 +12,7 @@
 | 正式域名 | 已完成 | canonical、sitemap 和 robots 统一使用 `https://lens.aisenhub.com`。 |
 | URL、metadata 与 JSON-LD | 已完成 | 公共页面具有稳定 URL、独立 title、description、canonical 和结构化数据。 |
 | 静态预渲染 | 已完成 | 构建后为 public URL 输出带正文和单个 H1 的 HTML；Vercel 优先返回静态页面。 |
-| 爬虫与隐私边界 | 已完成 | 已提供 robots、sitemap、manifest；编辑器、项目库、反馈和重置密码页面为 noindex。 |
+| 爬虫与隐私边界 | 已完成 | 已提供 robots、sitemap、manifest；编辑器与项目库保持 noindex。 |
 | 分享封面 | 待完成 | 已有 Open Graph 和 Twitter 文字信息，尚未添加 1200 × 630 图片。 |
 | 搜索平台接入 | 待完成 | 需在 Google、Bing 和百度平台完成验证、提交 sitemap 和后续监测。 |
 
@@ -26,12 +26,12 @@
 2. Google Search Console、Bing Webmaster Tools 和百度搜索资源平台均无阻断抓取的严重错误。
 3. 每个公共页面都有唯一的标题、描述、规范链接和清晰的单一 H1。
 4. 分享链接在微信、微博、X、Discord 等渠道有明确的标题、描述和封面图。
-5. 私人项目、编辑器、账户、反馈和支付页面不进入搜索索引。
+5. 私人项目和编辑器页面不进入搜索索引。
 
 ### 1.2 非目标
 
 - 不通过关键词堆砌、隐藏文字、采集内容或虚假外链操纵排名。
-- 不将用户视频、项目数据、编辑器页面或账号页面公开给搜索引擎。
+- 不将用户视频、项目数据或编辑器页面公开给搜索引擎。
 - 不为了 SEO 改变 AisenLens 的本地优先和隐私优先原则。
 - 不在未提供真实 AI 能力前，将“AI”作为无法验证的产品承诺。
 
@@ -111,8 +111,7 @@ URL 保持小写、稳定且可读；发布后不要随意变更。若必须变�
 | --- | --- | --- |
 | `/app` 或编辑器 | 用户工作区，不提供公共检索价值 | `noindex, nofollow` |
 | `/projects` | 本地或用户项目库 | `noindex, nofollow` |
-| `/feedback`、`/support` | 表单和交易相关页面 | `noindex, nofollow` |
-| 登录、重置密码、用户中心 | 账号隐私与低内容页 | `noindex, nofollow` |
+| 本地项目与编辑器 | 私人工作区，不提供公共检索价值 | `noindex, nofollow` |
 
 ## 5. 首屏与页面文案
 
@@ -281,7 +280,7 @@ Sitemap: https://lens.aisenhub.com/sitemap.xml
 
 **sitemap.xml**
 
-仅列出公共 canonical URL；`lastmod` 只在页面实际更新时变更。用户项目、编辑器、账户和预览 URL 不应进入 sitemap。
+仅列出公共 canonical URL；`lastmod` 只在页面实际更新时变更。用户项目、编辑器和预览 URL 不应进入 sitemap。
 
 ### 6.5 分享素材与可访问性
 
@@ -400,7 +399,7 @@ Node.js Version: 22.x
 - [x] canonical、Open Graph URL 和 sitemap URL 使用 HTTPS 正式域名。
 - [x] 本地构建不生成 source map；项目不包含服务角色密钥、AI Key 或用户数据。
 - [ ] 所有 public 页面在线上返回 200；不存在循环重定向。
-- [x] 编辑器、项目库、反馈、支持和重置密码页面为 `noindex`。
+- [x] 编辑器和项目库页面为 `noindex`。
 - [ ] JSON-LD 已通过 Schema Markup Validator 验证。
 - [x] robots.txt 没有误封锁 CSS、JavaScript、图片或 public 页面。
 - [x] Vercel 使用根目录与 `apps/web/dist` 输出目录。

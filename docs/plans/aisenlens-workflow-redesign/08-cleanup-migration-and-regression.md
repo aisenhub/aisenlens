@@ -8,7 +8,7 @@
 
 ## Non-goals
 
-不删用户数据、IndexedDB stores或未确认废弃格式reader；不顺手重构账号/算法/引擎/原生端，不实现Coming Soon功能；不恢复废弃预览，不为了消除warning安装工具或大量依赖。
+不删用户数据、IndexedDB stores或未确认废弃格式reader；不顺手重构数据模型/算法/引擎/原生端，不实现Coming Soon功能；不恢复废弃预览，不为了消除warning安装工具或大量依赖。
 
 ## Current Files
 
