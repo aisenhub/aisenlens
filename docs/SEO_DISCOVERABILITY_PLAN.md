@@ -228,7 +228,7 @@ AisenLens 面向影视学生、编导、导演、剪辑师和内容创作者，�
 
 ### 6.2 HTML Head
 
-在 `apps/webapp/index.html` 和页面级 metadata 中增加：
+在 `apps/webhome/index.html` 和页面级 metadata 中增加：
 
 ```html
 <meta name="robots" content="index,follow,max-image-preview:large" />
@@ -268,7 +268,7 @@ AisenLens 面向影视学生、编导、导演、剪辑师和内容创作者，�
 
 ### 6.4 静态收录文件
 
-在 `apps/webapp/public/` 新增：
+在 `apps/webhome/public/` 新增：
 
 **robots.txt**
 
@@ -320,8 +320,8 @@ Sitemap: https://lens.aisenhub.com/sitemap.xml
 Root Directory: 留空
 Framework Preset: Vite
 Install Command: pnpm install --frozen-lockfile
-Build Command: pnpm --filter @aisenlens/webapp build
-Output Directory: apps/webapp/dist
+Build Command: pnpm --filter @aisenlens/webhome build
+Output Directory: apps/webhome/dist
 Node.js Version: 22.x
 ```
 
@@ -402,7 +402,7 @@ Node.js Version: 22.x
 - [x] 编辑器和项目库页面为 `noindex`。
 - [ ] JSON-LD 已通过 Schema Markup Validator 验证。
 - [x] robots.txt 没有误封锁 CSS、JavaScript、图片或 public 页面。
-- [x] Vercel 使用根目录与 `apps/webapp/dist` 输出目录。
+- [x] WebHome Vercel 使用根目录与 `apps/webhome/dist` 输出目录；产品端使用独立的 `apps/webapp/vercel.json`。
 
 ## 10.1 发布后待办（由站点所有者执行）
 

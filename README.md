@@ -1,12 +1,13 @@
 # AisenLens
 
-AisenLens is a pnpm workspace with a single shared React/Vite renderer and platform-specific shells.
+AisenLens is a pnpm workspace with two independent React/Vite web release units and platform-specific shells.
 
 ## Workspace layout
 
 ```text
 apps/
-  web/       Shared React application and Vite build
+  webhome/   Public marketing, tutorials, legal pages, and SEO build
+  webapp/    Product projects, editor, media, analysis, and export build
   desktop/   Electron shell that packages apps/webapp/dist
   mobile/    Capacitor Android and iOS shells that sync apps/webapp/dist
 ```
@@ -15,8 +16,9 @@ apps/
 
 ```bash
 corepack pnpm install
-corepack pnpm dev
-corepack pnpm build
+corepack pnpm dev:webapp
+corepack pnpm dev:webhome
+corepack pnpm build:web
 corepack pnpm verify:web
 corepack pnpm scene-engine:verify:core
 corepack pnpm scene-engine:verify:web-preview
@@ -39,13 +41,17 @@ another repository-local video with `AISENLENS_SCENE_FIXTURE`, for example
 Current feature validation scope is Web; Desktop and Mobile remain optional
 platform checks.
 
-`verify:web` is the release gate for the Web application. It runs TypeScript
-checking, lint, core logic tests, the exclusive-frame export boundary test,
-and the production build in one command.
+`verify:web` is the combined release gate. It runs `verify:webhome`,
+`verify:webapp`, and `verify:web-boundaries`; each release unit also has its
+own build, typecheck, and lint commands.
 
 ## Deployment
 
-Vercel deploys the Web application from the repository root with `pnpm --filter @aisenlens/webapp build`. Keep the Vercel project Root Directory empty and use `apps/webapp/dist` as its output directory.
+The public site is built with `pnpm --filter @aisenlens/webhome build` into
+`apps/webhome/dist`. The product site is built with
+`pnpm --filter @aisenlens/webapp build` into `apps/webapp/dist`. Each app has
+its own `vercel.json`; production domains and DNS changes require an explicit
+deployment decision after preview validation.
 
 ## Documentation
 

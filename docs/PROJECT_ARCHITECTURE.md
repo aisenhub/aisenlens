@@ -12,13 +12,14 @@
 
 ```text
 apps/
-  web/       React + Vite 的唯一 UI 与业务实现
-  desktop/   Electron 外壳，打包 web 的构建产物
-  mobile/    Capacitor Android/iOS 外壳，同步 web 的构建产物
+  webhome/   React + Vite 公开内容站，负责营销、教程、法律页和 SEO
+  webapp/    React + Vite 产品 renderer，负责项目库、编辑器和媒体能力
+  desktop/   Electron 外壳，打包 webapp 的构建产物
+  mobile/    Capacitor Android/iOS 外壳，同步 webapp 的构建产物
 packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边界的基础引擎
 ```
 
-`apps/webapp` 是产品功能的唯一来源；桌面与移动端不复制 React 业务代码。Web 发布由 Vercel 从仓库根目录构建，产物目录为 `apps/webapp/dist`。
+`apps/webapp` 是产品功能的唯一来源，`apps/webhome` 是公开内容的唯一来源；两者是独立的 Web release unit。桌面与移动端不复制 React 业务代码，只消费 `apps/webapp/dist`。两个 Vercel 配置分别指向各自的构建命令和产物目录。
 
 当前开发和验收范围仅为 Web。Desktop/Mobile 目录继续保留，但它们的构建、资源同步和运行 smoke 不作为当前 Web 功能的阻塞门；恢复对应平台开发时再执行平台专项验证。共享包通常应服务多个真实消费者，但像 Scene Engine 这样具有独立 C++/WASM 工具链、稳定 ABI 和独立测试边界的基础引擎，即使当前只有 Web 一个产品消费者，也可以建立单独 package。
 
@@ -39,7 +40,7 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 15，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；本轮没有新增 schema。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 17，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。
 
 正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。备份服务导出经校验的项目包；恢复快照保存项目、镜头、镜头组、标注和模板，恢复时通过仓库服务写回。新增持久化结构必须通过 `projectRepository.ts` 的版本化升级处理，不能由 UI 直接写 IndexedDB。
 

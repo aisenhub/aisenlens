@@ -6,10 +6,10 @@
 
   ## Workspace path convention
 
-  This repository is a pnpm workspace. The canonical frontend source root is
-  `apps/webapp/src/`; the repository does not contain a standalone root `src/`
-  application. Unless a section explicitly names another package, every
-  unqualified `src/...` example below refers to `apps/webapp/src/...`.
+  This repository is a pnpm workspace. The canonical product frontend source root is
+  `apps/webapp/src/`; the public content frontend source root is `apps/webhome/src/`.
+  Unless a section explicitly names another package, unqualified product `src/...`
+  examples below refer to `apps/webapp/src/...`.
 
   ---
 
@@ -316,7 +316,7 @@
 
   Current delivery scope:
 
-  - Web (`apps/webapp`) is the only platform currently under active development and required validation.
+  - Web is split into `apps/webapp` (product) and `apps/webhome` (public content); both are active Web release units.
   - Do not make Desktop, Android, iOS, Electron, or Capacitor builds a blocking acceptance gate unless the user explicitly restores that platform to scope.
   - Keep shared code and asset URLs portable, and record unverified platform compatibility honestly.
   
@@ -350,7 +350,14 @@
 project-root/
 
 ├── apps/
-│   ├── web/
+│   ├── webapp/
+│   │   ├── src/
+│   │   ├── public/
+│   │   ├── .env.example
+│   │   ├── vite.config.ts
+│   │   ├── tsconfig.json
+│   │   └── index.html
+│   ├── webhome/
 │   │   ├── src/
 │   │   ├── public/
 │   │   ├── .env.example
@@ -395,8 +402,9 @@ Contains:
 
 Rules:
 
-* All frontend code must be inside `apps/webapp/src/`.
-* Do not place React code outside `apps/webapp/src/`.
+* Product frontend code must be inside `apps/webapp/src/`.
+* Public content React code must be inside `apps/webhome/src/`.
+* Do not place application React code outside `apps/webapp/src/` or `apps/webhome/src/`.
 * Do not store configuration files inside `apps/webapp/src/`.
 
 ⸻
@@ -645,7 +653,7 @@ When adding new files:
 
 1. First check if an existing directory is suitable.
 2. Avoid creating new root folders without a clear purpose.
-3. Keep frontend code inside `apps/webapp/src/`.
+3. Keep product frontend code inside `apps/webapp/src/` and public content code inside `apps/webhome/src/`.
 5. Keep documentation inside docs/.
 6. Keep development tools inside scripts/.
 7. Create a package under `packages/` only for a stable shared capability or an independently built/tested foundation with a clear runtime or cross-language ABI boundary. A second product consumer is preferred but is not mandatory for such an engine.

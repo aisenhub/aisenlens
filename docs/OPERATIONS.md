@@ -1,13 +1,14 @@
 # AisenLens 运维与发布约束
 
-> 当前阶段：Web renderer 已改名为 `apps/webapp`；公开站与产品站仍暂时由同一个 renderer 提供。
+> 当前阶段：公开站与产品 renderer 已拆为两个独立 Web release unit；生产域名切换仍需单独执行部署门禁。
 
 ## 发布单元
 
-- 当前 Web 构建目标为 `@aisenlens/webapp`，产物为 `apps/webapp/dist`。
-- 根目录命令 `build`、`lint`、`typecheck` 和 `verify:web` 仍代表当前完整 Web renderer。
+- `@aisenlens/webhome` 构建 `apps/webhome/dist`，负责公开页面、教程、法律页、robots 和 sitemap。
+- `@aisenlens/webapp` 构建 `apps/webapp/dist`，负责项目库、编辑器、媒体、分析和导出。
+- `build:web` 构建两个 release unit；`verify:web` 运行两个 release gate 与边界守卫。
 - Electron 与 Capacitor 只消费 `webapp` 构建产物，不复制 React 业务代码。
-- `webhome` 尚未创建；公开页面的迁移将在后续阶段完成。
+- WebApp 根路径重定向至 `/projects`；跨站首页和公开内容使用 `VITE_WEBHOME_URL`，不共享 React 状态。
 
 ## 数据安全
 
