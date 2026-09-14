@@ -182,6 +182,15 @@ PRODUCTION_LOCAL_PROJECTS =
 记录确认方式。
 可以不实现迁移 UI，但不能清除旧数据。
 
+### 本次执行决策（2026-09-14）
+
+```text
+PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED
+确认依据：站点所有者明确确认项目从未有生产项目。
+结果：不执行旧项目 backup/restore migration rehearsal，不实现旧格式兼容或跨 origin migration UI。
+约束：仍不得调用 indexedDB.deleteDatabase、localStorage.clear 或其他清理旧 origin 数据的操作。
+```
+
 ### MIGRATION_REQUIRED
 
 必须完成下面迁移 rehearsal。
