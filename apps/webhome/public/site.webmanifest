@@ -1,0 +1,10 @@
+{
+  "name": "AisenLens - 视频拉片与镜头分析工具",
+  "short_name": "AisenLens",
+  "description": "视频拉片、自动分镜与镜头分析工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "lang": "zh-CN"
+}
