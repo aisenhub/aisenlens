@@ -136,7 +136,7 @@ Content 模式调整 `threshold`；Adaptive 模式调整 `adaptiveThreshold`，�
 
 ## 4. 类型与解析边界
 
-建议在 `apps/web/src/features/auto-shot/config/` 建立产品配置层：
+建议在 `apps/webapp/src/features/auto-shot/config/` 建立产品配置层：
 
 ```ts
 type AutoShotPresetId =
@@ -264,7 +264,7 @@ checkpoint 或把 running 直接改名为 paused。页面卸载不依赖异步�
 ## 6. 前端结构
 
 ```text
-apps/web/src/features/auto-shot/
+apps/webapp/src/features/auto-shot/
 ├── components/
 │   ├── AutoShotControlPanel.tsx
 │   ├── AutoShotPresetSelector.tsx
@@ -288,7 +288,7 @@ apps/web/src/features/auto-shot/
 ├── sceneResultAdapter.ts
 └── types.ts
 
-apps/web/src/features/scene-calibration/
+apps/webapp/src/features/scene-calibration/
 ├── components/                       # 标注工作台、候选复核、数据导出
 ├── services/                         # 标注校验、评分输入和导出
 └── types.ts                          # 独立真值 schema，不复用正式镜头/创作标记

@@ -11,7 +11,7 @@ import { spawn } from "node:child_process"
 const repositoryDirectory = resolve(import.meta.dirname, "..")
 const outputDirectory = resolve(repositoryDirectory, "test-results", "scene-engine-web-build")
 const manifest = JSON.parse(await readFile(resolve(outputDirectory, "scene-engine-manifest.json"), "utf8"))
-const fixtureRelativePath = process.env.AISENLENS_SCENE_FIXTURE?.trim() || "apps/web/test/test.mov"
+const fixtureRelativePath = process.env.AISENLENS_SCENE_FIXTURE?.trim() || "apps/webapp/test/test.mov"
 const fixturePath = resolve(repositoryDirectory, fixtureRelativePath)
 const repositoryPathPrefix = repositoryDirectory.endsWith(sep) ? repositoryDirectory : `${repositoryDirectory}${sep}`
 if (!fixturePath.startsWith(repositoryPathPrefix)) throw new Error("场景验证素材必须位于仓库目录内。")

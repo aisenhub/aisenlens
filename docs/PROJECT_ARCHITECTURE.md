@@ -18,13 +18,13 @@ apps/
 packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边界的基础引擎
 ```
 
-`apps/web` 是产品功能的唯一来源；桌面与移动端不复制 React 业务代码。Web 发布由 Vercel 从仓库根目录构建，产物目录为 `apps/web/dist`。
+`apps/webapp` 是产品功能的唯一来源；桌面与移动端不复制 React 业务代码。Web 发布由 Vercel 从仓库根目录构建，产物目录为 `apps/webapp/dist`。
 
 当前开发和验收范围仅为 Web。Desktop/Mobile 目录继续保留，但它们的构建、资源同步和运行 smoke 不作为当前 Web 功能的阻塞门；恢复对应平台开发时再执行平台专项验证。共享包通常应服务多个真实消费者，但像 Scene Engine 这样具有独立 C++/WASM 工具链、稳定 ABI 和独立测试边界的基础引擎，即使当前只有 Web 一个产品消费者，也可以建立单独 package。
 
 ## 2. 前端分层
 
-`apps/web/src` 按应用、页面、可复用 UI、功能模块、服务和共享类型组织。页面只负责组合，领域逻辑与特性 UI 位于 `features/<feature>/`；可复用的无业务 UI 位于 `components/` 与 `components/ui/`。浏览器存储、媒体能力和其他外部通信统一收敛在 `services/`，组件不得直接跨越服务边界。
+`apps/webapp/src` 按应用、页面、可复用 UI、功能模块、服务和共享类型组织。页面只负责组合，领域逻辑与特性 UI 位于 `features/<feature>/`；可复用的无业务 UI 位于 `components/` 与 `components/ui/`。浏览器存储、媒体能力和其他外部通信统一收敛在 `services/`，组件不得直接跨越服务边界。
 
 当前主要功能边界包括：
 
@@ -35,7 +35,7 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 - `export`：报告和视频导出；视频导出在 Worker 中运行。
 - `workflow` / `overview` / `analysis` / `learn`：项目工作流导航、全片总览、深拆对象视图和真实笔记回看。
 
-全局视觉 token 在 `apps/web/src/index.css`；UI 沿用 Tailwind 与现有 `components/ui/`，不得把业务逻辑放进通用组件。
+全局视觉 token 在 `apps/webapp/src/index.css`；UI 沿用 Tailwind 与现有 `components/ui/`，不得把业务逻辑放进通用组件。
 
 ## 3. 本地项目数据边界
 

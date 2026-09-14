@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { createWorkflowSearch, parseWorkflowLocation } from "../../../apps/web/src/features/workflow/services/workflowLocation.ts"
+import { createWorkflowSearch, parseWorkflowLocation } from "../../../apps/webapp/src/features/workflow/services/workflowLocation.ts"
 
 test("parses a valid project stage and view", () => {
   assert.deepEqual(parseWorkflowLocation("?project=p1&stage=overview&view=structure"), {

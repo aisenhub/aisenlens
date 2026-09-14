@@ -76,7 +76,7 @@ reference-projects/
 Web 应用已按 feature 组织，相关模块为：
 
 ```text
-apps/web/src/features/
+apps/webapp/src/features/
   auto-shot/services/autoShotService.ts
   editor/components/EditorWorkspace.tsx
   media/
@@ -221,7 +221,7 @@ packages/scene-engine/
 │   └── browser-integration.test.ts
 └── README.md
 
-apps/web/src/features/auto-shot/
+apps/webapp/src/features/auto-shot/
 ├── services/
 │   ├── autoShotTaskService.ts       # 项目任务编排与持久化
 │   └── sceneResultAdapter.ts         # EngineResult -> AisenLens 候选分镜
@@ -235,7 +235,7 @@ apps/web/src/features/auto-shot/
 - `packages/scene-engine` 不得导入 React、Zustand、项目仓储或 `ShotRecord`。
 - C++ 核心不得导入浏览器/WebCodecs 类型；原生测试直接喂 `FrameView`。
 - Worker 内部可以依赖 Mediabunny，但公共 API 不暴露 Mediabunny 类型。
-- `apps/web` 只通过包的公共 TypeScript API 启动任务和接收结果。
+- `apps/webapp` 只通过包的公共 TypeScript API 启动任务和接收结果。
 - 项目仓储和结果应用仍属于 `features/auto-shot` / `features/project`，不进入通用引擎。
 
 ## 6. 模块职责

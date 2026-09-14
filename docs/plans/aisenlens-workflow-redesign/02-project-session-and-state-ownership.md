@@ -12,20 +12,20 @@
 
 ## Current Files
 
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx`：所有 useState/maps、加载effects、EditorHistorySnapshot、autoShotTask、保存签名、截图缓存、资源清理、快捷键与 handler。
-- `apps/web/src/features/editor/hooks/{useEditorPersistence,useEditorSaveState,useEditorHistory,editorHistoryState,useVideoPlayback}.ts`
-- `apps/web/src/features/editor/constants/editorData.ts`、`utils/retainShotMap.ts`
-- `apps/web/src/features/auto-shot/hooks/{useAutoShotTask,useAutoShotControl}.ts`、`types.ts`、`stores/useAutoShotSettingsStore.ts`
-- `apps/web/src/features/project/services/{projectRepository,projectRecoveryService,screenshotService}.ts`、`features/project/types.ts`
-- `apps/web/src/features/media/hooks/useMultiTrackAudioPreview.ts`、`services/audioTrackProjectService.ts`
-- P01 创建的 `features/workflow/components/ProjectWorkspaceShell.tsx`（前缀同为 apps/web/src）。
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx`：所有 useState/maps、加载effects、EditorHistorySnapshot、autoShotTask、保存签名、截图缓存、资源清理、快捷键与 handler。
+- `apps/webapp/src/features/editor/hooks/{useEditorPersistence,useEditorSaveState,useEditorHistory,editorHistoryState,useVideoPlayback}.ts`
+- `apps/webapp/src/features/editor/constants/editorData.ts`、`utils/retainShotMap.ts`
+- `apps/webapp/src/features/auto-shot/hooks/{useAutoShotTask,useAutoShotControl}.ts`、`types.ts`、`stores/useAutoShotSettingsStore.ts`
+- `apps/webapp/src/features/project/services/{projectRepository,projectRecoveryService,screenshotService}.ts`、`features/project/types.ts`
+- `apps/webapp/src/features/media/hooks/useMultiTrackAudioPreview.ts`、`services/audioTrackProjectService.ts`
+- P01 创建的 `features/workflow/components/ProjectWorkspaceShell.tsx`（前缀同为 apps/webapp/src）。
 
 ## New Files
 
-- `apps/web/src/features/editor/session/{ProjectSessionProvider,ProjectSessionRuntime}.tsx`
-- `apps/web/src/features/editor/stores/{createProjectEditorStore,editorSelectionSlice}.ts`
-- `apps/web/src/features/editor/hooks/{useProjectSession,useProjectDocumentLoad,useProjectMediaRuntime,useProjectEvidenceResources}.ts`
-- `apps/web/src/features/editor/services/{editorCommands,editorPersistenceSnapshot}.ts`：薄的业务协调/快照转换，复用已有纯函数；按职责必要时再拆，禁止一个万能服务。
+- `apps/webapp/src/features/editor/session/{ProjectSessionProvider,ProjectSessionRuntime}.tsx`
+- `apps/webapp/src/features/editor/stores/{createProjectEditorStore,editorSelectionSlice}.ts`
+- `apps/webapp/src/features/editor/hooks/{useProjectSession,useProjectDocumentLoad,useProjectMediaRuntime,useProjectEvidenceResources}.ts`
+- `apps/webapp/src/features/editor/services/{editorCommands,editorPersistenceSnapshot}.ts`：薄的业务协调/快照转换，复用已有纯函数；按职责必要时再拆，禁止一个万能服务。
 - `tests/features/workflow/{project-session.test.ts,project-session.browser.test.js}`
 
 ## Data Changes
@@ -82,7 +82,7 @@ store 只存编辑中的必要文档草稿/ID/revision；不存视频 Blob、截
 
 ## Tests
 
-运行 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm test:editor-history`、`corepack pnpm test:retain-shot-map`、`corepack pnpm --filter @aisenlens/web test:auto-shot-task-service`、`corepack pnpm build`。
+运行 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm test:editor-history`、`corepack pnpm test:retain-shot-map`、`corepack pnpm --filter @aisenlens/webapp test:auto-shot-task-service`、`corepack pnpm build`。
 
 新增有行为价值的测试：同项目stage变更保存revision不重置、延迟写入时继续输入最终保存最新值、项目切换丢弃过期加载结果、空/失败hydration不保存、one owner lifecycle。浏览器用真实IndexedDB事务测试而非只 mock 所有services；音频可先复用已有场景fixture再实际听验。
 

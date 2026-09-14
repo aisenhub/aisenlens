@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import deriveFilmOverview from "../../../apps/web/src/features/overview/services/deriveFilmOverview.ts"
+import deriveFilmOverview from "../../../apps/webapp/src/features/overview/services/deriveFilmOverview.ts"
 
 const shots = [
   { id: "a", start: 0, duration: 2, type: "未分析", motion: "未分析", color: "未分析" },

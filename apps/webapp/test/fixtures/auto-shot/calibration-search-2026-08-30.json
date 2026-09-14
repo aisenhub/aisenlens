@@ -14,7 +14,7 @@
     {
       "fixtureId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
       "split": "search",
-      "path": "apps/web/test/test02.mov",
+      "path": "apps/webapp/test/test02.mov",
       "source": {
         "workId": "c9712676-7df7-4034-a37c-8d1cd445aff5:511e9991c992bb2a",
         "name": "test02.mov",
@@ -329,7 +329,7 @@
     {
       "fixtureId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
       "split": "search",
-      "path": "apps/web/test/test.mov",
+      "path": "apps/webapp/test/test.mov",
       "source": {
         "workId": "8bb89a70-4fc9-4036-afe2-77052bf6dcc9:6501d3efdff5080d",
         "name": "test.mov",
@@ -803,7 +803,7 @@
     {
       "fixtureId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
       "split": "search",
-      "path": "apps/web/test/test03.mov",
+      "path": "apps/webapp/test/test03.mov",
       "source": {
         "workId": "1a110653-f78b-4c47-a7e9-9b3cd7585aa5:1c4928c9fb6bed5d",
         "name": "test03.mov",

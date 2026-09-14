@@ -21,7 +21,7 @@
 - `node --experimental-strip-types --test tests/features/workflow/shot-inspector.test.ts`：通过，1 项。
 - `node --experimental-strip-types --test tests/features/workflow/learning-sources.test.ts`：通过，1 项。
 - `node --experimental-strip-types --test tests/features/workflow/theme-preference.test.ts`：通过，1 项。
-- P01–P07 各阶段 `corepack pnpm --filter @aisenlens/web typecheck`、`lint`、`build`：通过。
+- P01–P07 各阶段 `corepack pnpm --filter @aisenlens/webapp typecheck`、`lint`、`build`：通过。
 - `corepack pnpm test:auto-shot-config`：通过，5 项；测试同步到当前已晋升的 production preset catalog。
 - `corepack pnpm test:auto-shot-settings-store`：通过，2 项。
 - `corepack pnpm test:auto-shot-baseline`：通过，1 项；浏览器 Scene Engine 矩阵约 104 秒。

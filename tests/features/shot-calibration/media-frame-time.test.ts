@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { classifyPresentationTimestamps, frameToTimestampFromArrays, timestampToFrameIndex } from "../../../apps/web/src/features/video/services/mediaFrameTimeService.ts"
+import { classifyPresentationTimestamps, frameToTimestampFromArrays, timestampToFrameIndex } from "../../../apps/webapp/src/features/video/services/mediaFrameTimeService.ts"
 
 test("识别 24000/1001 与 30000/1001 CFR PTS，不受浮点舍入影响", () => {
   const ntscFilm = Array.from({ length: 4 }, (_, frame) => frame * 1001 / 24000)

@@ -1,4 +1,4 @@
-import { build } from "../apps/web/node_modules/vite/dist/node/index.js"
+import { build } from "../apps/webapp/node_modules/vite/dist/node/index.js"
 import { readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 
@@ -8,8 +8,8 @@ process.env.AISENLENS_INCLUDE_SCENE_ENGINE_WORKER = "1"
 process.env.AISENLENS_SCENE_ENGINE_OUT_DIR = outputDirectory
 process.env.AISENLENS_SCENE_ENGINE_BASE = "/aisenlens/"
 await build({
-  root: resolve("apps/web"),
-  configFile: resolve("apps/web/vite.config.ts"),
+  root: resolve("apps/webapp"),
+  configFile: resolve("apps/webapp/vite.config.ts"),
   mode: "production",
   build: { outDir: outputDirectory, emptyOutDir: true },
 })

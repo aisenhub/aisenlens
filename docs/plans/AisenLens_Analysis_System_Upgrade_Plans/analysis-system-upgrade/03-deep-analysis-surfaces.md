@@ -5,9 +5,9 @@
 ## 1. 本地核实
 
 ```powershell
-rg -n "ShotBrowserView|ShotTable|ShotCard|selectedShotIds" apps/web/src/features
-rg -n "EDITOR_SHORTCUT_DEFINITIONS|useEditorShortcuts|contentEditable|isComposing" apps/web/src
-rg -n "ProjectSessionProvider|researchMode|researchTarget|analysisFields" apps/web/src/features
+rg -n "ShotBrowserView|ShotTable|ShotCard|selectedShotIds" apps/webapp/src/features
+rg -n "EDITOR_SHORTCUT_DEFINITIONS|useEditorShortcuts|contentEditable|isComposing" apps/webapp/src
+rg -n "ProjectSessionProvider|researchMode|researchTarget|analysisFields" apps/webapp/src/features
 ```
 
 找出真实列表、selection、播放器、Research queue 和快捷键所有者，不猜文件名。复用现有组件与会话，不新建 Workflow Stage。

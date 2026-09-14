@@ -14,21 +14,21 @@
 
 路径相对仓库：
 
-- `apps/web/src/app/App.tsx`、`app/AppPages.tsx`、`pages/EditorPage.tsx`：当前 `/app` 精确匹配与 activeProjectId 传递。
-- `apps/web/src/features/project/components/ProjectLibrary.tsx`、`ProjectMediaGate.tsx`：项目选择和 render prop；本阶段保留 Gate 的媒体门控。
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx`：头部、leaveEditor、historyGuardInstalledRef/popstate、saveNow、快捷键、h-screen 布局。
-- `apps/web/src/features/editor/hooks/useEditorSaveState.ts`、`shortcuts/useEditorShortcuts.ts`、`shortcuts/definitions.ts`。
-- `apps/web/src/index.css`、`types/theme.ts`、`components/layout/AppNavigation.tsx`：dark/light 和共享导航。
-- `apps/web/src/components/ui/{button,dialog,dropdown-menu,tooltip,tabs,sonner}.tsx`：优先复用，遵循已有 Base UI render API。
+- `apps/webapp/src/app/App.tsx`、`app/AppPages.tsx`、`pages/EditorPage.tsx`：当前 `/app` 精确匹配与 activeProjectId 传递。
+- `apps/webapp/src/features/project/components/ProjectLibrary.tsx`、`ProjectMediaGate.tsx`：项目选择和 render prop；本阶段保留 Gate 的媒体门控。
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx`：头部、leaveEditor、historyGuardInstalledRef/popstate、saveNow、快捷键、h-screen 布局。
+- `apps/webapp/src/features/editor/hooks/useEditorSaveState.ts`、`shortcuts/useEditorShortcuts.ts`、`shortcuts/definitions.ts`。
+- `apps/webapp/src/index.css`、`types/theme.ts`、`components/layout/AppNavigation.tsx`：dark/light 和共享导航。
+- `apps/webapp/src/components/ui/{button,dialog,dropdown-menu,tooltip,tabs,sonner}.tsx`：优先复用，遵循已有 Base UI render API。
 
 ## New Files
 
 预期新增（实际命名可以在同一职责下调整）：
 
-- `apps/web/src/features/workflow/components/{ProjectWorkspaceShell,ProjectTopBar,WorkflowSidebar,WorkflowPlaceholder}.tsx`
-- `apps/web/src/features/workflow/{types.ts,constants/workflowStages.ts,hooks/useWorkflowNavigation.ts}`
-- `apps/web/src/features/workflow/services/workflowLocation.ts`：纯 URL 解析/验证，不做 I/O。
-- `apps/web/src/features/workflow/stores/useWorkflowUiStore.ts`：项目作用域临时 UI，不复制 URL stage。
+- `apps/webapp/src/features/workflow/components/{ProjectWorkspaceShell,ProjectTopBar,WorkflowSidebar,WorkflowPlaceholder}.tsx`
+- `apps/webapp/src/features/workflow/{types.ts,constants/workflowStages.ts,hooks/useWorkflowNavigation.ts}`
+- `apps/webapp/src/features/workflow/services/workflowLocation.ts`：纯 URL 解析/验证，不做 I/O。
+- `apps/webapp/src/features/workflow/stores/useWorkflowUiStore.ts`：项目作用域临时 UI，不复制 URL stage。
 - `tests/features/workflow/workflow-location.test.ts`、`workspace-shell.browser.test.js`：新增测试，尚未存在。
 
 ## Data Changes

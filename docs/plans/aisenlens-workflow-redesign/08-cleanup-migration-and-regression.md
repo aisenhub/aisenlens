@@ -12,12 +12,12 @@
 
 ## Current Files
 
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx`：残留工具栏/旧Inspector/旧列表/过渡参数/DOM。
-- `apps/web/src/features/workflow/`、`features/editor/session/`、`features/editor/stores/`和P03–07全部新增组合视图。
-- `apps/web/src/app/{App,AppPages}.tsx`、`pages/EditorPage.tsx`、`index.css`。
-- `apps/web/src/features/editor/shortcuts/definitions.ts`、`hooks/useEditorSaveState.ts`、`useEditorPersistence.ts`。
-- `apps/web/src/features/project/services/{projectRepository,projectRecoveryService,projectBackupService}.ts`：只核对数据契约，不清理旧格式。
-- `apps/web/test/`、`tests/features/workflow/`、`scripts/verify-web.mjs`、根及Web `package.json`。
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx`：残留工具栏/旧Inspector/旧列表/过渡参数/DOM。
+- `apps/webapp/src/features/workflow/`、`features/editor/session/`、`features/editor/stores/`和P03–07全部新增组合视图。
+- `apps/webapp/src/app/{App,AppPages}.tsx`、`pages/EditorPage.tsx`、`index.css`。
+- `apps/webapp/src/features/editor/shortcuts/definitions.ts`、`hooks/useEditorSaveState.ts`、`useEditorPersistence.ts`。
+- `apps/webapp/src/features/project/services/{projectRepository,projectRecoveryService,projectBackupService}.ts`：只核对数据契约，不清理旧格式。
+- `apps/webapp/test/`、`tests/features/workflow/`、`scripts/verify-web.mjs`、根及Web `package.json`。
 - `docs/PROJECT_ARCHITECTURE.md`、`docs/DEVELOPMENT_TODO.md`、`docs/WEB_AUDIT_2026-09-07.md`、`docs/auto-shot/REGRESSION_CONTRACT.md`、`reference-projects/REFERENCE_PROJECT_INDEX.md`。
 
 ## New Files
@@ -83,7 +83,7 @@
 
 浏览器专项：`corepack pnpm test:auto-shot-baseline`、`corepack pnpm test:video-export`及新增端到端流程。先检查脚本所需fixture、浏览器路径、服务端口与清理机制；若出现历史记录中的无输出超时，修复测试生命周期或用等价真实浏览器证据完整覆盖后记录决定，不能记成通过。不要求Desktop/Android/iOS构建。
 
-验证文件层级：现有`apps/web/test/`保留，新测试根`tests/features/workflow/`；纯函数用Node test、涉及事务/媒体/导航用真实浏览器及隔离DB。复用声明依赖，不安装默认到C盘的工具；确需软件遵守D:/APP/Codex/软件名、缓存E:/AppData/工具名。
+验证文件层级：现有`apps/webapp/test/`保留，新测试根`tests/features/workflow/`；纯函数用Node test、涉及事务/媒体/导航用真实浏览器及隔离DB。复用声明依赖，不安装默认到C盘的工具；确需软件遵守D:/APP/Codex/软件名、缓存E:/AppData/工具名。
 
 ## Manual QA
 

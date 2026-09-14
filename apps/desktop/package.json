@@ -6,7 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build:main": "tsc --project tsconfig.json",
-    "build:renderer": "pnpm --filter @aisenlens/web build",
+    "build:renderer": "pnpm --filter @aisenlens/webapp build",
     "build": "pnpm run build:renderer && pnpm run build:main",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
@@ -25,8 +25,8 @@
     ],
     "extraResources": [
       {
-        "from": "../web/dist",
-        "to": "web"
+        "from": "../webapp/dist",
+        "to": "webapp"
       }
     ]
   },

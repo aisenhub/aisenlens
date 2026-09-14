@@ -57,7 +57,7 @@
 | `packages/scene-engine/` 尚不存在，`packages/` 当前为空 | 必须先创建独立 workspace 包，不能直接在 Web feature 中写算法 | Phase 1 |
 | CMake、原生 C++ 编译器和 CTest 已安装并验证；Emscripten 6.0.8 已安装并验证 | Phase 1–5 使用便携版 CMake/LLVM-MinGW；Phase 6 使用固定 emsdk 6.0.8 | Phase 6 |
 | 仓库没有通用 C++/TypeScript 单测框架 | 原生侧先使用 CTest + 无外部依赖的轻量测试可执行文件；TS 侧复用 Node `node:test`，不为此引入大型测试框架 | Phase 1、Phase 6 |
-| 根 `build` 当前只构建 `@aisenlens/web` | Engine 必须有独立 configure/build/test 脚本；接入前再把必要检查纳入总体验收 | Phase 1、Phase 12 |
+| 根 `build` 当前只构建 `@aisenlens/webapp` | Engine 必须有独立 configure/build/test 脚本；接入前再把必要检查纳入总体验收 | Phase 1、Phase 12 |
 | 当前 `AutoShotRunRecord` 使用整数帧、`confidence` 和旧 `cuts` 结构 | 不能直接承载新引擎微秒时间、`score/threshold/evidence`、版本、配置 hash 和 checkpoint | Phase 10、Phase 11 |
 | `EditorWorkspace.tsx` 约 3640 行并直接管理检测、暂停、应用逻辑 | React 接入必须通过 hook/service 做局部替换；不得把 Worker/WASM 状态继续写进该组件 | Phase 11 |
 | IndexedDB 已有 `auto-shot-runs` store，且 `projectId` 唯一 | 无需为相同职责新建第二个 store；切换时必须使旧派生记录失效并删除，不能把旧记录当作新 checkpoint，也不保留长期兼容读取 | Phase 11 |
@@ -87,14 +87,14 @@
 创建：
 
 - `docs/auto-shot/REGRESSION_CONTRACT.md`（长期保留的评分与素材追溯契约）
-- `apps/web/test/auto-shot-contract.test.js`：Task 0.1 的纯 Node 契约测试；浏览器基线测试仍由 Task 0.2 创建。
-- `apps/web/test/auto-shot-baseline.browser.test.js`
-- `apps/web/test/fixtures/auto-shot/manifest.example.json`
+- `apps/webapp/test/auto-shot-contract.test.js`：Task 0.1 的纯 Node 契约测试；浏览器基线测试仍由 Task 0.2 创建。
+- `apps/webapp/test/auto-shot-baseline.browser.test.js`
+- `apps/webapp/test/fixtures/auto-shot/manifest.example.json`
 - `scripts/evaluate-auto-shot.mjs`
 
 修改：
 
-- `apps/web/package.json`：只增加 Phase 0 基准/评分脚本。
+- `apps/webapp/package.json`：只增加 Phase 0 基准/评分脚本。
 - `package.json`：只增加对应根代理脚本。
 - `reference-projects/REFERENCE_PROJECT_INDEX.md`：记录实际补充查阅和最终采用决定。
 
@@ -600,7 +600,7 @@ git diff --check
 - `packages/scene-engine/README.md`
 - `package.json`
 - `pnpm-lock.yaml`
-- `apps/web/vite.config.ts`：仅在真实构建证明需要 Worker/WASM 资源配置时做最小修改。
+- `apps/webapp/vite.config.ts`：仅在真实构建证明需要 Worker/WASM 资源配置时做最小修改。
 
 删除：无。
 
@@ -708,15 +708,15 @@ git diff --check
 
 创建：
 
-- `apps/web/src/features/auto-shot/types.ts`
-- `apps/web/src/features/auto-shot/services/autoShotTaskService.ts`
-- `apps/web/src/features/auto-shot/services/sceneResultAdapter.ts`
-- `apps/web/src/features/auto-shot/services/autoShotTaskService.test.ts` 或项目现有测试约定下的等价测试文件。
-- `apps/web/src/features/auto-shot/services/sceneResultAdapter.test.ts` 或等价测试文件。
+- `apps/webapp/src/features/auto-shot/types.ts`
+- `apps/webapp/src/features/auto-shot/services/autoShotTaskService.ts`
+- `apps/webapp/src/features/auto-shot/services/sceneResultAdapter.ts`
+- `apps/webapp/src/features/auto-shot/services/autoShotTaskService.test.ts` 或项目现有测试约定下的等价测试文件。
+- `apps/webapp/src/features/auto-shot/services/sceneResultAdapter.test.ts` 或等价测试文件。
 
 修改：
 
-- `apps/web/package.json`
+- `apps/webapp/package.json`
 - `pnpm-lock.yaml`
 - 必要的 Web feature 测试脚本。
 
@@ -724,10 +724,10 @@ git diff --check
 
 明确不修改：
 
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx`
-- `apps/web/src/features/auto-shot/services/autoShotService.ts`
-- `apps/web/src/features/project/types.ts`
-- `apps/web/src/features/project/services/projectRepository.ts`
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx`
+- `apps/webapp/src/features/auto-shot/services/autoShotService.ts`
+- `apps/webapp/src/features/project/types.ts`
+- `apps/webapp/src/features/project/services/projectRepository.ts`
 
 **前置条件**
 
@@ -771,15 +771,15 @@ git diff --check
 
 创建：
 
-- `apps/web/src/features/auto-shot/hooks/useAutoShotTask.ts`
+- `apps/webapp/src/features/auto-shot/hooks/useAutoShotTask.ts`
 - 对应 hook/浏览器集成测试文件。
 
 修改：
 
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx`
-- `apps/web/src/features/project/types.ts`
-- `apps/web/src/features/project/services/projectRepository.ts`
-- `apps/web/src/features/auto-shot/services/autoShotTaskService.ts`
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx`
+- `apps/webapp/src/features/project/types.ts`
+- `apps/webapp/src/features/project/services/projectRepository.ts`
+- `apps/webapp/src/features/auto-shot/services/autoShotTaskService.ts`
 - 相关 project repository、editor browser 测试。
 
 删除：本阶段先不删除旧服务文件；删除在 Phase 12 验收通过后执行。
@@ -835,8 +835,8 @@ git diff --check
 - `packages/scene-engine/test/evaluation/README.md`
 - `packages/scene-engine/test/evaluation/` 下的本地数据输入约定、评分脚本和非数据集本体配置。
 - 必要的 CI workflow 或现有 CI 配置中的 Scene Engine job。
-- `apps/web/src/features/auto-shot/config/` 下的产品配置类型、预设 registry、解析器与摘要器。
-- `apps/web/src/features/auto-shot/components/` 下的新自动分镜控制与结果审阅组件。
+- `apps/webapp/src/features/auto-shot/config/` 下的产品配置类型、预设 registry、解析器与摘要器。
+- `apps/webapp/src/features/auto-shot/components/` 下的新自动分镜控制与结果审阅组件。
 
 修改：
 
@@ -849,7 +849,7 @@ git diff --check
 
 删除：
 
-- `apps/web/src/features/auto-shot/services/autoShotService.ts`
+- `apps/webapp/src/features/auto-shot/services/autoShotService.ts`
 - 仅服务旧 Canvas/seek 路径且经 `rg` 证明无引用的测试、helper 和字段。
 - 旧自动分镜 record fixture；不删除用户项目、镜头、注释或其他媒体能力。
 
@@ -995,7 +995,7 @@ Web 基线与像素路径验证
 
 **完成检查**：同一预测结果重复评分完全一致，所有标注可追溯且时间语义无歧义。
 
-**完成记录（2026-08-27）**：已建立示例 manifest 和 `apps/web/test/auto-shot-contract.test.js`；长期保留的一对一匹配、0/1/2 项目帧容差、fade 半开区间、量化 FPS + `ceil` 项目帧投影、首尾 clamp、重复 PTS ordinal、durationFrames 与素材追溯规则，现统一归档至 `docs/auto-shot/REGRESSION_CONTRACT.md`。验证命令 `corepack pnpm test:auto-shot-contract` 通过（6/6），`git diff --check` 通过。未提交任何视频本体。
+**完成记录（2026-08-27）**：已建立示例 manifest 和 `apps/webapp/test/auto-shot-contract.test.js`；长期保留的一对一匹配、0/1/2 项目帧容差、fade 半开区间、量化 FPS + `ceil` 项目帧投影、首尾 clamp、重复 PTS ordinal、durationFrames 与素材追溯规则，现统一归档至 `docs/auto-shot/REGRESSION_CONTRACT.md`。验证命令 `corepack pnpm test:auto-shot-contract` 通过（6/6），`git diff --check` 通过。未提交任何视频本体。
 
 #### [x] Task 0.2：记录当前 JS 算法基线
 
@@ -1658,7 +1658,7 @@ Web 基线与像素路径验证
 4. 运行 native、WASM parity、Worker tests、package/Web build 和 diff check。
 5. README 记录客户端生命周期、并发限制和 pause/cancel 区别。
 
-**完成记录（2026-08-27）**：已启动本地 Vite 服务并在浏览器中确认 Web 首页加载完成且无控制台错误；`apps/web/test/scene-engine-module.worker.ts` 的 dev smoke 已修复启动期消息丢失问题：Worker 先缓存顶层模块加载期间的 `INIT`，依赖加载后回放；WASM 改为显式 fetch 二进制并通过 `instantiateWasm` 注入。Chrome 152 已验证立即发送 `INIT` 可到达 `READY`，并完成两帧 `START → PROGRESS → COMPLETED`，输出 1 个 hard-cut。`scripts/verify-scene-engine-web-build.mjs` 已确认 production Worker/WASM 产物，`scripts/verify-scene-engine-web-preview.mjs` 又在 `/aisenlens/` 非根路径完成 `READY → STARTED → PROGRESS → CHECKPOINT` smoke；本任务验收完成。
+**完成记录（2026-08-27）**：已启动本地 Vite 服务并在浏览器中确认 Web 首页加载完成且无控制台错误；`apps/webapp/test/scene-engine-module.worker.ts` 的 dev smoke 已修复启动期消息丢失问题：Worker 先缓存顶层模块加载期间的 `INIT`，依赖加载后回放；WASM 改为显式 fetch 二进制并通过 `instantiateWasm` 注入。Chrome 152 已验证立即发送 `INIT` 可到达 `READY`，并完成两帧 `START → PROGRESS → COMPLETED`，输出 1 个 hard-cut。`scripts/verify-scene-engine-web-build.mjs` 已确认 production Worker/WASM 产物，`scripts/verify-scene-engine-web-preview.mjs` 又在 `/aisenlens/` 非根路径完成 `READY → STARTED → PROGRESS → CHECKPOINT` smoke；本任务验收完成。
 
 **最终交付物**：稳定 Worker 协议、SceneEngineClient、Worker 状态机、单缓冲和合成纵向测试。
 
@@ -1732,7 +1732,7 @@ Web 基线与像素路径验证
 
 **禁止**：Worker 访问 IndexedDB 业务模型、直接创建 ShotRecord、错误时调用旧 detector。
 
-**完成记录（2026-08-27；2026-08-29 更正）**：新增 `apps/web/test/scene-engine-media-module.worker.ts`，Chrome 152 曾将 `test.mov` 的真实 Mediabunny source 接入 baseline WASM Worker，但当时测试源在 12 帧后主动结束；该记录仅证明 `READY → STARTED → PROGRESS → COMPLETED` 的生命周期，不能证明完整视频检测质量。2026-08-29 已移除该截断，并把全媒体 smoke 时限调整为 300 秒；生命周期 smoke 仍覆盖真实媒体 `pause → CHECKPOINT → resume → COMPLETED`、`cancel → CANCELLED` 和损坏 Blob → `ERROR`。直接 decoder smoke 现对完整媒体的 opened/closed/submitted 对账，Worker 在所有终态释放 source/runtime；完整回归报告是 Phase 11 关闭前的必需证据。
+**完成记录（2026-08-27；2026-08-29 更正）**：新增 `apps/webapp/test/scene-engine-media-module.worker.ts`，Chrome 152 曾将 `test.mov` 的真实 Mediabunny source 接入 baseline WASM Worker，但当时测试源在 12 帧后主动结束；该记录仅证明 `READY → STARTED → PROGRESS → COMPLETED` 的生命周期，不能证明完整视频检测质量。2026-08-29 已移除该截断，并把全媒体 smoke 时限调整为 300 秒；生命周期 smoke 仍覆盖真实媒体 `pause → CHECKPOINT → resume → COMPLETED`、`cancel → CANCELLED` 和损坏 Blob → `ERROR`。直接 decoder smoke 现对完整媒体的 opened/closed/submitted 对账，Worker 在所有终态释放 source/runtime；完整回归报告是 Phase 11 关闭前的必需证据。
 
 #### [x] Task 8.5：浏览器、内存与打包资源验收
 
@@ -1853,7 +1853,7 @@ Web 基线与像素路径验证
 
 **禁止**：修改 `EditorWorkspace`、改 IndexedDB schema、把现有旧 record 扩展成双轨 union。
 
-**完成记录（2026-08-28）**：核验了现有 auto-shot、project、shot、timeline 相关边界，新增 `apps/web/src/features/auto-shot/types.ts` 与 `taskState.ts`。业务类型独立表达 task、progress、candidate、Engine evidence 和 repository 窄接口；仅从 `@aisenlens/scene-engine` public index 引用类型，不导入 React、Worker internal、WASM runtime 或 Mediabunny。新增生命周期转换测试并通过 Web TypeScript strict 检查，未修改 `EditorWorkspace`、IndexedDB schema、旧 `AutoShotRunRecord` 或现有 UI。
+**完成记录（2026-08-28）**：核验了现有 auto-shot、project、shot、timeline 相关边界，新增 `apps/webapp/src/features/auto-shot/types.ts` 与 `taskState.ts`。业务类型独立表达 task、progress、candidate、Engine evidence 和 repository 窄接口；仅从 `@aisenlens/scene-engine` public index 引用类型，不导入 React、Worker internal、WASM runtime 或 Mediabunny。新增生命周期转换测试并通过 Web TypeScript strict 检查，未修改 `EditorWorkspace`、IndexedDB schema、旧 `AutoShotRunRecord` 或现有 UI。
 
 #### [x] Task 10.2：测试先行实现 sceneResultAdapter
 
@@ -1891,7 +1891,7 @@ Web 基线与像素路径验证
 
 **操作**：
 
-1. 在 `apps/web/package.json` 声明 `@aisenlens/scene-engine` workspace 依赖，使用仓库统一 pnpm 更新 lockfile。
+1. 在 `apps/webapp/package.json` 声明 `@aisenlens/scene-engine` workspace 依赖，使用仓库统一 pnpm 更新 lockfile。
 2. 按 Web 现有 `node:test`/浏览器测试约定注册 service/adapter tests；确需新测试工具时先说明依赖理由并获得许可。
 3. 验证 Vite 能解析 package public entry、Worker 和 WASM 资源，但不让 UI 启动任务。
 4. 运行 Web strict build、Engine 全量回归和依赖边界 `rg`。
@@ -1901,7 +1901,7 @@ Web 基线与像素路径验证
 
 **禁止**：在本阶段切换 UI、修改 project repository、创建临时双写 feature flag。
 
-**完成记录（2026-08-28）**：`apps/web` 已声明 `@aisenlens/scene-engine: workspace:*`，package public entry/types/exports 已补齐，pnpm lockfile 更新并通过 supply-chain policy。新增 adapter/task-state/task-service 测试脚本，Web strict TypeScript、常规 build、production Worker/WASM build 均通过；production bundle 检查未发现 synthetic/test source 引用，现有 UI 未启动新任务。
+**完成记录（2026-08-28）**：`apps/webapp` 已声明 `@aisenlens/scene-engine: workspace:*`，package public entry/types/exports 已补齐，pnpm lockfile 更新并通过 supply-chain policy。新增 adapter/task-state/task-service 测试脚本，Web strict TypeScript、常规 build、production Worker/WASM build 均通过；production bundle 检查未发现 synthetic/test source 引用，现有 UI 未启动新任务。
 
 #### [x] Task 10.5：阶段审计与交接
 
@@ -1916,7 +1916,7 @@ Web 基线与像素路径验证
 
 **Phase 10 验收门**：无 React 的 adapter/service 全状态测试、时间映射测试、Web build 与边界审计全部通过。
 
-**完成记录（2026-08-28）**：边界审计确认 `apps/web/src/components` 与 `pages` 没有新增 Worker/WASM/Mediabunny import；Phase 10 未修改旧 `autoShotService.ts`、`AutoShotRunRecord`、`projectRepository.ts`、`EditorWorkspace.tsx` 或 IndexedDB。Engine contract、adapter、task-state、task-service 测试、Web strict TypeScript、Web build、生产 bundle synthetic source 检查和 `git diff --check` 均通过。Phase 11 交接时实际 `projectRepository.ts` 使用 `DATABASE_VERSION = 12` 与 `auto-shot-runs` 派生 store；该事实已用于建立升级夹具，当前版本已在 Phase 11 提升至 13，禁止双写旧/新 schema。
+**完成记录（2026-08-28）**：边界审计确认 `apps/webapp/src/components` 与 `pages` 没有新增 Worker/WASM/Mediabunny import；Phase 10 未修改旧 `autoShotService.ts`、`AutoShotRunRecord`、`projectRepository.ts`、`EditorWorkspace.tsx` 或 IndexedDB。Engine contract、adapter、task-state、task-service 测试、Web strict TypeScript、Web build、生产 bundle synthetic source 检查和 `git diff --check` 均通过。Phase 11 交接时实际 `projectRepository.ts` 使用 `DATABASE_VERSION = 12` 与 `auto-shot-runs` 派生 store；该事实已用于建立升级夹具，当前版本已在 Phase 11 提升至 13，禁止双写旧/新 schema。
 
 ### 4.13 Phase 11 任务单：React 最小接入与持久化原子切换
 
@@ -1938,7 +1938,7 @@ Web 基线与像素路径验证
 
 **禁止**：读取旧 cuts 并转换为新 checkpoint、双写两个 schema、清空整个数据库。
 
-**完成记录（2026-08-28）**：读取并核对了 `projectRepository.ts` 的实际 IndexedDB upgrade 逻辑，新增 `apps/web/test/project-repository-migration.verification.ts` 及浏览器 smoke 入口。夹具包含项目、媒体字段、镜头、截图、注释和旧 `AutoShotRunRecord`；数据库从版本 12 升级到版本 13 时只清理 `auto-shot-runs`，项目、镜头、截图和注释逐项保留。未读取旧 cuts，也未清空其他 store。
+**完成记录（2026-08-28）**：读取并核对了 `projectRepository.ts` 的实际 IndexedDB upgrade 逻辑，新增 `apps/webapp/test/project-repository-migration.verification.ts` 及浏览器 smoke 入口。夹具包含项目、媒体字段、镜头、截图、注释和旧 `AutoShotRunRecord`；数据库从版本 12 升级到版本 13 时只清理 `auto-shot-runs`，项目、镜头、截图和注释逐项保留。未读取旧 cuts，也未清空其他 store。
 
 #### [x] Task 11.2：原子切换 project 类型与 repository
 
@@ -2062,7 +2062,7 @@ Web 基线与像素路径验证
 
 - `packages/scene-engine/src/api/{types,config,configHash}.ts`
 - `packages/scene-engine/src/index.ts`
-- `apps/web/src/features/auto-shot/{types,taskState}.ts`
+- `apps/webapp/src/features/auto-shot/{types,taskState}.ts`
 - 对应 package/Web contract tests
 
 **完成检查**：契约测试先红后绿；同义配置跨字段顺序 hash 相同；不同合法配置快照可区分；
@@ -2247,7 +2247,7 @@ DB 升级和真实产品回归证据。
 
 **操作**：
 
-1. 删除 `apps/web/src/features/auto-shot/services/autoShotService.ts`。
+1. 删除 `apps/webapp/src/features/auto-shot/services/autoShotService.ts`。
 2. 删除仅服务该旧算法、经引用审计确认无其他消费者的 helper、tests 和 fixtures。
 3. 删除旧 `confidence/cursorFrame/durationFrames/cuts` 类型、分支和 UI 映射残留。
 4. 清理无效 imports、scripts 和文档，不删除通用 Canvas/视频能力。
@@ -2257,7 +2257,7 @@ DB 升级和真实产品回归证据。
 
 **禁止**：删除项目/镜头/缩略图等仍在使用的通用服务、保留隐藏 fallback、加入临时兼容 adapter。
 
-**完成记录（2026-08-29）**：已删除 `apps/web/src/features/auto-shot/services/autoShotService.ts`、
+**完成记录（2026-08-29）**：已删除 `apps/webapp/src/features/auto-shot/services/autoShotService.ts`、
 旧 `AutoShotRunRecord` 及其 project repository 读写方法，移除仅依赖旧服务的基线 verification 与
 `evaluate:auto-shot` 脚本入口；浏览器矩阵改为直接验证 Scene Engine 媒体/Worker 链路，历史 Phase 0
 评分文档保留为不可执行的基线记录。生产源码与测试中对旧 service、旧 record、旧 repository 方法和
@@ -2363,7 +2363,7 @@ checksum 复核和满足 8.1 数量门槛的 search/holdout，
 因此本任务保持未完成，不能进入 12.3C 生产晋升。
 
 **数据集记录（2026-08-30）**：已将上述三份有效 `aisen` search 标注冻结为
-`apps/web/test/fixtures/auto-shot/calibration-search-2026-08-30.json`，共 3 个视频、66 个
+`apps/webapp/test/fixtures/auto-shot/calibration-search-2026-08-30.json`，共 3 个视频、66 个
 confirmed hard-cut；历史导出未纳入。`scene-calibration pack` 只写入相对媒体路径和标注 JSON，
 不会把视频本体或本地绝对路径提交到仓库。`validate --media-root .` 已按每条媒体身份声明的
 `sha256-file-v1`/`sha256-chunk-manifest-4m-v1` 算法复核当前本地视频，结构、身份与 checksum 均通过；
@@ -2464,7 +2464,7 @@ preset 不进入产品性能结论。
 
 #### [x] Task 12.6A：引入 Zustand 并建立研究型 feature 设置控制器
 
-**前置条件**：Task 12.3A 通过；先检查 `apps/web/package.json`，确认尚无现有
+**前置条件**：Task 12.3A 通过；先检查 `apps/webapp/package.json`，确认尚无现有
 状态库可满足同一职责，再用 pnpm 为 Web workspace 安装并锁定 Zustand。
 
 **操作**：

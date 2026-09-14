@@ -1,8 +1,8 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { validateStructureMembership } from "../../../apps/web/src/features/group/services/structureValidation.ts"
-import { reconcileShotGroups } from "../../../apps/web/src/features/group/services/reconcileShotGroups.ts"
-import type { ShotGroupRecord } from "../../../apps/web/src/features/group/types.ts"
+import { validateStructureMembership } from "../../../apps/webapp/src/features/group/services/structureValidation.ts"
+import { reconcileShotGroups } from "../../../apps/webapp/src/features/group/services/reconcileShotGroups.ts"
+import type { ShotGroupRecord } from "../../../apps/webapp/src/features/group/types.ts"
 
 const baseGroup = (kind: ShotGroupRecord["kind"], shotIds: string[], id = `${kind}-1`): ShotGroupRecord => ({ id, projectId: "p1", kind, title: id, summary: "", shotIds, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" })
 

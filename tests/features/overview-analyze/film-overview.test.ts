@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import deriveFilmOverview from "../../../apps/web/src/features/overview/services/deriveFilmOverview.ts"
+import deriveFilmOverview from "../../../apps/webapp/src/features/overview/services/deriveFilmOverview.ts"
 
 const shot = (id: string, start: number, duration: number) => ({ id, start, duration, type: "", motion: "", color: "" })
 

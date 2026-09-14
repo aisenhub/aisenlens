@@ -23,12 +23,12 @@ playwright-report/
 !packages/scene-engine/dist/wasm-simd/scene-engine-simd.wasm
 
 # Keep browser test code in Git; ignore only large local video fixtures.
-apps/web/test/*.mov
-apps/web/test/*.mp4
-apps/web/test/*.webm
-apps/web/test/fixtures/auto-shot/*.mov
-apps/web/test/fixtures/auto-shot/*.mp4
-apps/web/test/fixtures/auto-shot/*.webm
+apps/webapp/test/*.mov
+apps/webapp/test/*.mp4
+apps/webapp/test/*.webm
+apps/webapp/test/fixtures/auto-shot/*.mov
+apps/webapp/test/fixtures/auto-shot/*.mp4
+apps/webapp/test/fixtures/auto-shot/*.webm
 apps/*/dist/
 apps/*/release/
 apps/*/node_modules/
@@ -40,7 +40,7 @@ apps/desktop/.webpack/
 .env.*
 !.env.example
 # Vite's web application reads its local settings from this file.
-apps/web/.env.local
+apps/webapp/.env.local
 .vercel/
 
 # Local tool caches and logs

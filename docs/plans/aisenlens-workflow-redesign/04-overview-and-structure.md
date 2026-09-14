@@ -12,19 +12,19 @@
 
 ## Current Files
 
-- `apps/web/src/features/group/{types.ts,services/groupService.ts,services/reconcileShotGroups.ts,components/ShotGroupPanel.tsx,components/ShotGroupInspector.tsx}`
-- `apps/web/src/features/editor/components/{EditorTimeline,ShotList}.tsx`
-- `apps/web/src/features/timeline/hooks/{useTimelineViewport,useTimelineTrackPreferences}.ts`、`components/{TimelineRuler,TimelineTrack,TimelineTrackHeader}.tsx`
-- `apps/web/src/features/annotation/{types.ts,services/annotationService.ts}`
-- `apps/web/src/features/video/components/{AudioWaveform,FrameThumbnailStrip}.tsx`、`services/frameThumbnailService.ts`
-- `apps/web/src/features/shot/types.ts`、`features/project/services/screenshotService.ts`
-- P02项目session与P03workflow页面（都在apps/web/src/features）。
+- `apps/webapp/src/features/group/{types.ts,services/groupService.ts,services/reconcileShotGroups.ts,components/ShotGroupPanel.tsx,components/ShotGroupInspector.tsx}`
+- `apps/webapp/src/features/editor/components/{EditorTimeline,ShotList}.tsx`
+- `apps/webapp/src/features/timeline/hooks/{useTimelineViewport,useTimelineTrackPreferences}.ts`、`components/{TimelineRuler,TimelineTrack,TimelineTrackHeader}.tsx`
+- `apps/webapp/src/features/annotation/{types.ts,services/annotationService.ts}`
+- `apps/webapp/src/features/video/components/{AudioWaveform,FrameThumbnailStrip}.tsx`、`services/frameThumbnailService.ts`
+- `apps/webapp/src/features/shot/types.ts`、`features/project/services/screenshotService.ts`
+- P02项目session与P03workflow页面（都在apps/webapp/src/features）。
 
 ## New Files
 
-- `apps/web/src/features/overview/components/{OverviewView,FilmMap,StructureView,FilmFacts}.tsx`
-- `apps/web/src/features/overview/services/deriveFilmOverview.ts`：纯函数，无网络/DB。
-- `apps/web/src/features/group/components/SceneBoard.tsx`、`hooks/useSceneNavigation.ts`
+- `apps/webapp/src/features/overview/components/{OverviewView,FilmMap,StructureView,FilmFacts}.tsx`
+- `apps/webapp/src/features/overview/services/deriveFilmOverview.ts`：纯函数，无网络/DB。
+- `apps/webapp/src/features/group/components/SceneBoard.tsx`、`hooks/useSceneNavigation.ts`
 - `tests/features/workflow/{film-overview.test.ts,structure.browser.test.js}`
 
 ## Data Changes

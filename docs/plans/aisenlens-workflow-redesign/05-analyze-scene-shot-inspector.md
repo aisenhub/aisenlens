@@ -12,25 +12,25 @@ Analyze建立Scenes/Shots/Sound三个子视图；ShotList升级按需全片Brows
 
 ## Current Files
 
-- `apps/web/src/features/editor/components/{EditorWorkspace,ShotList,VideoPreviewCanvas,VideoPlaybackControls,EditorTimeline,FrameCapture,AnalysisFieldInput,AnalysisDimensionCard}.tsx`
-- `apps/web/src/features/editor/constants/editorData.ts`、`shortcuts/{definitions,useEditorShortcuts}.ts`
-- `apps/web/src/features/shot/{types.ts,services/shotSearchService.ts,components/ShotScreenshotGallery.tsx}`
-- `apps/web/src/features/template/{types.ts,services/templateValidation.ts,components/TemplateEditorModal.tsx}`
-- `apps/web/src/features/group/components/ShotGroupInspector.tsx`及P04 `SceneBoard.tsx`
-- `apps/web/src/features/project/services/screenshotService.ts`、`features/video/services/{frameThumbnailService,videoOverlayCanvasRenderer}.ts`
-- `apps/web/src/features/composition-overlay/`、`features/content-overlay/`：现有types/components/renderer。
-- `apps/web/src/features/annotation/components/AnnotationMarkerPanel.tsx`
-- `apps/web/src/features/media/components/{AudioTrackPanel,AudioTimelineTrack}.tsx`、`hooks/useMultiTrackAudioPreview.ts`、`services/{audioTrackProjectService,audioMixService}.ts`
-- `apps/web/src/features/export/components/{ReportExportDialog,VideoExportDialog}.tsx`、`services/{reportExportService,videoExportService,videoExportBoundary}.ts`
+- `apps/webapp/src/features/editor/components/{EditorWorkspace,ShotList,VideoPreviewCanvas,VideoPlaybackControls,EditorTimeline,FrameCapture,AnalysisFieldInput,AnalysisDimensionCard}.tsx`
+- `apps/webapp/src/features/editor/constants/editorData.ts`、`shortcuts/{definitions,useEditorShortcuts}.ts`
+- `apps/webapp/src/features/shot/{types.ts,services/shotSearchService.ts,components/ShotScreenshotGallery.tsx}`
+- `apps/webapp/src/features/template/{types.ts,services/templateValidation.ts,components/TemplateEditorModal.tsx}`
+- `apps/webapp/src/features/group/components/ShotGroupInspector.tsx`及P04 `SceneBoard.tsx`
+- `apps/webapp/src/features/project/services/screenshotService.ts`、`features/video/services/{frameThumbnailService,videoOverlayCanvasRenderer}.ts`
+- `apps/webapp/src/features/composition-overlay/`、`features/content-overlay/`：现有types/components/renderer。
+- `apps/webapp/src/features/annotation/components/AnnotationMarkerPanel.tsx`
+- `apps/webapp/src/features/media/components/{AudioTrackPanel,AudioTimelineTrack}.tsx`、`hooks/useMultiTrackAudioPreview.ts`、`services/{audioTrackProjectService,audioMixService}.ts`
+- `apps/webapp/src/features/export/components/{ReportExportDialog,VideoExportDialog}.tsx`、`services/{reportExportService,videoExportService,videoExportBoundary}.ts`
 
 ## New Files
 
-- `apps/web/src/features/analysis/components/{AnalyzeWorkspace,ContextInspector,ShotInspector,SceneInspector,InspectorSection}.tsx`
-- `apps/web/src/features/analysis/services/shotInspectorViewModel.ts`
-- `apps/web/src/features/shot/components/{ShotBrowserView,SceneShotStrip}.tsx`
-- `apps/web/src/features/video/components/{VideoViewer,ViewerTools}.tsx`
-- `apps/web/src/features/timeline/components/AnalysisTimeline.tsx`：薄组合层，仍调用EditorTimeline。
-- `apps/web/src/features/media/components/SoundWorkspace.tsx`
+- `apps/webapp/src/features/analysis/components/{AnalyzeWorkspace,ContextInspector,ShotInspector,SceneInspector,InspectorSection}.tsx`
+- `apps/webapp/src/features/analysis/services/shotInspectorViewModel.ts`
+- `apps/webapp/src/features/shot/components/{ShotBrowserView,SceneShotStrip}.tsx`
+- `apps/webapp/src/features/video/components/{VideoViewer,ViewerTools}.tsx`
+- `apps/webapp/src/features/timeline/components/AnalysisTimeline.tsx`：薄组合层，仍调用EditorTimeline。
+- `apps/webapp/src/features/media/components/SoundWorkspace.tsx`
 - `tests/features/workflow/{shot-inspector.test.ts,analyze.browser.test.js,sound.browser.test.js}`
 
 ## Data Changes
@@ -100,7 +100,7 @@ Overview点Scene → 看Scene摘要和成员Strip → 点Shot → Evidence核对
 
 ## Tests
 
-运行 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm test:editor-history`、`corepack pnpm test:retain-shot-map`、`corepack pnpm --filter @aisenlens/web test:video-export-boundary`、`corepack pnpm build`。复用`apps/web/test/video-export.browser.test.js`进行可编码环境下导出；超时需记录与修复，不声称通过。
+运行 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm test:editor-history`、`corepack pnpm test:retain-shot-map`、`corepack pnpm --filter @aisenlens/webapp test:video-export-boundary`、`corepack pnpm build`。复用`apps/webapp/test/video-export.browser.test.js`进行可编码环境下导出；超时需记录与修复，不声称通过。
 
 新增Inspector映射/值类型/未知字段保留测试、中文IME切对象行为、播放中选择不改变编辑目标、只读Learning无写入；browser验证截图与overlay和真实音轨调度。不要仅测试新增类名或ViewModel输出与自身实现同构的快照。
 

@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { createCalibrationDraft, createDetectionCalibrationDraft, shouldSeedCalibrationFromDetection } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
+import { createCalibrationDraft, createDetectionCalibrationDraft, shouldSeedCalibrationFromDetection } from "../../../apps/webapp/src/features/shot-calibration/services/calibrationDraftService.ts"
 
 const identity = {
   identitySchema: "aisenlens-auto-shot-media-identity" as const,

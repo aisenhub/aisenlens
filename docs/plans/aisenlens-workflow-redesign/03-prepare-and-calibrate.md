@@ -12,22 +12,22 @@
 
 ## Current Files
 
-- `apps/web/src/features/project/components/ProjectMediaGate.tsx`、`services/mediaService.ts`、`types.ts`
-- `apps/web/src/features/editor/components/EditorWorkspace.tsx` 中素材面板、startAutoShotDetection、previewAutoShotCuts、applyAutoShotCuts、应用确认Dialog、研究入口。
-- `apps/web/src/features/auto-shot/components/{AutoShotControlPanel,PresetSelector,BasicSettings,RunStatus,ResultReview,AdvancedSettings}.tsx`
-- `apps/web/src/features/auto-shot/{types,applyAutoShotCandidates,autoShotTaskService,taskState}.ts`、`hooks/{useAutoShotTask,useAutoShotControl}.ts`
-- `apps/web/src/features/scene-calibration/{types.ts,components/CalibrationWorkbench.tsx,services/calibrationService.ts}`
-- `apps/web/src/features/template/components/TemplateEditorModal.tsx`、`services/{templateService,templateValidation}.ts`
-- `apps/web/src/features/project/services/{projectRepository,projectRecoveryService}.ts`
-- `apps/web/src/features/shot/services/{manualShotService,shotBoundaryService}.ts`
-- P02 `features/editor/session/`与stores/hooks/services（前缀均为apps/web/src）。
+- `apps/webapp/src/features/project/components/ProjectMediaGate.tsx`、`services/mediaService.ts`、`types.ts`
+- `apps/webapp/src/features/editor/components/EditorWorkspace.tsx` 中素材面板、startAutoShotDetection、previewAutoShotCuts、applyAutoShotCuts、应用确认Dialog、研究入口。
+- `apps/webapp/src/features/auto-shot/components/{AutoShotControlPanel,PresetSelector,BasicSettings,RunStatus,ResultReview,AdvancedSettings}.tsx`
+- `apps/webapp/src/features/auto-shot/{types,applyAutoShotCandidates,autoShotTaskService,taskState}.ts`、`hooks/{useAutoShotTask,useAutoShotControl}.ts`
+- `apps/webapp/src/features/scene-calibration/{types.ts,components/CalibrationWorkbench.tsx,services/calibrationService.ts}`
+- `apps/webapp/src/features/template/components/TemplateEditorModal.tsx`、`services/{templateService,templateValidation}.ts`
+- `apps/webapp/src/features/project/services/{projectRepository,projectRecoveryService}.ts`
+- `apps/webapp/src/features/shot/services/{manualShotService,shotBoundaryService}.ts`
+- P02 `features/editor/session/`与stores/hooks/services（前缀均为apps/webapp/src）。
 
 ## New Files
 
-- `apps/web/src/features/workflow/components/{PrepareView,CalibrateView,ProjectSettingsPanel}.tsx`
-- `apps/web/src/features/project/components/MediaStatusPanel.tsx`
-- `apps/web/src/features/auto-shot/components/{CandidateReviewQueue,CandidateEvidencePanel,AutoShotApplyDialog}.tsx`
-- `apps/web/src/features/auto-shot/services/autoShotApplyService.ts`：协调快照/事务/状态，不重新检测。
+- `apps/webapp/src/features/workflow/components/{PrepareView,CalibrateView,ProjectSettingsPanel}.tsx`
+- `apps/webapp/src/features/project/components/MediaStatusPanel.tsx`
+- `apps/webapp/src/features/auto-shot/components/{CandidateReviewQueue,CandidateEvidencePanel,AutoShotApplyDialog}.tsx`
+- `apps/webapp/src/features/auto-shot/services/autoShotApplyService.ts`：协调快照/事务/状态，不重新检测。
 - `tests/features/workflow/{prepare-calibrate.browser.test.js,auto-shot-apply-transaction.test.ts}`
 
 ## Data Changes
@@ -103,7 +103,7 @@ Prepare/Calibrate接入真实能力后才删除旧素材/分镜工具一级入�
 ## Tests
 
 运行 `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm test:auto-shot-contract`、`corepack pnpm test:auto-shot-config`、`corepack pnpm test:auto-shot-settings-store`、`corepack pnpm test:scene-calibration`、`corepack pnpm build`。
-复用/调整 `apps/web/test/auto-shot-apply-candidates.test.ts`、`auto-shot-task-service.test.ts`、`auto-shot-hook-lifecycle.verification.ts`；新增browser事务测试覆盖任意写入失败全回滚/旧预览失效/截图引用保留。不得通过重写检测fixture或降低算法回归阈值让UI测试通过。
+复用/调整 `apps/webapp/test/auto-shot-apply-candidates.test.ts`、`auto-shot-task-service.test.ts`、`auto-shot-hook-lifecycle.verification.ts`；新增browser事务测试覆盖任意写入失败全回滚/旧预览失效/截图引用保留。不得通过重写检测fixture或降低算法回归阈值让UI测试通过。
 
 ## Manual QA
 

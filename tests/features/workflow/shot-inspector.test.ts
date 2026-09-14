@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import createShotInspectorViewModel from "../../../apps/web/src/features/analysis/services/shotInspectorViewModel.ts"
+import createShotInspectorViewModel from "../../../apps/webapp/src/features/analysis/services/shotInspectorViewModel.ts"
 
 test("keeps user notes and unknown fields while exposing half-open range", () => {
   const model = createShotInspectorViewModel({

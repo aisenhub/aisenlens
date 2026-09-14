@@ -27,8 +27,8 @@
 
 公共方案研究后的本地参考顺序及结论：
 
-1. OpenReel：`reference-projects/opensource-openreel/openreel-video-main/apps/web/src/components/editor/EditorInterface.tsx`、`InspectorPanel.tsx`、`apps/web/src/stores/project/marker-slice.ts`。确认 Viewer/Timeline/Inspector 分区、项目/UI/引擎职责分离、标记由 action 更新。采纳生命周期独立于面板与对象 Inspector；不复制 AI Chat、云分析或多轨剪辑产品结构。
-2. OpenCut：`reference-projects/opensource-opencut/opencut-classic-main/apps/web/src/components/editor/scenes-view.tsx`、`core/managers/scenes-manager.ts`、`timeline/hooks/use-timeline-zoom.ts`。确认场景视图调用 manager/command，缩放由 controller 管理。其 scene 是编辑序列，不等于本产品的叙事场景；只采纳视图/命令分离、定位/缩放状态边界，不复制 Scene Domain。
+1. OpenReel：`reference-projects/opensource-openreel/openreel-video-main/apps/webapp/src/components/editor/EditorInterface.tsx`、`InspectorPanel.tsx`、`apps/webapp/src/stores/project/marker-slice.ts`。确认 Viewer/Timeline/Inspector 分区、项目/UI/引擎职责分离、标记由 action 更新。采纳生命周期独立于面板与对象 Inspector；不复制 AI Chat、云分析或多轨剪辑产品结构。
+2. OpenCut：`reference-projects/opensource-opencut/opencut-classic-main/apps/webapp/src/components/editor/scenes-view.tsx`、`core/managers/scenes-manager.ts`、`timeline/hooks/use-timeline-zoom.ts`。确认场景视图调用 manager/command，缩放由 controller 管理。其 scene 是编辑序列，不等于本产品的叙事场景；只采纳视图/命令分离、定位/缩放状态边界，不复制 Scene Domain。
 3. 最终决定维持初案。Shell/校准/结构/深拆/Sound 的新视图均基于上述相关模式；Learn 仅聚合本项目已有笔记，不引入知识 Domain。正式 Pattern、ASR 等后续模块须另走公共方案 → AisenLens 提案 → OpenReel → OpenCut 研究顺序。
 
 ## 1. Executive Summary
@@ -41,7 +41,7 @@
 
 ## 2. Current-State Architecture
 
-下表路径相对 `apps/web/src/`。事实来自源代码静态审计；没有在用户本地项目上执行破坏性验证，也没有把既有审计的运行结果当作本轮测试通过。
+下表路径相对 `apps/webapp/src/`。事实来自源代码静态审计；没有在用户本地项目上执行破坏性验证，也没有把既有审计的运行结果当作本轮测试通过。
 
 | 区域 | 文件与当前职责 | 判定 |
 |---|---|---|
@@ -68,7 +68,7 @@
 | Recovery / History | `projectRecoveryService.ts`、`hooks/useEditorHistory.ts`、`editorHistoryState.ts` | 30 秒周期快照读取已保存状态；history 默认上限 100；快照包含 project/shots/groups/markers/template，不含任务和截图 Blob 的独立拷贝 |
 | Theme | `index.css`、`types/theme.ts`、`app/App.tsx` | dark/light，两套 token；浅色当前偏暖灰；有 text-white/bg-white 覆写；无 System；accent 与 shadcn accent 语义不相同 |
 | Responsive | `index.css` 的 1100px/640px 规则，Workspace mobilePanel | 已有窄屏工具/分镜/分析浮层，不可照旧报告称完全不适配；新 Shell 需替换固定 64px 左栏定位 |
-| Tests / Docs | `apps/web/test/`、`scripts/verify-web.mjs`、`docs/WEB_AUDIT_2026-09-07.md`、`docs/DEVELOPMENT_TODO.md`、`docs/auto-shot/` | Node 核心测试和定向 browser harness 已有；根 `tests/` 未存在；尚无覆盖 Workflow 的端到端套件 |
+| Tests / Docs | `apps/webapp/test/`、`scripts/verify-web.mjs`、`docs/WEB_AUDIT_2026-09-07.md`、`docs/DEVELOPMENT_TODO.md`、`docs/auto-shot/` | Node 核心测试和定向 browser harness 已有；根 `tests/` 未存在；尚无覆盖 Workflow 的端到端套件 |
 
 ### 必须纠正的旧描述与当前缺口
 
@@ -165,7 +165,7 @@ Facts 的确定项只有区间、时长等真实计算数据。现有技术字�
 
 ## 6. Component Architecture
 
-新 UI 代码在 `apps/web/src/features/workflow/`（导航/阶段组合）、`features/overview/`（派生总览）、`features/analysis/`（Inspector/深拆组合）、`features/learn/`（笔记聚合）。Scene 的业务仍在 `features/group/`，校准的 candidate 业务仍在 `features/auto-shot/`。页面不直接访问仓储。
+新 UI 代码在 `apps/webapp/src/features/workflow/`（导航/阶段组合）、`features/overview/`（派生总览）、`features/analysis/`（Inspector/深拆组合）、`features/learn/`（笔记聚合）。Scene 的业务仍在 `features/group/`，校准的 candidate 业务仍在 `features/auto-shot/`。页面不直接访问仓储。
 
 项目作用域会话位于现有 `features/editor/`：Provider 只创建/注入 store；runtime 挂载专注 hooks；store 保存必要编辑草稿与 revision；commands 调用既有业务函数；services/仓储负责 I/O。不创建一个同时容纳所有 handlers、订阅和 JSX 的 `useEverything`。
 
@@ -270,7 +270,7 @@ P03 要求 task.appliedAt 与正式编辑状态一次提交到现有 stores；�
 
 规划期间未执行生产测试；本轮没有组件修改，build 不用来冒充文档验收。实施每阶段运行 `corepack pnpm build`，逻辑改动另外运行 `corepack pnpm typecheck`、`corepack pnpm lint` 和对应测试；最终 `corepack pnpm verify:web`。现有 browser 导出测试在上次审计曾超时，实施时必须复核，不把超时算通过。
 
-现有测试保留在 `apps/web/test/`，本轮新增测试遵循根 AGENTS 放 `tests/features/workflow/`，只在有实际测试文件后增加 runner；使用现有 Node test 风格和浏览器 harness，不因计划先安装框架。新 runner 尚不存在，不列为当前可执行命令。
+现有测试保留在 `apps/webapp/test/`，本轮新增测试遵循根 AGENTS 放 `tests/features/workflow/`，只在有实际测试文件后增加 runner；使用现有 Node test 风格和浏览器 harness，不因计划先安装框架。新 runner 尚不存在，不列为当前可执行命令。
 
 | 编号 | 场景 | 必须验证的结果 | 主阶段 |
 |---|---|---|---|

@@ -16,7 +16,7 @@
 
 ## 2. 文件和职责
 
-现有：`features/group/{types.ts,services/groupService.ts,services/reconcileShotGroups.ts}`、project types/repository、editor persistence/history、analysis viewModel、template types、shot types。完整前缀均 `apps/web/src/`。
+现有：`features/group/{types.ts,services/groupService.ts,services/reconcileShotGroups.ts}`、project types/repository、editor persistence/history、analysis viewModel、template types、shot types。完整前缀均 `apps/webapp/src/`。
 
 建议新增（先检索同等职责）：
 

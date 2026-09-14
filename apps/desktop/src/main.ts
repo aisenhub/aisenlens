@@ -20,8 +20,8 @@ const createMainWindow = () => {
   });
 
   const rendererEntry = app.isPackaged
-    ? path.join(process.resourcesPath, "web", "index.html")
-    : path.resolve(__dirname, "../../web/dist/index.html");
+    ? path.join(process.resourcesPath, "webapp", "index.html")
+    : path.resolve(__dirname, "../../webapp/dist/index.html");
 
   void mainWindow.loadFile(rendererEntry);
 };

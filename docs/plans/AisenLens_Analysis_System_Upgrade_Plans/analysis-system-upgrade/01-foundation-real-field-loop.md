@@ -14,10 +14,10 @@
 记录 cwd、Git status/branch/HEAD/remote、已有改动归属和 package scripts。
 
 ```powershell
-rg -n "ProjectTemplateSnapshot|TemplateField|normalizeShotAnalysisFields|normalizeProjectTemplate" apps/web/src tests
-rg -n "saveProjectEditorState|saveProjectTemplate|expectedUpdatedAt|template-write" apps/web/src tests
-rg -n "EditorHistorySnapshot|saveDataSignature|setAnalysisField|TemplateEditorModal|DIM_REFS" apps/web/src
-rg -n "analysisFields|shotDims|confirmed|createProjectRecoverySnapshot|restoreProjectRecoverySnapshot" apps/web/src tests
+rg -n "ProjectTemplateSnapshot|TemplateField|normalizeShotAnalysisFields|normalizeProjectTemplate" apps/webapp/src tests
+rg -n "saveProjectEditorState|saveProjectTemplate|expectedUpdatedAt|template-write" apps/webapp/src tests
+rg -n "EditorHistorySnapshot|saveDataSignature|setAnalysisField|TemplateEditorModal|DIM_REFS" apps/webapp/src
+rg -n "analysisFields|shotDims|confirmed|createProjectRecoverySnapshot|restoreProjectRecoverySnapshot" apps/webapp/src tests
 ```
 
 输出实际消费者清单，包含 bootstrap、Overlay、Export、Learn、Recovery、shot status 与校准应用。不要根据文件名或 import 猜可达入口。

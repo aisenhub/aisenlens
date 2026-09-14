@@ -12,18 +12,18 @@
 
 ## Current Files
 
-- `apps/web/src/features/shot/types.ts`：description/notes/analysisFields。
-- `apps/web/src/features/group/types.ts`：title/summary/shotIds。
-- `apps/web/src/features/editor/hooks/useEditorPersistence.ts`：notes映射。
+- `apps/webapp/src/features/shot/types.ts`：description/notes/analysisFields。
+- `apps/webapp/src/features/group/types.ts`：title/summary/shotIds。
+- `apps/webapp/src/features/editor/hooks/useEditorPersistence.ts`：notes映射。
 - P02 `features/editor/stores/`和selection actions，P05 `features/analysis/components/ShotInspector.tsx`、`SceneInspector.tsx`。
-- `apps/web/src/features/workflow/components/{WorkflowSidebar,ProjectWorkspaceShell}.tsx`、`hooks/useWorkflowNavigation.ts`。
-- `apps/web/src/components/ui/{button,tabs,input,dialog}.tsx`；不安装卡片或知识库组件。
+- `apps/webapp/src/features/workflow/components/{WorkflowSidebar,ProjectWorkspaceShell}.tsx`、`hooks/useWorkflowNavigation.ts`。
+- `apps/webapp/src/components/ui/{button,tabs,input,dialog}.tsx`；不安装卡片或知识库组件。
 
 ## New Files
 
-- `apps/web/src/features/learn/components/{LearnView,LearningSourceList,KnowledgeCapabilityState}.tsx`
-- `apps/web/src/features/learn/services/deriveLearningSources.ts`
-- `apps/web/src/features/workflow/components/CreateView.tsx`
+- `apps/webapp/src/features/learn/components/{LearnView,LearningSourceList,KnowledgeCapabilityState}.tsx`
+- `apps/webapp/src/features/learn/services/deriveLearningSources.ts`
+- `apps/webapp/src/features/workflow/components/CreateView.tsx`
 - `tests/features/workflow/{learning-sources.test.ts,learn.browser.test.js}`
 
 ## Data Changes

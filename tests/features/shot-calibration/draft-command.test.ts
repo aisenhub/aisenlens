@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { createCalibrationDraft, isTransientFullFilmPlaceholder } from "../../../apps/web/src/features/shot-calibration/services/calibrationDraftService.ts"
-import { applyCalibrationCommand, CalibrationCommandError } from "../../../apps/web/src/features/shot-calibration/services/calibrationCommandService.ts"
-import { addPlaybackCoverage, coverageFrames, mergeCoverageRanges } from "../../../apps/web/src/features/shot-calibration/services/reviewCoverageService.ts"
+import { createCalibrationDraft, isTransientFullFilmPlaceholder } from "../../../apps/webapp/src/features/shot-calibration/services/calibrationDraftService.ts"
+import { applyCalibrationCommand, CalibrationCommandError } from "../../../apps/webapp/src/features/shot-calibration/services/calibrationCommandService.ts"
+import { addPlaybackCoverage, coverageFrames, mergeCoverageRanges } from "../../../apps/webapp/src/features/shot-calibration/services/reviewCoverageService.ts"
 
 const identity = {
   identitySchema: "aisenlens-auto-shot-media-identity" as const,

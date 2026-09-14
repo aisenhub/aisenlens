@@ -32,7 +32,7 @@
 
 | 证据 | 当前事实 | 本次处理 |
 | --- | --- | --- |
-| `apps/web/src/features/workflow/components/CalibrateView.tsx` | 候选保留/排除 + 数字证据 + 应用入口，无播放器与补切接入 | 替换为真实校准工作区的组合层 |
+| `apps/webapp/src/features/workflow/components/CalibrateView.tsx` | 候选保留/排除 + 数字证据 + 应用入口，无播放器与补切接入 | 替换为真实校准工作区的组合层 |
 | `features/auto-shot/components/{CandidateReviewQueue,CandidateEvidencePanel}.tsx` | 候选区间、score/threshold 文字 | 普通校准入口改为镜头/问题导航，真实检测详情保留按需查看 |
 | `features/scene-calibration/components/CalibrationWorkbench.tsx` | 真值标定，不改正式镜头 | 不移植其真值实体充当产品草稿 |
 | `features/shot/services/{manualShotService,shotBoundaryService}.ts` | 整数帧切分、共享边界移动、相邻合并 | 复用/抽取纯逻辑，不复制算法 |
@@ -42,7 +42,7 @@
 | `features/video/services/frameThumbnailService.ts` | 已用 Mediabunny CanvasSink；以 frame/fps 取时间 | 复用解码生命周期，同时验证真实样本对应关系 |
 | `EditorWorkspace.applyAutoShotCuts` | 当前先创建快照、保存 task，再 setShots/setGroups 等 | 修复正式状态与任务非同事务、预览过期、autosave 竞争 |
 
-除首行外，表中 `features/...` 均位于 `apps/web/src/`。当前旧 P03 文档标记已实施，但检索未发现其规划的 `applyProjectAutoShotState` 实现，不能继承“事务已通过”的结论。
+除首行外，表中 `features/...` 均位于 `apps/webapp/src/`。当前旧 P03 文档标记已实施，但检索未发现其规划的 `applyProjectAutoShotState` 实现，不能继承“事务已通过”的结论。
 
 本计划在校准范围取代 `docs/plans/aisenlens-workflow-redesign/03-prepare-and-calibrate.md` 以下旧约束：仅保留/排除、手工修改只能在正式 shots、不得新增产品复核 schema。本次仍保留原始候选不可变、研究隔离、媒体身份验证、快照和本地优先。旧 P03 的其他模块不重做。
 

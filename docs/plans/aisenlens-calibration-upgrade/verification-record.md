@@ -6,7 +6,7 @@
 
 ## 本轮实际交付
 
-- 新增 `apps/web/src/features/shot-calibration/`：独立校准草稿、稳定区段身份、补切/移点/合并/待回看/复核范围命令、Zustand vanilla store、串行历史栈和会话加载保存。
+- 新增 `apps/webapp/src/features/shot-calibration/`：独立校准草稿、稳定区段身份、补切/移点/合并/待回看/复核范围命令、Zustand vanilla store、串行历史栈和会话加载保存。
 - IndexedDB 从 15 升级到 16，新增 `shot-calibration-drafts`，按 `projectId + mediaIdentityDigest` 隔离；项目删除会清理草稿。
 - `CalibrateView` 改为播放器中心工作区，复用既有 `VideoPreviewCanvas`、`VideoPlaybackControls` 和 `FrameThumbnailStrip`；核心动作包括当前帧补切、边界一帧调整、合并、待回看、显式复核、撤销/重做和应用摘要。
 - `projectRepository.applyCalibrationDraft` 在一个 readwrite transaction 中复验项目/草稿版本，并写入完整 editor state、task 应用事实和草稿回执；应用前创建 recovery snapshot。
@@ -43,7 +43,7 @@
 | `corepack pnpm test:editor-history` | 通过，4 tests |
 | `corepack pnpm test:retain-shot-map` | 通过，1 test |
 | `corepack pnpm build` | 通过；仍有既有大 chunk warning（最大约 563 kB） |
-| `node E:/Projects/Aisenlens/.agents/skills/impeccable/scripts/detect.mjs --json apps/web/src/features/workflow/components/CalibrateView.tsx apps/web/src/features/shot-calibration/components/CalibrationWorkspace.tsx apps/web/src/features/editor/components/EditorWorkspace.tsx` | 结果 `[]` |
+| `node E:/Projects/Aisenlens/.agents/skills/impeccable/scripts/detect.mjs --json apps/webapp/src/features/workflow/components/CalibrateView.tsx apps/webapp/src/features/shot-calibration/components/CalibrationWorkspace.tsx apps/webapp/src/features/editor/components/EditorWorkspace.tsx` | 结果 `[]` |
 
 测试过程产生的 Node `MODULE_TYPELESS_PACKAGE_JSON` warning 是仓库当前模块配置 warning，不影响退出码。
 

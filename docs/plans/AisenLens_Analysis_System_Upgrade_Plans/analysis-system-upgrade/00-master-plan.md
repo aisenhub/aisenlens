@@ -26,7 +26,7 @@
 
 前次只读审查 HEAD：eb67acbf2dab9768f24e227a36b655a7753f29c1；不是执行时 HEAD。工作区有正在变化的产品源码修改，后续 agent 必须重查归属，不覆盖或提交无关改动。
 
-| 代码位置（apps/web/src/ 下） | 审查发现 | 实施要求 |
+| 代码位置（apps/webapp/src/ 下） | 审查发现 | 实施要求 |
 | --- | --- | --- |
 | features/template/types.ts | 平面 fields 与 raw value | 唯一 definitions/usages/entries 模型 |
 | features/template/services/templateValidation.ts | 已知无效 option/类型会清空 | 无损读取与新写校验分离 |

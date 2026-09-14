@@ -57,7 +57,7 @@
     {
       "id": "synthetic-color-sequence-v1",
       "enabled": true,
-      "path": "apps/web/test/fixtures/auto-shot/synthetic.webm",
+      "path": "apps/webapp/test/fixtures/auto-shot/synthetic.webm",
       "source": {
         "name": "AisenLens fixture generator",
         "url": "local://scripts/generate-auto-shot-fixture.mjs",
@@ -103,10 +103,10 @@
     {
       "id": "local-h264-smoke-v1",
       "enabled": true,
-      "path": "apps/web/test/test.mov",
+      "path": "apps/webapp/test/test.mov",
       "source": {
         "name": "local copied development fixture",
-        "url": "local://apps/web/test/test.mov",
+        "url": "local://apps/webapp/test/test.mov",
         "acquiredAt": "2026-08-27"
       },
       "license": "unknown-local-copy; verify before redistribution",

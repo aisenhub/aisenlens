@@ -18,9 +18,9 @@
     "build:wasm": "cmake --build build/wasm --config Release --parallel",
     "configure:wasm:simd": "emcmake cmake --fresh -S . -B build/wasm-simd -G \"MinGW Makefiles\" -DAISENSHOT_BUILD_WASM=ON -DAISENSHOT_WASM_SIMD=ON -DAISENSHOT_WASM_MODULE_NAME=scene-engine-simd -DAISENSHOT_WASM_OUTPUT_DIR=dist/wasm-simd -DBUILD_TESTING=OFF",
     "build:wasm:simd": "cmake --build build/wasm-simd --config Release --parallel",
-    "test:simd": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node --test build/ts/test/simd-parity.test.js",
-    "benchmark:simd": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node ../../scripts/benchmark-scene-engine-backends.mjs",
-    "typecheck": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json",
-    "test:contract": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node --test build/ts/test/**/*.test.js"
+    "test:simd": "node ../../apps/webapp/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node --test build/ts/test/simd-parity.test.js",
+    "benchmark:simd": "node ../../apps/webapp/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node ../../scripts/benchmark-scene-engine-backends.mjs",
+    "typecheck": "node ../../apps/webapp/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "test:contract": "node ../../apps/webapp/node_modules/typescript/bin/tsc -p tsconfig.json --noEmit false --outDir build/ts && node --test build/ts/test/**/*.test.js"
   }
 }

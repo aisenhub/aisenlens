@@ -22,7 +22,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 for (const [script] of commands) {
   const args = script.startsWith("root:")
     ? ["pnpm", "run", script.slice("root:".length)]
-    : ["pnpm", "--filter", "@aisenlens/web", "run", script];
+    : ["pnpm", "--filter", "@aisenlens/webapp", "run", script];
   const result = spawnSync(executable, args, {
     cwd: root,
     stdio: "inherit",

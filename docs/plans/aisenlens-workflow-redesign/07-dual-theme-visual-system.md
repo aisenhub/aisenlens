@@ -12,17 +12,17 @@
 
 ## Current Files
 
-- `apps/web/src/index.css`：当前暖灰light token、固定accent、text-white/bg-white覆写、timeline与responsive规则。
-- `apps/web/src/types/theme.ts`：目前仅dark/light。
-- `apps/web/src/app/App.tsx`：theme localStorage、html dataset、Toaster。
-- `apps/web/src/hooks/useLocalStorage.ts`、`components/layout/AppNavigation.tsx`、`features/editor/components/LiteSettingsModal.tsx`：偏好入口与类型使用者。
-- `apps/web/src/components/ui/{button,dialog,dropdown-menu,tooltip,tabs,input,textarea,checkbox,sonner}.tsx`
-- `apps/web/src/features/editor/components/{EditorTimeline,VideoPreviewCanvas,VideoPlaybackControls}.tsx`和timeline组件。
+- `apps/webapp/src/index.css`：当前暖灰light token、固定accent、text-white/bg-white覆写、timeline与responsive规则。
+- `apps/webapp/src/types/theme.ts`：目前仅dark/light。
+- `apps/webapp/src/app/App.tsx`：theme localStorage、html dataset、Toaster。
+- `apps/webapp/src/hooks/useLocalStorage.ts`、`components/layout/AppNavigation.tsx`、`features/editor/components/LiteSettingsModal.tsx`：偏好入口与类型使用者。
+- `apps/webapp/src/components/ui/{button,dialog,dropdown-menu,tooltip,tabs,input,textarea,checkbox,sonner}.tsx`
+- `apps/webapp/src/features/editor/components/{EditorTimeline,VideoPreviewCanvas,VideoPlaybackControls}.tsx`和timeline组件。
 - P01–06新增的workflow/overview/analysis/group/learn/media组合视图。
 
 ## New Files
 
-- `apps/web/src/hooks/useAppTheme.ts`：集中读取偏好并解析系统媒体查询。
+- `apps/webapp/src/hooks/useAppTheme.ts`：集中读取偏好并解析系统媒体查询。
 - `tests/features/workflow/{theme-preference.test.ts,dual-theme.browser.test.js}`
 
 如当前已有等效theme hook则扩展，避免重复。无需新增一份全局CSS；token继续集中在index.css。

@@ -7,8 +7,8 @@ AisenLens is a pnpm workspace with a single shared React/Vite renderer and platf
 ```text
 apps/
   web/       Shared React application and Vite build
-  desktop/   Electron shell that packages apps/web/dist
-  mobile/    Capacitor Android and iOS shells that sync apps/web/dist
+  desktop/   Electron shell that packages apps/webapp/dist
+  mobile/    Capacitor Android and iOS shells that sync apps/webapp/dist
 ```
 
 ## Development
@@ -26,16 +26,16 @@ corepack pnpm sync:mobile
 
 Use the pnpm version pinned in `package.json` through Corepack. AisenLens is
 local-first and does not require an account or cloud credentials; keep
-`apps/web/.env.example` as the empty local configuration template.
+`apps/webapp/.env.example` as the empty local configuration template.
 
 Use `pnpm open:android` or `pnpm open:ios` after syncing mobile assets. Android Studio is required for Android builds; Xcode on macOS is required for iOS builds.
 
 `scene-engine:verify:core` runs the native, baseline/SIMD WASM, TypeScript,
 contract, and parity checks without changing the normal Web build workflow.
 `scene-engine:verify:web-preview` runs the production Worker/WASM smoke at the
-non-root `/aisenlens/` path. It uses `apps/web/test/test.mov` by default; choose
+non-root `/aisenlens/` path. It uses `apps/webapp/test/test.mov` by default; choose
 another repository-local video with `AISENLENS_SCENE_FIXTURE`, for example
-`$env:AISENLENS_SCENE_FIXTURE='apps/web/test/test03.mov'; corepack pnpm scene-engine:verify:web-preview`.
+`$env:AISENLENS_SCENE_FIXTURE='apps/webapp/test/test03.mov'; corepack pnpm scene-engine:verify:web-preview`.
 Current feature validation scope is Web; Desktop and Mobile remain optional
 platform checks.
 
@@ -45,7 +45,7 @@ and the production build in one command.
 
 ## Deployment
 
-Vercel deploys the Web application from the repository root with `pnpm --filter @aisenlens/web build`. Keep the Vercel project Root Directory empty and use `apps/web/dist` as its output directory.
+Vercel deploys the Web application from the repository root with `pnpm --filter @aisenlens/webapp build`. Keep the Vercel project Root Directory empty and use `apps/webapp/dist` as its output directory.
 
 ## Documentation
 

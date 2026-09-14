@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "sync": "pnpm --filter @aisenlens/web build && cap sync",
+    "sync": "pnpm --filter @aisenlens/webapp build && cap sync",
     "add:android": "cap add android",
     "add:ios": "cap add ios",
     "open:android": "cap open android",

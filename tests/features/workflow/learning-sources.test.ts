@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import deriveLearningSources from "../../../apps/web/src/features/learn/services/deriveLearningSources.ts"
+import deriveLearningSources from "../../../apps/webapp/src/features/learn/services/deriveLearningSources.ts"
 
 test("derives only non-empty real notes and summaries with stable source identity", () => {
   const sources = deriveLearningSources({

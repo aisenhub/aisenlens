@@ -42,7 +42,7 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  apps/web:
+  apps/webapp:
     dependencies:
       '@aisenlens/scene-engine':
         specifier: workspace:*

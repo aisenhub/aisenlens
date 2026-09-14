@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { projectShotsIntoResearchRange, validateResearchRange } from "../../../apps/web/src/features/analysis/services/researchRangeService.ts"
+import { projectShotsIntoResearchRange, validateResearchRange } from "../../../apps/webapp/src/features/analysis/services/researchRangeService.ts"
 
 test("research ranges use integer microseconds and half-open overlap", () => {
   assert.equal(validateResearchRange({ startUs: 0, endUs: 1_000_000, mediaDurationUs: 2_000_000 }), null)

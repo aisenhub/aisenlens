@@ -6,10 +6,10 @@
 ## 1. 唯一性审计
 
 ```powershell
-rg -n "DIM_REFS|AnalysisDimensionCard|AnalysisFieldInput|TemplateEditorModal" apps/web/src tests
-rg -n "analysisFields|fieldDefinitions|fieldUsages|setAnalysisField" apps/web/src
-rg -n "saveProjectTemplate|saveProjectEditorState|expectedUpdatedAt" apps/web/src
-rg -n "AICandidate|EvidenceRef|focusFieldId|isComposing" apps/web/src tests
+rg -n "DIM_REFS|AnalysisDimensionCard|AnalysisFieldInput|TemplateEditorModal" apps/webapp/src tests
+rg -n "analysisFields|fieldDefinitions|fieldUsages|setAnalysisField" apps/webapp/src
+rg -n "saveProjectTemplate|saveProjectEditorState|expectedUpdatedAt" apps/webapp/src
+rg -n "AICandidate|EvidenceRef|focusFieldId|isComposing" apps/webapp/src tests
 ```
 
 证明：Registry 创作来源唯一、快照解释权威明确、一个 resolver/命令体系、一个可达 Profile editor、无 raw/envelope 双 writer、无模板直写旁路、Evidence 定义唯一、无生产 fixture、无第二 selection/currentShot store。

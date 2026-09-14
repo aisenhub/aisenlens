@@ -38,7 +38,7 @@
 
 | 当前文件/模块 | 已核实事实 | 目标差距 |
 | --- | --- | --- |
-| `apps/web/src/features/overview/components/OverviewView.tsx` | Film Map 与 Structure 两个视图，接收正式镜头、分组、标记 | 缺少总览内预览、范围研究入口、恢复上次研究 |
+| `apps/webapp/src/features/overview/components/OverviewView.tsx` | Film Map 与 Structure 两个视图，接收正式镜头、分组、标记 | 缺少总览内预览、范围研究入口、恢复上次研究 |
 | `features/overview/components/FilmMap.tsx` | 镜头色块按时长给百分比且每镜至少1%；点击调用镜头定位 | 时间比例会受最小宽度及布局影响；缺少真实局部节奏、结构与研究范围联动 |
 | `features/overview/components/StructureView.tsx` | 展示 SceneBoard；创建操作交由外部 onStartSelection | 总览建结构需要跳到深拆 |
 | `features/group/components/SceneBoard.tsx` | 只筛选 kind=scene，图片区域固定占位 | Section/Sequence 无对应结构展示；缺少内容识别线索 |
@@ -52,7 +52,7 @@
 | `features/editor/stores/createProjectEditorStore.ts` | 选择、播放时间和少量生命周期状态 | 不是已经建成的完整共享研究会话 |
 | `features/editor/components/EditorWorkspace.tsx` | 仍承载主要镜头/分组/笔记与视图连接；完成度按模板填写计算 | 需渐进抽取相关职责，区分填写与研究完成 |
 
-表中省略 `apps/web/src/` 的路径均位于该目录。旧计划中的文件或 ViewModel 存在不代表已接入：本轮 src 检索未找到 SceneShotStrip，shotInspectorViewModel 只在其定义文件中出现。
+表中省略 `apps/webapp/src/` 的路径均位于该目录。旧计划中的文件或 ViewModel 存在不代表已接入：本轮 src 检索未找到 SceneShotStrip，shotInspectorViewModel 只在其定义文件中出现。
 
 ### 3.1 统计语义问题
 

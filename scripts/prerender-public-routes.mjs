@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const webRoot = path.join(projectRoot, "apps", "web");
+const webRoot = path.join(projectRoot, "apps", "webapp");
 const distRoot = path.join(webRoot, "dist");
 const webRequire = createRequire(path.join(webRoot, "package.json"));
 const { createServer } = webRequire("vite");

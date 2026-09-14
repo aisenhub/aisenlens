@@ -121,7 +121,7 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 - 日期 / HEAD / 浏览器 / 硬件：2026-09-10 / `45b60dd` / harness headless Edge/Chrome 可用实例 / 当前 Windows 主机；不是跨设备基准。
 - 单次观测：`resolverMs=1.70`、`commandMs=28.50`、`inputPathMs=1.60`、`historyMs=294.70`、10 个 History snapshot 的逻辑序列化体积 `9,018,921` bytes、待保存 payload `901,891` bytes、`serializationMs=3.90`、事务 `409.40ms`。
 - 另一次整组复跑观测：事务 `543.30ms`；结果会受浏览器/IndexedDB/主机调度影响，不能当成 SLA。
-- 证据命令：`corepack pnpm --filter @aisenlens/web test:analysis-system-browser`；11 tests passed；日志输出 `analysis-system-performance`。
+- 证据命令：`corepack pnpm --filter @aisenlens/webapp test:analysis-system-browser`；11 tests passed；日志输出 `analysis-system-performance`。
 - 发现 → 改动 → 有界复测：补充输入路径/History retained snapshot 计时；P3 browser matrix 复测通过。
 - 结论与局限：当前 payload/写入链路可测且未发现随数量失控的异常；未做真实键盘端到端每字符输入延迟、Chrome Performance panel 长任务火焰图或跨设备内存 SLA，后续不得把本观测扩大解释。
 
@@ -172,13 +172,13 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 ### 已执行验证
 
-- `corepack pnpm --filter @aisenlens/web typecheck`：exit 0。
+- `corepack pnpm --filter @aisenlens/webapp typecheck`：exit 0。
 - `corepack pnpm lint`：exit 0。
 - `corepack pnpm build`：exit 0；Vite 构建和 public route prerender 完成。保留 scene-engine 的既有 `node:module` browser externalization warning，未将其误判为本轮失败。
-- `corepack pnpm --filter @aisenlens/web test:editor-history`：exit 0，4 tests passed。
-- `corepack pnpm --filter @aisenlens/web test:overview-analyze`：exit 0，8 tests passed。
-- `corepack pnpm --filter @aisenlens/web test:analysis-contract`：exit 0，4 tests passed；该脚本为本轮新增专项命令。
-- `corepack pnpm --filter @aisenlens/web test:overview-analyze-browser`：最终复跑 exit 0，3 tests passed，包含 1440/1280/768/390 视口、Sound 研究范围 IndexedDB 往返/URL 恢复与 1,000/3,000 镜头有界 DOM 压力场景。此前一次复跑出现 Sound 创建等待超时；同一 harness 的手动路径可复现成功，随后完整复跑通过，按时序波动记录，不作为产品失败证据。
+- `corepack pnpm --filter @aisenlens/webapp test:editor-history`：exit 0，4 tests passed。
+- `corepack pnpm --filter @aisenlens/webapp test:overview-analyze`：exit 0，8 tests passed。
+- `corepack pnpm --filter @aisenlens/webapp test:analysis-contract`：exit 0，4 tests passed；该脚本为本轮新增专项命令。
+- `corepack pnpm --filter @aisenlens/webapp test:overview-analyze-browser`：最终复跑 exit 0，3 tests passed，包含 1440/1280/768/390 视口、Sound 研究范围 IndexedDB 往返/URL 恢复与 1,000/3,000 镜头有界 DOM 压力场景。此前一次复跑出现 Sound 创建等待超时；同一 harness 的手动路径可复现成功，随后完整复跑通过，按时序波动记录，不作为产品失败证据。
 - 首次 `corepack pnpm verify:web` 在新增代码尚未收敛时发现 `useState`、export 类型、system profile helper、Error cause 与集合比较等问题；已修复并由上述独立命令复测。
 - 最终 `corepack pnpm verify:web`：exit 0；在最后一轮 History 输入合并修复后重新执行，包含 typecheck、lint、editor history、retain shot map、auto-shot 全套契约/服务测试、scene calibration、platform integration、video export boundary、workflow tests 与 build/prerender。
 - Impeccable detector 对本轮改动的模板、Detail/Focus/Batch 输入与 EditorWorkspace 执行：零 findings；`git diff --check`：无 whitespace error。
@@ -226,9 +226,9 @@ Git 状态：未提交 / 本地已提交 / 待推送 / 已推送 / 未授权或�
 
 ### 14.2 可复核命令与结果
 
-- `corepack pnpm --filter @aisenlens/web test:analysis-template-contract`：4 passed。
-- `corepack pnpm --filter @aisenlens/web test:analysis-consumer-browser`：1 passed。
-- `corepack pnpm --filter @aisenlens/web test:analysis-system-browser`：11 passed，包含 P1/P2/P3 浏览器矩阵和性能日志 `analysis-system-performance`。
+- `corepack pnpm --filter @aisenlens/webapp test:analysis-template-contract`：4 passed。
+- `corepack pnpm --filter @aisenlens/webapp test:analysis-consumer-browser`：1 passed。
+- `corepack pnpm --filter @aisenlens/webapp test:analysis-system-browser`：11 passed，包含 P1/P2/P3 浏览器矩阵和性能日志 `analysis-system-performance`。
 - `corepack pnpm typecheck`、`corepack pnpm lint`、`corepack pnpm build`、`corepack pnpm verify:web`：均 exit 0。
 - `corepack pnpm test:video-export`：1 passed。
 - Overview/Analyze 的 Sound 研究范围用例单独运行通过，耗时约 `12.7s`；但包含 navigation、Sound、pressure 的三测试整组命令在本轮两次达到 `120s` 超时。该问题记录为浏览器 harness 资源/时序限制，不能宣称整组命令全绿，也没有证据表明是本轮分析系统产品逻辑失败。

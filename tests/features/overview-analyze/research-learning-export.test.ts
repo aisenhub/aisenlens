@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import deriveLearningSources from "../../../apps/web/src/features/learn/services/deriveLearningSources.ts"
+import deriveLearningSources from "../../../apps/webapp/src/features/learn/services/deriveLearningSources.ts"
 
 const range = {
   id: "range-1", projectId: "project-1", mediaIdentityDigest: "media-1", startUs: 1_000_000, endUs: 3_500_000,

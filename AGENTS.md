@@ -7,9 +7,9 @@
   ## Workspace path convention
 
   This repository is a pnpm workspace. The canonical frontend source root is
-  `apps/web/src/`; the repository does not contain a standalone root `src/`
+  `apps/webapp/src/`; the repository does not contain a standalone root `src/`
   application. Unless a section explicitly names another package, every
-  unqualified `src/...` example below refers to `apps/web/src/...`.
+  unqualified `src/...` example below refers to `apps/webapp/src/...`.
 
   ---
 
@@ -17,12 +17,12 @@
 
     实现任何 UI 前，先按以下顺序检查：
 
-    1. 检查 `apps/web/src/components/ui/` 是否已有可复用的 shadcn/ui 组件。
+    1. 检查 `apps/webapp/src/components/ui/` 是否已有可复用的 shadcn/ui 组件。
     2. 检查同一 feature 或相邻页面是否已有可复用的业务组件。
     3. 若现有组件只差少量样式或行为，优先扩展或传入 `className`，不要复制实现。
     4. 仅当现有组件无法满足需求时，才执行：
        `corepack pnpm dlx shadcn@latest add <组件名> --yes`
-    5. 新增 shadcn 组件必须放在 `apps/web/src/components/ui/`，并匹配 `apps/web/src/index.css` 的 AisenLens 主题 token。
+    5. 新增 shadcn 组件必须放在 `apps/webapp/src/components/ui/`，并匹配 `apps/webapp/src/index.css` 的 AisenLens 主题 token。
     6. 通用交互优先使用 Button、Dialog、DropdownMenu、Tooltip、Tabs 和 Sonner 通知；业务逻辑不得放入通用 UI 组件。
     8. 每次引入或修改组件后，运行 `corepack pnpm build` 验证。
   
@@ -316,7 +316,7 @@
 
   Current delivery scope:
 
-  - Web (`apps/web`) is the only platform currently under active development and required validation.
+  - Web (`apps/webapp`) is the only platform currently under active development and required validation.
   - Do not make Desktop, Android, iOS, Electron, or Capacitor builds a blocking acceptance gate unless the user explicitly restores that platform to scope.
   - Keep shared code and asset URLs portable, and record unverified platform compatibility honestly.
   
@@ -381,7 +381,7 @@ The root directory contains application code, backend configuration, documentati
 
 ⸻
 
-apps/web/src/
+apps/webapp/src/
 
 Frontend application source code.
 
@@ -395,13 +395,13 @@ Contains:
 
 Rules:
 
-* All frontend code must be inside `apps/web/src/`.
-* Do not place React code outside `apps/web/src/`.
-* Do not store configuration files inside `apps/web/src/`.
+* All frontend code must be inside `apps/webapp/src/`.
+* Do not place React code outside `apps/webapp/src/`.
+* Do not store configuration files inside `apps/webapp/src/`.
 
 ⸻
 
-apps/web/public/
+apps/webapp/public/
 
 Static files served directly by the web server.
 
@@ -500,7 +500,7 @@ Rules:
 
 ⸻
 
-apps/web/.env.local
+apps/webapp/.env.local
 
 Environment configuration file.
 
@@ -518,7 +518,7 @@ Rules:
 
 ⸻
 
-apps/web/.env.example
+apps/webapp/.env.example
 
 Environment variable template.
 
@@ -571,7 +571,7 @@ Rules:
 
 ⸻
 
-apps/web/vite.config.ts
+apps/webapp/vite.config.ts
 
 Vite build configuration.
 
@@ -588,7 +588,7 @@ Rules:
 
 ⸻
 
-apps/web/tsconfig.json
+apps/webapp/tsconfig.json
 
 TypeScript configuration.
 
@@ -605,7 +605,7 @@ Rules:
 
 ⸻
 
-apps/web/index.html
+apps/webapp/index.html
 
 Application HTML entry file.
 
@@ -645,7 +645,7 @@ When adding new files:
 
 1. First check if an existing directory is suitable.
 2. Avoid creating new root folders without a clear purpose.
-3. Keep frontend code inside `apps/web/src/`.
+3. Keep frontend code inside `apps/webapp/src/`.
 5. Keep documentation inside docs/.
 6. Keep development tools inside scripts/.
 7. Create a package under `packages/` only for a stable shared capability or an independently built/tested foundation with a clear runtime or cross-language ABI boundary. A second product consumer is preferred but is not mandatory for such an engine.

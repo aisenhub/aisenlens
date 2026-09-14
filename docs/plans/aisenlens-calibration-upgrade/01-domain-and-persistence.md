@@ -4,7 +4,7 @@
 
 ## 1. 职责与建议文件
 
-产品校准放在 `apps/web/src/features/shot-calibration/`，避免与现有研究用 `scene-calibration/` 混名。仅按职责创建需要的文件：
+产品校准放在 `apps/webapp/src/features/shot-calibration/`，避免与现有研究用 `scene-calibration/` 混名。仅按职责创建需要的文件：
 
 - `types.ts`：草稿、切点、待回看、巡视范围、命令与失败类型。
 - `services/calibrationDraftService.ts`：由候选/正式镜头创建草稿、校验、范围投影。

@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
-import { assertCalibrationManifests, parseCalibrationAnnotation, runSearchSweep, scoreHardCuts, serializeCalibrationAnnotation, validateCalibrationManifests } from "../apps/web/src/features/scene-calibration/services/calibrationService.ts";
+import { assertCalibrationManifests, parseCalibrationAnnotation, runSearchSweep, scoreHardCuts, serializeCalibrationAnnotation, validateCalibrationManifests } from "../apps/webapp/src/features/scene-calibration/services/calibrationService.ts";
 
 function flag(name) {
   const index = process.argv.indexOf(name);
@@ -117,7 +117,7 @@ if (command === "validate") {
   const fixtures = annotations.map((annotation) => ({
     fixtureId: annotation.fixtureId,
     split: annotation.split,
-    path: `apps/web/test/${annotation.source.name}`,
+    path: `apps/webapp/test/${annotation.source.name}`,
     source: annotation.source,
     media: annotation.media,
     sha256: annotation.sha256,

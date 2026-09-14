@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { createProjectEditorStore } from "../../../apps/web/src/features/editor/stores/createProjectEditorStore.ts"
+import { createProjectEditorStore } from "../../../apps/webapp/src/features/editor/stores/createProjectEditorStore.ts"
 
 test("project editor store is scoped by project and keeps low-frequency selection", () => {
   const first = createProjectEditorStore("project-a")

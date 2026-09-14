@@ -24,7 +24,7 @@ corepack pnpm test:retain-shot-map
 corepack pnpm build
 ```
 
-现有其他 auto-shot apply/task tests 如位于 apps/web/test，确认脚本是否包含；未包含则通过已有运行方式显式执行。不要仅用代码文本匹配测试验证界面行为，不修改检测算法 fixtures/阈值掩盖失败。若当前环境无法运行某项，记录阻塞原因与未验证范围，不能写成通过。
+现有其他 auto-shot apply/task tests 如位于 apps/webapp/test，确认脚本是否包含；未包含则通过已有运行方式显式执行。不要仅用代码文本匹配测试验证界面行为，不修改检测算法 fixtures/阈值掩盖失败。若当前环境无法运行某项，记录阻塞原因与未验证范围，不能写成通过。
 
 ## 2. 领域及事务必测矩阵
 
