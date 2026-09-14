@@ -33,5 +33,6 @@ Phase 5 的代码准备状态：
 - 当前工作树没有 Supabase Auth、登录、密码重置、Support 或 Feedback 路由；这些是此前工作区变更后的当前产品范围，不得在本次拆分中凭空恢复。
 - `PRODUCTION_LOCAL_PROJECTS = UNKNOWN`：仓库无法证明用户浏览器中的 IndexedDB 是否存在生产项目，且尚未获得线上 origin / Vercel 访问证据。不得进入 Phase 6，也不得清理旧 origin 的浏览器数据。
 - 当前 Production auto-deploy 状态、Vercel 项目归属、custom domain、DNS 和 Supabase allow-list 均 `UNVERIFIED`。本阶段未执行任何外部平台写入。
+- 2026-09-14 只读线上检查：`https://lens.aisenhub.com/`、`/features/auto-shot`、`/projects`、`/app` 均返回 200，说明现网仍由旧的合并 renderer 提供；`https://app.lens.aisenhub.com/` TLS 连接失败。该证据不等于 Vercel 项目配置已确认，也不能证明生产浏览器没有 IndexedDB 项目。
 
 因此，下一步若继续上线，必须先由站点所有者提供或确认 Preview 项目和生产数据决策；代码配置可继续维护，但不能把本地通过写成线上已验证。
