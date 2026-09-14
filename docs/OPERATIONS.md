@@ -22,3 +22,16 @@
 代码阶段可以准备 Vercel、Supabase 和环境变量配置，但不得未经明确授权修改 Production 项目、custom domain、DNS 或 Supabase Production Auth allow-list。
 
 生产操作必须在 Preview 验证、回滚锚点和本地数据决策完成后执行。
+
+## Web Split Preview / Migration Gate
+
+Phase 5 的代码准备状态：
+
+- `apps/webapp/vercel.json`：按 `Root Directory = apps/webapp`、`pnpm build`、`dist` 输出准备。
+- `apps/webhome/vercel.json`：按 `Root Directory = apps/webhome`、`pnpm build`、`dist` 输出准备。
+- 本地双站 deep-link、WebHome prerender、canonical、sitemap、robots 和产品端 noindex 已通过验证；Vercel Preview 尚未验证。
+- 当前工作树没有 Supabase Auth、登录、密码重置、Support 或 Feedback 路由；这些是此前工作区变更后的当前产品范围，不得在本次拆分中凭空恢复。
+- `PRODUCTION_LOCAL_PROJECTS = UNKNOWN`：仓库无法证明用户浏览器中的 IndexedDB 是否存在生产项目，且尚未获得线上 origin / Vercel 访问证据。不得进入 Phase 6，也不得清理旧 origin 的浏览器数据。
+- 当前 Production auto-deploy 状态、Vercel 项目归属、custom domain、DNS 和 Supabase allow-list 均 `UNVERIFIED`。本阶段未执行任何外部平台写入。
+
+因此，下一步若继续上线，必须先由站点所有者提供或确认 Preview 项目和生产数据决策；代码配置可继续维护，但不能把本地通过写成线上已验证。

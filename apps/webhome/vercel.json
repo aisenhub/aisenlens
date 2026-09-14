@@ -1,8 +1,8 @@
 {
   "framework": "vite",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @aisenlens/webhome build",
-  "outputDirectory": "apps/webhome/dist",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
   "redirects": [
     {
       "source": "/app",
