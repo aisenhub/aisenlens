@@ -3,7 +3,7 @@
 > 文档状态：2026-09-14 已完成全仓库文档审计。当前线上公开站为
 > [lens.aisenhub.com](https://lens.aisenhub.com)，产品站为
 > [app.lens.aisenhub.com](https://app.lens.aisenhub.com)；完整的文档现状、验证证据和未完成验收见
-> [docs/DOCUMENTATION_STATUS.md](docs/DOCUMENTATION_STATUS.md)。
+> [docs/product/DOCUMENTATION_STATUS.md](docs/product/DOCUMENTATION_STATUS.md)。
 
 AisenLens is a pnpm workspace with two independent React/Vite web release units and platform-specific shells.
 
@@ -67,15 +67,18 @@ HTTP requests. This confirms reachability, titles and indexing directives; it
 does not replace the pending browser smoke for project creation, media import,
 editor refresh/recovery, auto-shot and export. Vercel dashboard settings and
 rollback deployment IDs remain operational evidence maintained in
-`docs/OPERATIONS.md`, not in source code.
+`docs/operations/OPERATIONS.md`, not in source code.
 
 ## Documentation
 
-- [Project architecture](docs/PROJECT_ARCHITECTURE.md)
-- [Web audit and remediation record](docs/WEB_AUDIT_2026-09-07.md)
-- [AisenShot documentation index](docs/auto-shot/README.md)
-- [AisenShot Scene Engine architecture](docs/auto-shot/ARCHITECTURE.md)
-- [AisenShot Scene Engine implementation plan](docs/auto-shot/IMPLEMENTATION_PLAN.md)
-- [AisenShot automatic scene control design](docs/auto-shot/CONTROL_SYSTEM.md)
-- [SEO and discoverability plan](docs/SEO_DISCOVERABILITY_PLAN.md)
-- [Documentation status and source-of-truth index](docs/DOCUMENTATION_STATUS.md)
+- [Documentation index](docs/README.md)
+- [Development guide](docs/development/DEVELOPMENT_GUIDE.md)
+- [Project architecture](docs/architecture/PROJECT_ARCHITECTURE.md)
+- [Archived Web audit and remediation record](docs/archive/audits/WEB_AUDIT_2026-09-07.md)
+- [AisenShot documentation index](docs/features/auto-shot/README.md)
+- [AisenShot Scene Engine architecture](docs/features/auto-shot/ARCHITECTURE.md)
+- [Archived AisenShot Scene Engine implementation plan](docs/archive/auto-shot/IMPLEMENTATION_PLAN.md)
+- [AisenShot automatic scene control design](docs/features/auto-shot/CONTROL_SYSTEM.md)
+- [SEO and discoverability plan](docs/seo/SEO_DISCOVERABILITY_PLAN.md)
+- [Documentation status and source-of-truth index](docs/product/DOCUMENTATION_STATUS.md)
+- [Archived plans and process records](docs/archive/README.md)

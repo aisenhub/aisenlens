@@ -21,9 +21,9 @@
 - 当前产品没有 Auth、登录、密码重置、Support 或 Feedback 路由；正文中相关内容是原方案
   的条件分支，不应作为当前实现或当前上线阻塞项。
 
-后续阅读本文件时，当前架构和运行事实以 [docs/OPERATIONS.md](../OPERATIONS.md)、
-[docs/PROJECT_ARCHITECTURE.md](../PROJECT_ARCHITECTURE.md) 与
-[docs/DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) 为准。
+后续阅读本文件时，当前架构和运行事实以 [docs/operations/OPERATIONS.md](../../operations/OPERATIONS.md)、
+[docs/architecture/PROJECT_ARCHITECTURE.md](../../architecture/PROJECT_ARCHITECTURE.md) 与
+[docs/product/DOCUMENTATION_STATUS.md](../../product/DOCUMENTATION_STATUS.md) 为准。
 
 ---
 

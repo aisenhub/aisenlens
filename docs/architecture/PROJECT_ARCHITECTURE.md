@@ -6,6 +6,16 @@
 
 本文档记录当前代码已经采用的长期架构边界。具体功能的历史计划、实施过程和已失效的数据模型不作为项目规范保留。
 
+开发命令、组件复用和模块研究规则见 [DEVELOPMENT_GUIDE.md](../development/DEVELOPMENT_GUIDE.md)；本文件只保留
+当前架构、数据和发布边界。
+
+## 0. 技术栈基线
+
+- React 19、TypeScript、Vite、Tailwind CSS v4。
+- pnpm workspace；Zustand 负责轻量客户端状态。
+- 当前 Web release units：`apps/webhome`（公开内容）和 `apps/webapp`（产品 renderer）。
+- 产品数据 local-first，浏览器 IndexedDB 是当前持久化边界。
+
 ## 1. Workspace 与发布边界
 
 仓库使用 pnpm workspace：
@@ -58,7 +68,7 @@ registry 注入，任务同时冻结用户设置快照、预设版本、canonica
 React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”“短视频”等产品概念。
 该控制层和 Zustand 设置 store 已由现有实现提供，只有通过独立 holdout 门槛的 preset 才能进入
 生产 registry 与 UI。完整边界见
-[自动分镜控制系统设计](auto-shot/CONTROL_SYSTEM.md)。
+[自动分镜控制系统设计](../features/auto-shot/CONTROL_SYSTEM.md)。
 
 自动分镜恢复使用版本化强媒体身份，不以文件名、MIME、修改时间或普通四字段 fingerprint
 作为最终依据。只有完整 checkpoint 已持久化的任务才能标记为 `paused`；刷新或崩溃遗留的
@@ -72,9 +82,9 @@ React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”
 当前 Phase 0–12 的引擎与 Web 控制面接线已存在；Workflow 重构只复用这些能力，不修改
 引擎 ABI、生产 preset 或时间线实现。实施时仅按已批准的架构与分阶段计划推进：
 
-- [AisenShot 文档索引](auto-shot/README.md)
-- [AisenShot Scene Engine 架构方案](auto-shot/ARCHITECTURE.md)
-- [AisenShot Scene Engine 实施计划](auto-shot/IMPLEMENTATION_PLAN.md)
+- [AisenShot 文档索引](../features/auto-shot/README.md)
+- [AisenShot Scene Engine 架构方案](../features/auto-shot/ARCHITECTURE.md)
+- [归档的 AisenShot Scene Engine 实施计划](../archive/auto-shot/IMPLEMENTATION_PLAN.md)
 
 本阶段不在 Engine 中实现关键帧提取或其他视频分析能力；仅保留独立包与稳定输入/输出边界以便未来扩展。
 

@@ -4,8 +4,8 @@
 状态：架构方向已确认，待生成执行计划与实施。  
 
 > 历史状态注记（2026-09-14）：本文件是当时的架构输入，不是当前实施报告；其中“工作区仍有未提交实现”仅描述 2026-09-09 的审查时点。当前代码、发布边界和验证事实以
-> [docs/PROJECT_ARCHITECTURE.md](../PROJECT_ARCHITECTURE.md)、[docs/OPERATIONS.md](../OPERATIONS.md) 和
-> [docs/DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) 为准。
+> [docs/architecture/PROJECT_ARCHITECTURE.md](../../architecture/PROJECT_ARCHITECTURE.md)、[docs/operations/OPERATIONS.md](../../operations/OPERATIONS.md) 和
+> [docs/product/DOCUMENTATION_STATUS.md](../../product/DOCUMENTATION_STATUS.md) 为准。
 范围：Web 总览（Overview）、深拆（Analyze）及直接相关的结构、研究上下文和分析记录。  
 依据：本次用户讨论、当前本地源码、LensFlow 文档及已记录的公开研究。
 
@@ -365,4 +365,4 @@ URL 表达可恢复导航目标，内存/本地会话保存高频视窗状态；
 - [Cinemetrics：The Metrics in Cinemetrics](https://cinemetrics.uchicago.edu/article/616e7ecc-7915-4768-b84d-7dec79aa77c2)：镜头时长分布和统计可辅助观察，必须结合影片内容解释。
 - [Columbia Deconstructor](https://ccnmtl.columbia.edu/projects/engel/deconstructor/)：历史教学工具强调场景内逐镜观察及规律分析，同时说明数字方法的局限；工具已停止运行，不作当前可用产品推荐。
 - [Columbia：Shot, Scene, and Sequence](https://filmglossary.ccnmtl.columbia.edu/term/shot-scene-and-sequence/)：镜头与更高层叙事组织是不同分析层次，不等同软件编辑器的 Scene 实体。
-- [参考项目索引](../../reference-projects/REFERENCE_PROJECT_INDEX.md)：2026-09-09 条目记录按 OpenReel → OpenCut 顺序查阅的实际文件和结论。采用明确选择、稳定工作区和命令边界，不复制其多轨编辑器或假定其具备拉片结构模型。
+- [参考项目索引](../../../reference-projects/REFERENCE_PROJECT_INDEX.md)：2026-09-09 条目记录按 OpenReel → OpenCut 顺序查阅的实际文件和结论。采用明确选择、稳定工作区和命令边界，不复制其多轨编辑器或假定其具备拉片结构模型。

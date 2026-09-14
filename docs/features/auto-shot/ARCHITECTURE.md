@@ -904,7 +904,7 @@ Phase 12 删除前基线只是准备性历史快照。下一步必须先按实�
 候选审阅、可撤销应用领域命令、正式镜头 provenance 与真实 H.264 产品矩阵，并关闭
 Phase 11 验收门。
 
-之后再按 `docs/auto-shot/CONTROL_SYSTEM.md` 建立唯一 resolver、隔离的 search/
+之后再按 `docs/features/auto-shot/CONTROL_SYSTEM.md` 建立唯一 resolver、隔离的 search/
 holdout 标定、production preset registry、feature 级 Zustand 设置 store 与新控制面板，
 最后完成性能/内存回归和旧路径删除。在这些证据通过前，不删除旧 Canvas/seek 基线服务，
 也不宣称 Phase 12 完成。App 会话与其他业务状态迁移仍是独立待办。

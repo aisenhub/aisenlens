@@ -85,7 +85,7 @@
 
 ## 6. 研究与依赖
 
-架构文档及 [参考项目索引](../../../reference-projects/REFERENCE_PROJECT_INDEX.md) 已记录公开方案→提案→OpenReel→OpenCut研究。后续新增模块研究遵守AGENTS流程，仅查相关文件并更新真实新证据；不要为写计划重复拉取完整参考仓库。技术API先核实当前安装版本。
+架构文档及 [参考项目索引](../../../../reference-projects/REFERENCE_PROJECT_INDEX.md) 已记录公开方案→提案→OpenReel→OpenCut研究。后续新增模块研究遵守AGENTS流程，仅查相关文件并更新真实新证据；不要为写计划重复拉取完整参考仓库。技术API先核实当前安装版本。
 
 保持现有技术栈、双主题与Web范围；不主动安装新库。新增依赖须说明必要性；软件安装 `D:\APP\Codex\<软件>`，缓存 `E:\AppData\<工具>`，不能默认安装C盘。UI实施使用适用技能，方向已经确定，不重新启动全站视觉设计。
 
