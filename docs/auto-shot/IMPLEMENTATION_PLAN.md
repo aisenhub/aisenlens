@@ -1938,7 +1938,7 @@ Web 基线与像素路径验证
 
 **禁止**：读取旧 cuts 并转换为新 checkpoint、双写两个 schema、清空整个数据库。
 
-**完成记录（2026-08-28）**：读取并核对了 `projectRepository.ts` 的实际 IndexedDB upgrade 逻辑，新增 `apps/webapp/test/project-repository-migration.verification.ts` 及浏览器 smoke 入口。夹具包含项目、媒体字段、镜头、截图、注释和旧 `AutoShotRunRecord`；数据库从版本 12 升级到版本 13 时只清理 `auto-shot-runs`，项目、镜头、截图和注释逐项保留。未读取旧 cuts，也未清空其他 store。
+**历史记录（2026-08-28）**：当时曾用旧数据库夹具验证 auto-shot 派生记录升级行为。2026-09-14 站点所有者确认本项目从未有生产项目，且不保留旧项目兼容契约；因此已移除该迁移夹具、浏览器入口和旧记录转换逻辑。当前实现只接受当前 task record 与当前项目 schema，后续 schema 变化必须以明确的新版本设计和专项验收为准。
 
 #### [x] Task 11.2：原子切换 project 类型与 repository
 

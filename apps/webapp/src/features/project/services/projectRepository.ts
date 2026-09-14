@@ -1,4 +1,4 @@
-import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaAsset, MediaAssetMetadata, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
+import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { ResearchContext, ResearchRange } from "../../analysis/types";
 import type { AnnotationMarker } from "../../annotation/types";
 import type { ShotGroupRecord } from "../../group/types";
@@ -14,7 +14,6 @@ import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } fro
 const DATABASE_NAME = "aisenlens-projects";
 const DATABASE_VERSION = 17;
 const PROJECTS_STORE = "projects";
-const LEGACY_MEDIA_HANDLES_STORE = "media-handles";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
 const MEDIA_ASSET_BLOBS_STORE = "media-asset-blobs";
 const SCREENSHOTS_STORE = "screenshots";
@@ -46,25 +45,6 @@ function injectProjectRepositoryFault(point: ProjectRepositoryFaultPoint): void 
 interface MediaHandleRecord {
   assetId: string;
   handle: FileSystemFileHandle;
-}
-
-interface LegacyProjectMedia {
-  status: MediaAsset["status"];
-  source: MediaSourceFingerprint | null;
-  metadata: Omit<MediaAssetMetadata, "durationFrames" | "width" | "height" | "audioChannelCount" | "audioSampleRate"> & {
-    durationFrames: number;
-    width: number;
-    height: number;
-  } | null;
-  linkedAt: string | null;
-  relinkedAt: string | null;
-}
-
-interface LegacyProjectRecord extends Omit<ProjectRecord, "mediaAssets" | "primaryVideoAssetId" | "audioTracks"> {
-  media?: LegacyProjectMedia;
-  mediaAssets?: unknown;
-  primaryVideoAssetId?: unknown;
-  audioTracks?: unknown;
 }
 
 interface MediaAssetBlobRecord {
@@ -155,9 +135,8 @@ function openDatabase(): Promise<IDBDatabase> {
       };
       resolve(database);
     };
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const database = request.result;
-      const oldVersion = event.oldVersion;
       if (!database.objectStoreNames.contains(PROJECTS_STORE)) {
         const projects = database.createObjectStore(PROJECTS_STORE, { keyPath: "id" });
         projects.createIndex("updatedAt", "updatedAt", { unique: false });
@@ -201,9 +180,6 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains(AUTO_SHOT_RUNS_STORE)) {
         const runs = database.createObjectStore(AUTO_SHOT_RUNS_STORE, { keyPath: "id" });
         runs.createIndex("projectId", "projectId", { unique: true });
-      }
-      if (oldVersion < 14) {
-        request.transaction?.objectStore(AUTO_SHOT_RUNS_STORE).clear();
       }
       if (!database.objectStoreNames.contains(CALIBRATION_ANNOTATIONS_STORE)) {
         const annotations = database.createObjectStore(CALIBRATION_ANNOTATIONS_STORE, { keyPath: "annotationId" });
@@ -331,67 +307,6 @@ function assertCalibrationAnnotationRecord(annotation: CalibrationAnnotationReco
   }
 }
 
-function hasMediaAssetLibrary(project: LegacyProjectRecord): boolean {
-  return Array.isArray(project.mediaAssets) && Array.isArray(project.audioTracks) && (typeof project.primaryVideoAssetId === "string" || project.primaryVideoAssetId === null);
-}
-
-function convertLegacyProjectRecord(project: LegacyProjectRecord): ProjectRecord {
-  const { media, mediaAssets: _mediaAssets, primaryVideoAssetId: _primaryVideoAssetId, audioTracks: _audioTracks, ...baseProject } = project;
-  const source = media?.source ?? null;
-  const metadata = media?.metadata ?? null;
-  const asset: MediaAsset | null = source ? {
-    id: project.id,
-    projectId: project.id,
-    kind: "video",
-    origin: "imported",
-    name: source.name,
-    status: media?.status ?? "unlinked",
-    source,
-    metadata: metadata ? {
-      ...metadata,
-      durationFrames: metadata.durationFrames || null,
-      width: metadata.width || null,
-      height: metadata.height || null,
-      audioChannelCount: null,
-      audioSampleRate: null,
-    } : null,
-    linkedAt: media?.linkedAt ?? null,
-    relinkedAt: media?.relinkedAt ?? null,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
-  } : null;
-  return {
-    ...baseProject,
-    mediaAssets: asset ? [asset] : [],
-    primaryVideoAssetId: asset?.id ?? null,
-    audioTracks: [],
-  };
-}
-
-async function persistConvertedLegacyProject(project: LegacyProjectRecord): Promise<ProjectRecord> {
-  const converted = convertLegacyProjectRecord(project);
-  const database = await openDatabase();
-  const storeNames = [PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE] as string[];
-  if (database.objectStoreNames.contains(LEGACY_MEDIA_HANDLES_STORE)) storeNames.push(LEGACY_MEDIA_HANDLES_STORE);
-  const transaction = database.transaction(storeNames, "readwrite");
-  transaction.objectStore(PROJECTS_STORE).put(converted);
-  const primaryVideoAsset = converted.mediaAssets.find((asset) => asset.id === converted.primaryVideoAssetId);
-  if (primaryVideoAsset && database.objectStoreNames.contains(LEGACY_MEDIA_HANDLES_STORE)) {
-    const legacyHandle = await requestResult(transaction.objectStore(LEGACY_MEDIA_HANDLES_STORE).get(project.id)) as { projectId: string; handle: FileSystemFileHandle } | undefined;
-    if (legacyHandle) {
-      transaction.objectStore(MEDIA_ASSET_HANDLES_STORE).put({ assetId: primaryVideoAsset.id, handle: legacyHandle.handle } satisfies MediaHandleRecord);
-      transaction.objectStore(LEGACY_MEDIA_HANDLES_STORE).delete(project.id);
-    }
-  }
-  await transactionResult(transaction);
-  return normalizeProject(converted);
-}
-
-async function readCurrentProject(project: LegacyProjectRecord | undefined): Promise<ProjectRecord | null> {
-  if (!project) return null;
-  return hasMediaAssetLibrary(project) ? normalizeProject(project as ProjectRecord) : persistConvertedLegacyProject(project);
-}
-
 function createDefaultTitle(): string {
   return "未命名拉片项目";
 }
@@ -401,16 +316,15 @@ export function createProjectRepository(): ProjectRepository {
     async listProjects() {
       const database = await openDatabase();
       const transaction = database.transaction(PROJECTS_STORE, "readonly");
-      const projects = await requestResult(transaction.objectStore(PROJECTS_STORE).getAll()) as LegacyProjectRecord[];
-      const currentProjects = await Promise.all(projects.map(readCurrentProject));
-      return currentProjects.filter((project): project is ProjectRecord => Boolean(project)).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+      const projects = await requestResult(transaction.objectStore(PROJECTS_STORE).getAll()) as ProjectRecord[];
+      return projects.map(normalizeProject).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
     },
 
     async getProject(projectId) {
       const database = await openDatabase();
       const transaction = database.transaction(PROJECTS_STORE, "readonly");
-      const project = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as LegacyProjectRecord | undefined;
-      return readCurrentProject(project);
+      const project = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as ProjectRecord | undefined;
+      return project ? normalizeProject(project) : null;
     },
 
     async createProject(input: CreateProjectInput = {}) {

@@ -236,48 +236,6 @@ test(
       assert.equal(moduleProbe.status, "ready", JSON.stringify(moduleProbe))
       return
     }
-    if (process.env.AISENLENS_RUN_PROJECT_REPOSITORY_MIGRATION_SMOKE === "1") {
-      const migration = await evaluate(
-        client,
-        sessionId,
-        `(async () => (await import('${serverUrl}/test/project-repository-migration.verification.ts')).runProjectRepositoryMigrationVerification())()`,
-      )
-      assert.equal(migration.projectPreserved, true, JSON.stringify(migration))
-      assert.equal(migration.shotsPreserved, true, JSON.stringify(migration))
-      assert.equal(migration.markersPreserved, true, JSON.stringify(migration))
-      assert.equal(
-        migration.screenshotsPreserved,
-        true,
-        JSON.stringify(migration),
-      )
-      assert.equal(migration.legacyRuns, 0, JSON.stringify(migration))
-      assert.equal(migration.taskRoundTrip, true, JSON.stringify(migration))
-      assert.equal(
-        migration.mediaIdentityMismatchInvalidated,
-        true,
-        JSON.stringify(migration),
-      )
-      assert.equal(migration.projectTaskUnique, true, JSON.stringify(migration))
-      assert.equal(migration.taskDeletion, true, JSON.stringify(migration))
-      assert.equal(migration.calibrationRoundTrip, true, JSON.stringify(migration))
-      assert.equal(
-        migration.calibrationMediaIdentityMismatchInvalidated,
-        true,
-        JSON.stringify(migration),
-      )
-      assert.equal(
-        migration.calibrationPreservedAcrossRecovery,
-        true,
-        JSON.stringify(migration),
-      )
-      assert.equal(migration.recoveryRestored, true, JSON.stringify(migration))
-      assert.equal(
-        migration.recoverySnapshotRetention,
-        true,
-        JSON.stringify(migration),
-      )
-      return
-    }
     if (process.env.AISENLENS_RUN_AUTO_SHOT_HOOK_SMOKE === "1") {
       const hookLifecycle = await evaluate(
         client,
