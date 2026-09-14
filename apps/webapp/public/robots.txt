@@ -1,6 +1,2 @@
 User-agent: *
-Allow: /
-Disallow: /app
-Disallow: /projects
-
-Sitemap: https://lens.aisenhub.com/sitemap.xml
+Disallow: /

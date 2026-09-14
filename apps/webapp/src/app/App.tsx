@@ -14,37 +14,16 @@ import type { ProjectRecord } from "../features/project/types"
 
 import useAppTheme from "../hooks/useAppTheme"
 
-import SeoContentPage from "../features/marketing/components/SeoContentPage"
-
-import { getSeoContentPage } from "../features/marketing/seo/seoContent"
-
-import { PAGE_METADATA } from "../features/marketing/seo/siteMetadata"
-
-import usePageMetadata from "../features/marketing/seo/usePageMetadata"
-
 import AppPages from "./AppPages"
 
 const PAGE_PATHS: Record<number, string> = {
-  1: "/",
-
   2: "/projects",
-
   3: "/app",
-
-  4: "/tutorials",
-
-  8: "/changelog",
-
-  9: "/terms",
-
-  10: "/privacy",
 }
 
 const getPageForPath = (pathname: string) => {
-  if (pathname.startsWith("/tutorials")) return 4
-
   return Number(
-    Object.entries(PAGE_PATHS).find(([, path]) => path === pathname)?.[0] ?? 1,
+    Object.entries(PAGE_PATHS).find(([, path]) => path === pathname)?.[0] ?? 2,
   )
 }
 
@@ -73,15 +52,9 @@ export default function App() {
     getInitialActiveProjectId,
   )
 
-  const seoContentPage = getSeoContentPage(location.pathname)
-
   const isEditor = location.pathname === "/app"
 
-  const isKnownPath = Boolean(
-    PAGE_METADATA[location.pathname] || seoContentPage,
-  )
-
-  usePageMetadata(location.pathname)
+  const isKnownPath = location.pathname === "/projects" || isEditor
 
   useEffect(() => {
     setPage(getPageForPath(location.pathname))
@@ -115,7 +88,7 @@ export default function App() {
   }
 
   if (!isKnownPath) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/projects" replace />
   }
 
   return (
@@ -131,27 +104,20 @@ export default function App() {
           />
         )}
         <main className={isEditor ? "" : "pt-14"}>
-          {seoContentPage ? (
-            <SeoContentPage
-              page={seoContentPage}
-              onStart={() => navigate("/app")}
-            />
-          ) : (
-            <AppPages
-              page={page}
-              onNavigate={handleNavigate}
-              activeProjectId={activeProjectId}
-              projectTitle={projectTitle}
-              onProjectTitleChange={setProjectTitle}
-              onProjectLoaded={(project: ProjectRecord) => {
-                setActiveProjectId(project.id)
+          <AppPages
+            page={page}
+            onNavigate={handleNavigate}
+            activeProjectId={activeProjectId}
+            projectTitle={projectTitle}
+            onProjectTitleChange={setProjectTitle}
+            onProjectLoaded={(project: ProjectRecord) => {
+              setActiveProjectId(project.id)
 
-                setProjectTitle(project.title)
-              }}
-              theme={theme}
-              onThemeChange={setTheme}
-            />
-          )}
+              setProjectTitle(project.title)
+            }}
+            theme={theme}
+            onThemeChange={setTheme}
+          />
         </main>
         {isLiteSettingsOpen && (
           <LiteSettingsModal onClose={() => setIsLiteSettingsOpen(false)} theme={theme} onThemeChange={setTheme} />

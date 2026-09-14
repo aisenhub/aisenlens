@@ -3,13 +3,8 @@ import AppErrorBoundary from "./AppErrorBoundary";
 import type { ThemePreference } from "../types/theme";
 import type { ProjectRecord } from "../features/project/types";
 
-const ChangelogPage = lazy(() => import("../pages/ChangelogPage"));
 const EditorPage = lazy(() => import("../pages/EditorPage"));
-const LandingPage = lazy(() => import("../pages/LandingPage"));
-const PrivacyPolicyPage = lazy(() => import("../pages/PrivacyPolicyPage"));
 const ProjectsPage = lazy(() => import("../pages/ProjectsPage"));
-const TutorialsPage = lazy(() => import("../pages/TutorialsPage"));
-const UserAgreementPage = lazy(() => import("../pages/UserAgreementPage"));
 
 interface AppPagesProps {
   page: number;
@@ -33,7 +28,6 @@ export default function AppPages({
   onThemeChange,
 }: AppPagesProps) {
   let content: ReactNode = null;
-  if (page === 1) content = <LandingPage onNavigate={onNavigate} />;
   if (page === 2) {
     content = <ProjectsPage onOpenProject={(project) => {
       onProjectLoaded(project);
@@ -49,10 +43,5 @@ export default function AppPages({
       onProjectLoaded={onProjectLoaded}
     />;
   }
-  if (page === 4) content = <TutorialsPage onNavigate={onNavigate} />;
-  if (page === 8) content = <ChangelogPage />;
-  if (page === 9) content = <UserAgreementPage />;
-  if (page === 10) content = <PrivacyPolicyPage />;
-
   return <AppErrorBoundary key={page} onNavigate={onNavigate}><Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center font-mono text-sm text-text-muted">正在加载页面…</div>}>{content}</Suspense></AppErrorBoundary>;
 }

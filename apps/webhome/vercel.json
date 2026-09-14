@@ -1,0 +1,24 @@
+{
+  "framework": "vite",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @aisenlens/webhome build",
+  "outputDirectory": "apps/webhome/dist",
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "https://app.aisenhub.com/projects",
+      "permanent": false
+    },
+    {
+      "source": "/projects",
+      "destination": "https://app.aisenhub.com/projects",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

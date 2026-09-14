@@ -8,7 +8,6 @@
     "build": "vite build",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "postbuild": "node ../../scripts/prerender-public-routes.mjs",
     "preview": "vite preview",
     "format": "oxfmt",
     "test:auto-shot-contract": "node --test test/auto-shot-contract.test.js",

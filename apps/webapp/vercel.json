@@ -1,0 +1,19 @@
+{
+  "framework": "vite",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @aisenlens/webapp build",
+  "outputDirectory": "apps/webapp/dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/projects",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
