@@ -30,6 +30,7 @@ Phase 5 的代码准备状态：
 - `apps/webapp/vercel.json`：按 `Root Directory = apps/webapp`、`pnpm build`、`dist` 输出准备。
 - `apps/webhome/vercel.json`：按 `Root Directory = apps/webhome`、`pnpm build`、`dist` 输出准备。
 - 本地双站 deep-link、WebHome prerender、canonical、sitemap、robots 和产品端 noindex 已通过验证；Vercel Preview 尚未验证。
+- 2026-09-14 本地 release snapshot：WebHome 为 23 个文件 / 569,522 bytes / 1 个 JS chunk，最大 JS 为 396,515 bytes；WebApp 为 43 个文件 / 2,582,245 bytes / 31 个 JS chunks，最大 JS 为 474,181 bytes。WebHome 产物未包含 Scene Engine、Mediabunny 或 Supabase 依赖。
 - 当前工作树没有 Supabase Auth、登录、密码重置、Support 或 Feedback 路由；这些是此前工作区变更后的当前产品范围，不得在本次拆分中凭空恢复。
 - `PRODUCTION_LOCAL_PROJECTS = UNKNOWN`：仓库无法证明用户浏览器中的 IndexedDB 是否存在生产项目，且尚未获得线上 origin / Vercel 访问证据。不得进入 Phase 6，也不得清理旧 origin 的浏览器数据。
 - 当前 Production auto-deploy 状态、Vercel 项目归属、custom domain、DNS 和 Supabase allow-list 均 `UNVERIFIED`。本阶段未执行任何外部平台写入。
