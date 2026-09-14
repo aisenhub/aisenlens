@@ -1,5 +1,10 @@
 # Acceptance Matrix
 
+> 当前记录（2026-09-14）：Webhome/Webapp 本地 release gate、边界检查、SEO/noindex
+> 产物和两个生产域名的 HTTP/标题/robots 只读检查已完成。真实产品浏览器 smoke、线上
+> Worker/WASM、回滚 deployment anchor 和完整 Vercel 后台证据仍待补齐；未验证项保持未勾选。
+> 当前代码没有 Auth、登录、密码重置、Support 或 Feedback，因此对应条目标记为 N/A，不伪造通过。
+
 ## Webhome
 
 ```text
@@ -34,9 +39,9 @@
 [ ] /projects refresh
 [ ] /app 直接访问
 [ ] /app refresh
-[ ] /reset-password 直接访问
-[ ] /reset-password refresh
-[ ] Auth session 正常
+[N/A] /reset-password 直接访问（当前无此路由）
+[N/A] /reset-password refresh（当前无此路由）
+[N/A] Auth session 正常（当前无 Auth）
 [ ] Project create/open/delete 维持原行为
 [ ] IndexedDB 数据维持原行为
 [ ] media import 正常
@@ -110,8 +115,8 @@
 
 ```text
 [ ] public URL/anon key only
-[ ] production app reset URL allow-listed
-[ ] preview/staging strategy documented
+[N/A] production app reset URL allow-listed（当前无 Auth）
+[N/A] preview/staging strategy documented（当前无 Auth）
 [ ] no secret leaked
 ```
 
@@ -119,9 +124,9 @@
 
 ```text
 [ ] production local-project status known
-[ ] migration-required? recorded
-[ ] backup export tested
-[ ] restore on new origin tested if required
+[x] migration-required? recorded（`NONE_CONFIRMED`）
+[ ] backup export tested（不作为迁移门；产品能力仍需单独 smoke）
+[N/A] restore on new origin tested if required（无需迁移）
 [ ] no code deletes old IndexedDB
 [ ] cutover does not claim URL redirect migrates storage
 ```

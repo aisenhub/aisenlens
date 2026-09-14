@@ -1,5 +1,8 @@
 # Phase 4 — 拆分验证体系、边界检查、Desktop/Mobile
 
+> 执行结果（2026-09-14）：Webhome/Webapp release gate、边界检查和本地构建验证已完成；
+> 当前交付范围仍是 Web。Desktop/Mobile 的构建与同步配置保留，但不是当前 Web 验收阻塞门。
+
 ## Goal
 
 让 CI / 本地验证明确知道：

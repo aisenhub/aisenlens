@@ -1,5 +1,14 @@
 # AisenLens Web 拆分总控执行计划
 
+> 当前状态（2026-09-14）：Phase 0–4 的代码拆分与本地 release gate 已完成；Phase 5
+> 的数据决策为 `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`，不执行历史数据迁移；公开站
+> `https://lens.aisenhub.com` 与产品站 `https://app.lens.aisenhub.com` 已通过 HTTP、标题和
+> robots 只读核查。完整浏览器产品 smoke、可回滚 production deployment anchor 和稳定窗口
+> 清理仍未完成，因此本文 Definition of Done 尚未全部满足。
+>
+> 本文保留拆分前的架构推导作为执行依据。当前代码范围不包含 Auth、登录、密码重置、Support
+> 或 Feedback；这些路线只作为原始方案中的条件分支保留。
+
 ## 1. Architecture Decision
 
 本次不是“拆两个 Git 仓库”，而是在现有 pnpm monorepo 内建立两个独立 Web 应用：
@@ -74,24 +83,22 @@ Electron / Capacitor 平台逻辑
 
 ### `webapp`
 
-负责产品运行：
+负责当前产品运行：
 
 ```text
 /
 /projects
 /app
-/reset-password
-/support
-/feedback
 ```
 
 `/` 最终重定向 `/projects`。
 
+原始方案还列出的 `/reset-password`、`/support`、`/feedback` 以及 Auth/User Center
+均未进入当前代码范围，不应从本计划中恢复。
+
 拥有：
 
 ```text
-Auth
-User Center
 Project
 IndexedDB
 Editor
@@ -275,7 +282,11 @@ mobile 同步 webapp/dist
 所有原产品流程无回归
 公开 SEO 仍工作
 webapp deep-link 不 404
-Supabase reset redirect 指向 app domain
+如未来启用 Auth，Supabase reset redirect 指向 app domain；当前无 Auth 时记为 N/A
 Production local data 风险已处理
 README / AGENTS / architecture / operations 已更新
 ```
+
+当前已满足或已记录：双应用构建边界、产品/公开站职责、Webhome SEO/noindex 规则、数据决策和
+线上域名可达性。当前仍未满足：完整产品浏览器流程、线上 Worker/WASM smoke、回滚 deployment
+anchor，以及 Desktop/Mobile 专项验证（后者不属于当前 Web 阻塞门）。

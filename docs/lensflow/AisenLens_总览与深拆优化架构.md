@@ -2,6 +2,10 @@
 
 日期：2026-09-09  
 状态：架构方向已确认，待生成执行计划与实施。  
+
+> 历史状态注记（2026-09-14）：本文件是当时的架构输入，不是当前实施报告；其中“工作区仍有未提交实现”仅描述 2026-09-09 的审查时点。当前代码、发布边界和验证事实以
+> [docs/PROJECT_ARCHITECTURE.md](../PROJECT_ARCHITECTURE.md)、[docs/OPERATIONS.md](../OPERATIONS.md) 和
+> [docs/DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) 为准。
 范围：Web 总览（Overview）、深拆（Analyze）及直接相关的结构、研究上下文和分析记录。  
 依据：本次用户讨论、当前本地源码、LensFlow 文档及已记录的公开研究。
 

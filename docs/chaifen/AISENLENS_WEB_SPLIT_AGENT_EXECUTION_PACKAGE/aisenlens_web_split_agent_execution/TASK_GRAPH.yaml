@@ -3,6 +3,20 @@ plan: webhome-webapp-split
 version: 1
 date: 2026-09-14
 
+current_status:
+  as_of: 2026-09-14
+  completed_code_phases: [P0, P1, P2, P3, P4]
+  local_data_decision: NONE_CONFIRMED
+  production_domains_http_verified: true
+  pending:
+    - product_browser_smoke
+    - production_worker_wasm_smoke
+    - rollback_deployment_anchors
+  current_auth_scope: none
+  note: >-
+    Current code has no Auth, login, password reset, Support or Feedback routes;
+    related phase steps remain conditional historical procedure, not current gates.
+
 target:
   webhome:
     path: apps/webhome

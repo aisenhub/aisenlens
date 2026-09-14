@@ -1,5 +1,8 @@
 # Phase 2 — 创建独立 `apps/webhome`
 
+> 执行结果（2026-09-14）：已完成。`apps/webhome` 已独立构建并部署为公开站；当前生产域名为
+> `https://lens.aisenhub.com`，完整 SEO 和浏览器产品流程仍按后续验收记录维护。
+
 ## Goal
 
 建立可以单独：

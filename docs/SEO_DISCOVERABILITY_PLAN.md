@@ -1,8 +1,8 @@
 # AisenLens SEO 与自然收录实施计划
 
-> 状态：核心技术实施完成；分享封面图与搜索平台提交待发布后执行  
+> 状态：核心技术实施完成，生产域名已验证；分享封面图与搜索平台提交仍待执行
 > 制定日期：2026-08-15  
-> 最近核查：2026-08-15（本地构建产物、静态页面与 noindex 页面均已验证）
+> 最近核查：2026-09-14（本地构建产物、生产域名 HTTP、静态页面与 noindex 页面均已验证）
 > 范围：AisenLens 公共营销页面、教程内容、搜索引擎收录与分享展示
 
 ## 当前实施状态
@@ -15,6 +15,16 @@
 | 爬虫与隐私边界 | 已完成 | 已提供 robots、sitemap、manifest；编辑器与项目库保持 noindex。 |
 | 分享封面 | 待完成 | 已有 Open Graph 和 Twitter 文字信息，尚未添加 1200 × 630 图片。 |
 | 搜索平台接入 | 待完成 | 需在 Google、Bing 和百度平台完成验证、提交 sitemap 和后续监测。 |
+
+### 线上核查记录（2026-09-14）
+
+- `https://lens.aisenhub.com/`：HTTP 200，公开站标题正确，robots 为
+  `index,follow,max-image-preview:large`。
+- `https://lens.aisenhub.com/projects`：跳转至产品域后 HTTP 200，产品页面保持
+  `noindex`。
+- `https://app.lens.aisenhub.com/` 与 `/projects`：HTTP 200，robots 为
+  `noindex,nofollow,noarchive`。
+- 以上只证明线上路由、标题和索引边界可达；Schema Markup Validator、搜索平台提交、分享封面和完整产品浏览器流程仍是待办。
 
 ## 1. 目标
 

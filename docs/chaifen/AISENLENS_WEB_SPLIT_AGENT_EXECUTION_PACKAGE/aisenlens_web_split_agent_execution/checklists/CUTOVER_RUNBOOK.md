@@ -1,6 +1,10 @@
 # Production Cutover Runbook
 
 > 只在 Phase 5 Exit Gate = PASS 后使用。
+>
+> 当前记录（2026-09-14）：目标域名已可达，`PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`
+> 已记录；完整产品 smoke 和 rollback deployment ID 尚未补齐。当前没有 Auth，因此 T-3
+> 及其 reset/callback 条目为 N/A，不应执行或伪造为 PASS。
 
 ## T-1 — Freeze
 
@@ -19,12 +23,14 @@
 [ ] 部署 webapp Production
 [ ] production vercel URL /projects PASS
 [ ] /app PASS
-[ ] /reset-password PASS
+[N/A] /reset-password（当前无此路由）
 [ ] Worker/WASM PASS
-[ ] Auth PASS
+[N/A] Auth（当前无 Auth）
 ```
 
 ## T-3 — Auth
+
+当前代码没有 Auth。以下步骤仅在未来明确启用 Auth 后恢复：
 
 ```text
 [ ] Supabase allow-list 加 app.lens.aisenhub.com/reset-password
@@ -39,8 +45,8 @@
 [ ] TLS PASS
 [ ] /projects refresh PASS
 [ ] /app refresh PASS
-[ ] Auth PASS
-[ ] reset flow PASS
+[N/A] Auth（当前无 Auth）
+[N/A] reset flow（当前无 Auth）
 ```
 
 ## T-5 — Local Data Gate
@@ -79,9 +85,9 @@
 [ ] /projects → app domain
 [ ] /app → app domain
 [ ] /app?project=test query preserved
-[ ] /reset-password → app domain
-[ ] /support → app domain
-[ ] /feedback → app domain
+[N/A] /reset-password → app domain（当前无此路由）
+[N/A] /support → app domain（当前无此路由）
+[N/A] /feedback → app domain（当前无此路由）
 ```
 
 ## T-8 — SEO / Indexing
@@ -96,7 +102,7 @@
 ## T-9 — Product Smoke
 
 ```text
-[ ] login
+[N/A] login（当前无 Auth）
 [ ] create project
 [ ] open project
 [ ] import media

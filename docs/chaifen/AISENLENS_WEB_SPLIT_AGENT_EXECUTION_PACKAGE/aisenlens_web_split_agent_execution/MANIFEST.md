@@ -2,20 +2,20 @@
 
 Generated files:
 
-- `00_MASTER_EXECUTION_PLAN.md` — 4,777 bytes — sha256 `2f7509a1d76d8dc5`
-- `02_AGENT_OPERATING_RULES.md` — 3,369 bytes — sha256 `0460ce8a62230904`
-- `README.md` — 3,141 bytes — sha256 `73ae26bbfdd8db39`
-- `TASK_GRAPH.yaml` — 2,410 bytes — sha256 `b780a90f1cd7910e`
-- `checklists/ACCEPTANCE_MATRIX.md` — 2,718 bytes — sha256 `cf69dbe7dfde7ae3`
-- `checklists/CUTOVER_RUNBOOK.md` — 2,383 bytes — sha256 `29789e6833d7ee4a`
+- `00_MASTER_EXECUTION_PLAN.md` — 5,983 bytes — sha256 `d65e00c196fdeed8`
+- `02_AGENT_OPERATING_RULES.md` — 3,948 bytes — sha256 `068a4bc387857a7d`
+- `README.md` — 4,277 bytes — sha256 `a2e32a0cfe173f60`
+- `TASK_GRAPH.yaml` — 2,883 bytes — sha256 `b4d28b56dd960b8f`
+- `checklists/ACCEPTANCE_MATRIX.md` — 3,390 bytes — sha256 `15ba297e131d8f84`
+- `checklists/CUTOVER_RUNBOOK.md` — 2,920 bytes — sha256 `f01df72f4b328440`
 - `checklists/FILE_CHANGE_MAP.md` — 2,538 bytes — sha256 `7a03b8832bce6ac6`
-- `phases/PHASE_0_BASELINE.md` — 3,134 bytes — sha256 `4e6f5ecd6ce61585`
-- `phases/PHASE_1_RENAME_TO_WEBAPP.md` — 4,925 bytes — sha256 `bafbc063b5c26d09`
-- `phases/PHASE_2_CREATE_WEBHOME.md` — 5,684 bytes — sha256 `da23a9bdabb73759`
-- `phases/PHASE_3_SEPARATE_BOUNDARIES.md` — 5,229 bytes — sha256 `34707be9274407e5`
-- `phases/PHASE_4_VERIFICATION_AND_PLATFORM.md` — 4,399 bytes — sha256 `38a3ce28d7654c39`
-- `phases/PHASE_5_DEPLOYMENT_AND_MIGRATION.md` — 5,016 bytes — sha256 `cdc82b2431bc674f`
-- `phases/PHASE_6_PRODUCTION_CUTOVER.md` — 3,639 bytes — sha256 `264c5b5830729f6e`
-- `prompts/AGENT_PHASE_PROMPTS.md` — 4,238 bytes — sha256 `5cf2c5584787404a`
+- `phases/PHASE_0_BASELINE.md` — 3,310 bytes — sha256 `9ad0358b9794213c`
+- `phases/PHASE_1_RENAME_TO_WEBAPP.md` — 5,128 bytes — sha256 `337fa84bfd92af58`
+- `phases/PHASE_2_CREATE_WEBHOME.md` — 5,907 bytes — sha256 `693763ed6497c1b6`
+- `phases/PHASE_3_SEPARATE_BOUNDARIES.md` — 5,624 bytes — sha256 `fd46c9d4e91efb8a`
+- `phases/PHASE_4_VERIFICATION_AND_PLATFORM.md` — 4,629 bytes — sha256 `724f56cc868dff54`
+- `phases/PHASE_5_DEPLOYMENT_AND_MIGRATION.md` — 6,911 bytes — sha256 `e88cf9155cf34fd2`
+- `phases/PHASE_6_PRODUCTION_CUTOVER.md` — 4,849 bytes — sha256 `caa2263826b1a157`
+- `prompts/AGENT_PHASE_PROMPTS.md` — 4,909 bytes — sha256 `5f4390b6f45a9f86`
 - `reference/AISENLENS_WEBHOME_WEBAPP_SPLIT_PLAN.md` — 37,169 bytes — sha256 `0ad5eb25767b30db`
 - `reference/REPO_REVIEW_NOTES.md` — 1,983 bytes — sha256 `3ed5e31d93a9fee9`

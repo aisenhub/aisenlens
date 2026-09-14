@@ -1,5 +1,10 @@
 # Agent Operating Rules
 
+> 当前执行注记（2026-09-14）：本文是拆分过程的通用规则。当前代码拆分已完成，站点所有者
+> 已确认没有生产项目数据，`PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`；生产域名可达但完整
+> 产品 smoke 和 rollback anchor 仍待补证。当前用户已明确授权本任务自动提交并推送文档到
+> `main`，但 Vercel/DNS/Supabase 等外部生产配置仍不因本条授权自动变更。
+
 ## A. 硬约束
 
 执行本计划时：
@@ -119,7 +124,8 @@ git status --short
 git diff --stat
 ```
 
-Agent 输出建议 commit message，但除非明确被授权，不主动 push / merge / deploy production。
+Agent 输出建议 commit message；默认不主动 push / merge / deploy production。若当前用户明确授权
+仓库提交/推送，则可按用户授权执行；这不等同于授权 Vercel、DNS 或 Supabase 的外部生产变更。
 
 ## H. External Mutation Gate
 

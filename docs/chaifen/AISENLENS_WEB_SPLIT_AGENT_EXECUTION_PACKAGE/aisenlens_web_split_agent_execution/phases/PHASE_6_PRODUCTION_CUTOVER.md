@@ -18,6 +18,13 @@ app.lens.aisenhub.com
 
 Phase 5 全 PASS。
 
+## 当前执行记录（2026-09-14）
+
+- 公开站 `https://lens.aisenhub.com` 与产品站 `https://app.lens.aisenhub.com` 已按目标域名可访问；首页和 `/projects` 的 HTTP、标题和 robots 只读检查通过。
+- `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`，不执行旧项目迁移、不清理浏览器存储、不增加旧格式 fallback。
+- 当前代码没有 Auth、登录、密码重置、Support 或 Feedback 路由；本 Phase 中相应 redirect/allow-list/登录检查只在未来重新启用 Auth 后适用。
+- 完整项目创建、媒体导入、编辑器刷新恢复、自动分镜、导出和线上 Worker/WASM smoke，以及可回滚 production deployment anchor，仍需要真实浏览器/发布平台证据。
+
 ## Before Cutover
 
 记录：
@@ -51,12 +58,11 @@ apps/webapp
 ```text
 /projects
 /app
-/reset-password
 ```
 
 ### 2. Supabase Redirect
 
-在获得授权后加入：
+如果未来重新启用 Auth，在获得授权后加入：
 
 ```text
 https://app.lens.aisenhub.com/reset-password
@@ -87,12 +93,12 @@ app.lens.aisenhub.com
 再次验证：
 
 ```text
-sign in
-reset password
 projects
 editor
 Worker/WASM
 ```
+
+当前代码没有 Auth，因此 sign in、reset password 和 Supabase redirect 对本次范围为 N/A；只有在未来重新启用 Auth 时才恢复这些检查。
 
 ### 4. 切现有 Project 为 webhome
 
@@ -112,6 +118,9 @@ Output Directory: dist
 
 先产生 deployment 并验证，再 promote / alias 到 production。
 
+2026-09-14 的只读线上检查已确认两个域名均可访问、标题正确且 robots 边界正确；Vercel
+后台项目字段和可回滚 deployment ID 仍需补充发布平台证据。
+
 ### 5. Old Product Route Redirects
 
 `lens.aisenhub.com`：
@@ -119,9 +128,6 @@ Output Directory: dist
 ```text
 /projects
 /app
-/reset-password
-/support
-/feedback
 ```
 
 重定向到：
@@ -162,7 +168,7 @@ meta noindex
 
 ### 7. Product Production Check
 
-至少：
+当前范围至少：
 
 ```text
 创建项目
@@ -174,9 +180,9 @@ meta noindex
 自动分镜入口
 保存/恢复
 导出
-登录/退出
-reset password route
 ```
+
+登录、退出和密码重置当前为 N/A，因为代码没有 Auth 路由；不得以不存在的功能作为验收通过条件。
 
 ### 8. Desktop Build Check
 
@@ -240,7 +246,7 @@ Agent 必须再次获得授权。
 [ ] lens.aisenhub.com = webhome
 [ ] app.lens.aisenhub.com = webapp
 [ ] old app routes redirect
-[ ] Auth PASS
+[ ] Auth PASS 或明确标记为当前范围 N/A
 [ ] IndexedDB migration requirement satisfied
 [ ] webapp noindex
 [ ] webhome SEO PASS

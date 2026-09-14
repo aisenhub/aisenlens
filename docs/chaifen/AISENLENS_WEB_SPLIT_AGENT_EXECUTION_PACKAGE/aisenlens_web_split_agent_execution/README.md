@@ -3,20 +3,29 @@
 > 仓库：`aisenhub/aisenlens`  
 > 目标分支基线：`main`  
 > 方案日期：2026-09-14  
-> 用途：直接交给代码 Agent，按阶段完成 AisenLens 官网与产品 Web App 的拆分。
+> 用途：拆分执行的可复核计划与验收资料；代码拆分已执行，当前线上状态见下方记录。
 
 ## 最终目标
 
 ```text
 apps/
 ├─ webhome/       # 官网 / SEO / 教程 / 术语 / 更新日志 / 协议
-├─ webapp/        # 项目库 / 编辑器 / Auth / 本地项目 / 分析 / 导出
+├─ webapp/        # 项目库 / 编辑器 / 本地项目 / 分析 / 导出
 ├─ desktop/       # Electron，只消费 webapp/dist
 └─ mobile/        # Capacitor，只消费 webapp/dist
 
 packages/
 └─ scene-engine/  # 继续只作为产品 renderer 的底层能力
 ```
+
+## 当前执行状态（2026-09-14）
+
+- Phase 0–4 的代码拆分、边界检查和本地 release gate 已完成；当前真实目录为
+  `apps/webhome` 与 `apps/webapp`，不再使用 `apps/web`。
+- Phase 5 的数据决策已明确为 `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`：站点所有者确认从未有生产项目，因此不执行旧数据 backup/restore rehearsal，不保留旧格式迁移、兼容或 fallback。
+- `https://lens.aisenhub.com`（公开站）和 `https://app.lens.aisenhub.com`（产品站）已完成线上 HTTP、标题和 robots 只读核查；完整浏览器产品 smoke 和回滚 deployment anchor 仍待补证。
+- 当前代码没有 Auth、登录、密码重置、Support 或 Feedback 路由。文档中的这些内容是原始方案的条件分支，不代表当前实现范围。
+- 本目录后续继续作为拆分证据和回滚 runbook 保存；执行步骤中的历史路径和条件分支不应直接当作当前配置。
 
 部署目标：
 
@@ -48,7 +57,7 @@ Phase 5  Preview / Vercel / Supabase / IndexedDB 迁移准备
 Phase 6  Production Cutover、Redirect、监控、Legacy 清理
 ```
 
-**禁止跳阶段。** 每个 Phase 都有 Exit Gate。Exit Gate 没通过，不得执行下一阶段。
+**原始执行过程禁止跳阶段。** 每个 Phase 都有 Exit Gate。Exit Gate 没通过，不得执行下一阶段；当前代码拆分已完成，后续只对未完成的生产验收项补证，不重新执行已完成的重命名或迁出步骤。
 
 ## 建议使用方式
 

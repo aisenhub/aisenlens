@@ -16,6 +16,13 @@ IndexedDB 迁移策略已决定
 
 Phase 4 = PASS。
 
+## 当前执行记录（2026-09-14）
+
+- `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`：站点所有者确认从未有生产项目，不执行旧 origin 的 backup/restore rehearsal，不实现跨 origin migration UI，也不保留旧格式兼容层。
+- 本地 `apps/webhome` 与 `apps/webapp` 的独立构建、deep link、prerender、canonical、sitemap、robots 和产品端 noindex 已通过；线上两个生产域名的 HTTP、标题和 robots 已完成只读核查。
+- 当前代码没有 Auth、登录、密码重置、Support 或 Feedback 路由；本 Phase 中对应 Auth/allow-list 项目对当前范围为 N/A，不得通过伪造路由或环境变量把它们标成 PASS。
+- Vercel 项目字段由站点所有者在后台配置；仓库只记录 `apps/webhome` / `apps/webapp` 的构建配置。完整浏览器产品 smoke 与可回滚 deployment anchor 尚未完成，Phase 6 不能仅凭 HTTP 200 关闭。
+
 ## External Mutation Rule
 
 本 Phase 包含外部平台。
@@ -111,6 +118,8 @@ worker assets
 浏览器 console 不应有 path/base 错误。
 
 ## Step 4 — Auth Preview
+
+> 当前范围注记：当前仓库没有 Auth 或密码重置路由。本节保留为未来启用 Auth 时的门禁，当前执行记为 N/A，不添加 Supabase 依赖或 redirect。
 
 验证：
 
@@ -247,13 +256,14 @@ screenshots / media 的实际既定备份语义
 
 ## Step 9 — Existing Production Project Pre-merge Protection
 
-因为现有 Vercel Project 可能仍配置：
+以下内容是拆分前的历史风险检查。现有代码已使用独立 `webhome` / `webapp`
+构建配置；不要恢复旧的：
 
 ```text
 pnpm --filter @aisenlens/web build
 ```
 
-在 Phase 1+ 代码进入 `main` 前必须保证其中一个条件：
+在 Phase 1+ 代码进入 `main` 前原本必须保证其中一个条件：
 
 ```text
 A. 自动 Production deploy 暂停
@@ -263,10 +273,10 @@ B. 现有 Project build command 已临时改为 @aisenlens/webapp
 C. Vercel config 已使用能构建当前 webapp 的设置
 ```
 
-否则 merge 后新 Production deployment 会 build fail，
+否则 merge 后新 Production deployment 可能 build fail，
 虽然旧 deployment 可能仍在线。
 
-这一步是上线流程，不是代码 Phase 1 的职责，但必须在 merge 前处理。
+这一步是上线流程，不是代码 Phase 1 的职责；当前可达性和仍待补齐的发布证据以 `docs/OPERATIONS.md` 为准。
 
 ## Exit Gate
 
@@ -282,3 +292,8 @@ C. Vercel config 已使用能构建当前 webapp 的设置
 ```
 
 没有这些，不进入 Phase 6。
+
+### 当前 Gate 结果
+
+`PRODUCTION_LOCAL_PROJECTS` 和线上域名可达性已通过；Preview 全流程、真实产品浏览器
+smoke、Worker/WASM 线上 smoke、回滚 deployment anchor 和完整 Vercel 配置核对仍待完成。

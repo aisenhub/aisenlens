@@ -1,5 +1,8 @@
 # Phase 1 — 将现有 renderer 从 `web` 改名为 `webapp`
 
+> 执行结果（2026-09-14）：已完成。当前产品包为 `@aisenlens/webapp`，当前代码路径为
+> `apps/webapp`；本文件中的 `apps/web` 和 `@aisenlens/web` 只表示拆分前基线。
+
 ## Goal
 
 完成：

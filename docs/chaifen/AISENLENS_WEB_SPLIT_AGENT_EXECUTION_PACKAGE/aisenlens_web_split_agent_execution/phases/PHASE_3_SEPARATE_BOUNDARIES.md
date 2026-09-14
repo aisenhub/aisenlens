@@ -1,5 +1,9 @@
 # Phase 3 — 从 `webapp` 删除公开站责任并收紧边界
 
+> 执行结果（2026-09-14）：已完成。公开内容归 `apps/webhome`，产品能力归
+> `apps/webapp`；当前线上分别为 `lens.aisenhub.com` 与 `app.lens.aisenhub.com`。
+> 当前代码没有 Auth、密码重置、Support 或 Feedback 路由，原方案中的这些条目仅为条件分支。
+
 ## Goal
 
 从此阶段结束开始：
@@ -23,10 +27,9 @@ Phase 2 = PASS，且 webhome 公开页面与当前线上视觉/内容已对比�
 /
 /projects
 /app
-/reset-password
-/support
-/feedback
 ```
+
+`/reset-password`、`/support`、`/feedback` 属于原始方案中的预留条件分支，不属于当前代码路由。
 
 推荐行为：
 

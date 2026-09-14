@@ -1,5 +1,8 @@
 # Phase 0 — Baseline、保护现场、引用盘点
 
+> 执行结果（2026-09-14）：基线已完成。当前仓库采用 `apps/webhome` + `apps/webapp`
+> 双 Web release unit；本文件保留为基线步骤和证据清单。
+
 ## Goal
 
 不修改产品结构。建立可复现基线，确认后续拆分的真实影响面。

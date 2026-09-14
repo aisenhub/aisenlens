@@ -1,6 +1,8 @@
 # AisenLens 运维与发布约束
 
 > 当前阶段：公开站与产品 renderer 已拆为两个独立 Web release unit；生产域名已可访问，完整产品流程与回滚锚点仍需持续验收。
+>
+> 最后核对：2026-09-14（线上检查为 HTTP、标题和 robots 只读验证；未通过工具修改 Vercel、DNS 或 Supabase）。
 
 ## 发布单元
 

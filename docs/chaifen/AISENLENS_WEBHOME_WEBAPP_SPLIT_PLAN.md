@@ -6,6 +6,25 @@
 > 方案日期：2026-09-14  
 > 目标：将公开网站与产品编辑器拆成两个可独立构建、独立部署的 Web 应用，同时让 `webapp` 成为 Electron / Capacitor 的唯一前端 renderer。
 
+## 当前状态补充（2026-09-14）
+
+本文是拆分前的详细设计与执行背景，以下事实优先于正文中仍保留的历史假设：
+
+- 代码拆分已完成，当前使用 `apps/webhome` 与 `apps/webapp`；`apps/web`、
+  `@aisenlens/web` 和 `apps/web/dist` 只表示拆分前基线。
+- 公开站 [`https://lens.aisenhub.com`](https://lens.aisenhub.com) 与产品站
+  [`https://app.lens.aisenhub.com`](https://app.lens.aisenhub.com) 已完成线上 HTTP、标题和
+  robots 只读核查。完整浏览器产品 smoke、线上 Worker/WASM 和 rollback deployment anchor
+  仍未完成。
+- 站点所有者确认项目从未有生产数据，`PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`。
+  不执行旧 origin backup/restore，不实现旧格式兼容、迁移 UI 或清库逻辑。
+- 当前产品没有 Auth、登录、密码重置、Support 或 Feedback 路由；正文中相关内容是原方案
+  的条件分支，不应作为当前实现或当前上线阻塞项。
+
+后续阅读本文件时，当前架构和运行事实以 [docs/OPERATIONS.md](../OPERATIONS.md)、
+[docs/PROJECT_ARCHITECTURE.md](../PROJECT_ARCHITECTURE.md) 与
+[docs/DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) 为准。
+
 ---
 
 ## 1. 结论先行

@@ -2,6 +2,10 @@
 
 > 当前状态：通用/影视与短视频已冻结为 production version 1；动画/游戏、访谈/Vlog 保留为 research，暂不在普通编辑器开放。
 
+> 文档事实边界（2026-09-14）：本目录维护 Scene Engine 和自动分镜自身的技术/质量基线；
+> Web 双站、生产域名、本地数据迁移决策和线上验收以 [../OPERATIONS.md](../OPERATIONS.md)
+> 与 [../DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) 为准。
+
 此目录是自动分镜长期维护文档的唯一入口。阶段过程报告、临时交接和一次性验证记录已在归档时提炼；它们不再单独维护，以避免和当前实现产生两套事实来源。
 
 ## 权威文档

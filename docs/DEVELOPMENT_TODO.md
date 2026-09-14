@@ -4,6 +4,10 @@
 >
 > 本文只记录已批准的后续架构工作，不代表对应代码已经存在。
 
+> 线上状态（2026-09-14）：公开站 `https://lens.aisenhub.com` 与产品站
+> `https://app.lens.aisenhub.com` 已完成域名可达性、标题和 robots 只读核查；完整产品浏览器 smoke、回滚部署锚点和长视频性能矩阵仍未宣称完成。生产项目数据决策为
+> `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`，不安排旧数据迁移或兼容层。
+
 ## 1. Workflow 重构实施结果
 
 2026-09-08 已完成 Web 端 P01–P08 的首轮实施检查点：工作台阶段 URL、项目 Session owner、Prepare/Calibrate、Overview Film Map/Structure、Analyze Scenes/Shots/Sound、Learn 真实笔记、Cinema/Studio/System 主题与最终测试 runner 已接入。阶段视图只消费现有 Project/Shot/Group/Task 数据，没有新增 IndexedDB schema、示例 AI 数据或隐形知识库。
@@ -12,7 +16,8 @@
 
 ## 2. Web 发布构建与加载优化（非阻塞）
 
-**背景**：2026-08-28 的 Vercel 生产部署已成功完成，Scene Engine 的
+**背景**：2026-08-28 的 Vercel 生产部署是本项目的历史发布基线；2026-09-14 已完成
+公开站/产品站拆分后的生产域名只读核查。Scene Engine 的
 baseline/SIMD WASM 运行时资源已随 Web 构建发布。构建日志中的下列提示不影响
 当前功能或部署结果，记录为后续优化项，而不是当前自动分镜验收的阻塞条件。
 

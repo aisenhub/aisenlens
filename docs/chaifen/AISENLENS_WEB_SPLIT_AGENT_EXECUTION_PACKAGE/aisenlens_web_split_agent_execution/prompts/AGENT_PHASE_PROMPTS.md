@@ -1,5 +1,10 @@
 # 可直接复制给 Agent 的阶段提示词
 
+> 版本注记（2026-09-14）：Phase 0–4 已执行完成；Phase 5 已确认
+> `PRODUCTION_LOCAL_PROJECTS = NONE_CONFIRMED`；两个生产域名已完成 HTTP、标题和 robots
+> 只读核查。以下提示词保留为可复用的阶段流程，不能覆盖当前事实。当前代码没有 Auth、登录、
+> 密码重置、Support 或 Feedback 路由；相关步骤只有在未来明确启用后才恢复。
+
 ## 通用前缀
 
 每次都把这一段放在最前：
@@ -107,7 +112,8 @@ Exit Gate 通过后停止。
 
 拆分 verify:webapp / verify:webhome，新增 verify:web-boundaries。
 不得降低原 webapp 产品测试覆盖。
-验证 Electron 只打包 webapp/dist，Capacitor 只同步 webapp/dist。
+验证 Electron 只打包 webapp/dist，Capacitor 只同步 webapp/dist；这两个壳的验证不是当前 Web
+交付的阻塞门。
 更新 README、AGENTS、PROJECT_ARCHITECTURE、OPERATIONS 和相关 SEO 文档，使其与双应用实际一致。
 
 Exit Gate 全 PASS 后停止，不做 Vercel production mutation。
@@ -139,12 +145,13 @@ Exit Gate 通过后停止。
 ```text
 执行 phases/PHASE_6_PRODUCTION_CUTOVER.md 和 checklists/CUTOVER_RUNBOOK.md。
 
-这是 production 操作阶段。
+这是 production 操作阶段；当前线上域名已经可达，剩余工作是补齐完整产品 smoke 和 rollback
+deployment anchor，不要把可达性检查误标为全部完成。
 每一个 custom domain、Vercel production project、Supabase production Auth 配置修改都只在我明确授权后执行。
 
 顺序必须是：
 1. webapp production 可用
-2. Supabase redirect 准备
+2. 如未来启用 Auth，再准备 Supabase redirect；当前为 N/A
 3. app.lens.aisenhub.com 可用
 4. local data Gate 满足
 5. lens.aisenhub.com 切 webhome
