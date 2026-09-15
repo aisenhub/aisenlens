@@ -70,10 +70,10 @@ export default function TimelineControls({
       aria-label="时间轴控制栏"
       className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border bg-bg-panel px-3"
     >
+      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+        时间轴
+      </span>
       <div className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-          时间轴
-        </span>
         <div
           role="group"
           aria-label="编辑历史"
@@ -104,10 +104,10 @@ export default function TimelineControls({
             <ZoomIn />
           </TimelineControlButton>
         </div>
+        <TimelineControlButton label="适配全片" onClick={onFitToFilm}>
+          <Maximize2 />
+        </TimelineControlButton>
       </div>
-      <TimelineControlButton label="适配全片" onClick={onFitToFilm}>
-        <Maximize2 />
-      </TimelineControlButton>
     </div>
   )
 }
