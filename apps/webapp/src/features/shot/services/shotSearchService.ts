@@ -19,6 +19,7 @@ interface SearchableShotContext {
   screenshotIdsByShotId: Record<string, string[]>;
   primaryScreenshotIdsByShotId: Record<string, string | null>;
   markers: AnnotationMarker[];
+  frameRate?: number;
 }
 
 function valueToSearchText(value: AnalysisFieldEntry): string {
@@ -34,11 +35,20 @@ function normalized(value: string): string {
 
 export function findMatchingShotIds(context: SearchableShotContext, filters: ShotSearchFilters): Set<string> {
   const query = normalized(filters.query);
+  const frameRate = Number.isFinite(context.frameRate) && (context.frameRate ?? 0) > 0 ? context.frameRate as number : 24;
   const groupsByShotId = new Map(context.groups.flatMap((group) => group.shotIds.map((shotId) => [shotId, group] as const)));
   const markerTextByShotId = new Map<string, string[]>();
   context.markers.forEach((marker) => {
-    if (!marker.shotId) return;
-    markerTextByShotId.set(marker.shotId, [...(markerTextByShotId.get(marker.shotId) ?? []), marker.label, marker.note]);
+    const shot = context.shots.find((candidate) => {
+      const startFrame = Math.round(candidate.start * frameRate);
+      const endFrame = Math.round((candidate.start + candidate.duration) * frameRate);
+      return marker.frame >= startFrame && marker.frame < endFrame;
+    });
+    if (!shot) return;
+    markerTextByShotId.set(shot.id, [
+      ...(markerTextByShotId.get(shot.id) ?? []),
+      marker.content,
+    ]);
   });
 
   return new Set(context.shots.flatMap((shot, index) => {

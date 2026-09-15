@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 
 export const root = resolve(import.meta.dirname, "..", "..", "..")
-export const web = resolve(root, "apps", "web")
+export const web = resolve(root, "apps", "webapp")
 export const browserPath = [process.env.AISENLENS_CHROME_PATH, "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"].find((path) => path && existsSync(path))
 
 export function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)) }

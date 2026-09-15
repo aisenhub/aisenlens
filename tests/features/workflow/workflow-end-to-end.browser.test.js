@@ -8,7 +8,7 @@ import { resolve } from "node:path"
 import test from "node:test"
 
 const rootDirectory = resolve(import.meta.dirname, "..", "..", "..")
-const webDirectory = resolve(rootDirectory, "apps", "web")
+const webDirectory = resolve(rootDirectory, "apps", "webapp")
 const chromeCandidates = [
   process.env.AISENLENS_CHROME_PATH,
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",

@@ -437,3 +437,11 @@
 | 当前模块 | 参考项目与文件 | 已确认结论 | AisenLens 决定 |
 | --- | --- | --- | --- |
 | WASM/C ABI 边界 | OpenReel `packages/creation-bindings/src/wasm.ts`；OpenCut `apps/web/src/wasm/{index.ts,media-time.ts}` | OpenReel 将 WASM 实例化与宿主 backend 隔离；OpenCut 在 TS 侧恢复整数媒体时间约束，不把 Rust/WASM 内部对象直接暴露给业务层。 | AisenLens 先冻结纯 C ABI：固定宽度结构、opaque handle、调用方拥有帧/事件/ checkpoint 缓冲；后续 WASM/TS 只绑定该边界，不复制参考项目实现。 |
+
+## 2026-09-15 Semantic Timeline Phase 07–09 admission review
+
+| 当前模块 | 查阅文件/数据 | 已确认结论 | AisenLens 决定 |
+| --- | --- | --- | --- |
+| AutoShot 高层结构建议信号 | `apps/webapp/src/features/auto-shot/types.ts`、`sceneResultAdapter.ts`、本地 `test-results/auto-shot-*.json`、`test/fixtures/auto-shot/calibration-search-2026-08-30.json` | 当前候选确实提供 `score`、`threshold`、`detectors`、`evidence`、`engineVersion` 和 `configHash`；真实浏览器校准已验证 CFR/VFR PTS 路径。但现有评估中的 score 是检测启发式量，未校准为概率，且没有已核实的地点/人物/对白 canonical source。 | 新增研究级 `suggestSceneBoundaries` adapter：仅消费真实 AutoShot signal，输出合法 `afterShotId` 和可解释 raw evidence；只生成 Scene 建议，不含 score/confidence 百分比，不写正式结构，不注册生产 UI。Sequence/Section 等待真实叙事信号。结构或媒体版本变化通过 revision/digest 判 stale。 |
+| Dialogue / Emotion 数据准入 | `apps/webapp/src/features/analysis/types.ts`、`useResearchWorkbench.ts`、`features/media/SoundWorkspace.tsx`、`trackRegistry.ts` | 当前 `ResearchRange` 是 microseconds evidence/context，不是 frame-based Dialogue segment；模板 `analysisFields` 没有被核实为稳定 Emotion schema；没有正式字幕/转写或 Emotion curve store。 | 不注册 Dialogue/Emotion production track，不把 marker 文本、ResearchRange 或猜测字段当 canonical source；界面只说明准入缺口，保留人工音轨与研究范围能力。待字幕/转写、人工 frame segment 或批准模型输出后再单独完成 data/adapter/backup/browser gate。 |
+| 后续分析轨扩展 | `docs/Plans/AisenLens-timeline-semantic-upgrade-plan/09-future-analysis-track-expansion.md`、当前 `trackRegistry.ts` | 目前只有六条真实可用轨道；Music/Sound/Character/Camera/Composition/Color/Rhythm/Narrative 尚未逐条满足 source、ownership、时间形态、持久化和 browser acceptance。 | 不预建未来 Track ID、checkbox、disabled item 或通用 renderer；保留逐轨准入清单。至少两到三条真实轨使用同一 presentation 后，才评估 Point/Segment/Curve 抽象。 |

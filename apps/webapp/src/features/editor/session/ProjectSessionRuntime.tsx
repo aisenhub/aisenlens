@@ -11,8 +11,7 @@ interface ProjectSessionRuntimeProps extends PropsWithChildren {
 export default function ProjectSessionRuntime({ isLoading, hasError, children }: ProjectSessionRuntimeProps) {
   const setHydrated = useProjectSession((state) => state.setHydrated)
   const setLifecycle = useProjectSession((state) => state.setLifecycle)
-  const setResearchMode = useProjectSession((state) => state.setResearchMode)
-  const setResearchScope = useProjectSession((state) => state.setResearchScope)
+ const setResearchScope = useProjectSession((state) => state.setResearchScope)
   const setResearchTarget = useProjectSession((state) => state.setResearchTarget)
   const location = useLocation()
 
@@ -26,10 +25,9 @@ export default function ProjectSessionRuntime({ isLoading, hasError, children }:
 
   useEffect(() => {
     const workflow = parseWorkflowLocation(location.search)
-    if (workflow.mode) setResearchMode(workflow.mode)
-    if (workflow.scopeKind) setResearchScope({ kind: workflow.scopeKind, ...(workflow.scopeId ? { id: workflow.scopeId } : {}), ...(workflow.fromUs !== undefined ? { fromUs: workflow.fromUs } : {}), ...(workflow.toUs !== undefined ? { toUs: workflow.toUs } : {}) })
-    setResearchTarget(workflow.targetKind && workflow.targetId ? { kind: workflow.targetKind, id: workflow.targetId } : null)
-  }, [location.search, setResearchMode, setResearchScope, setResearchTarget])
+   if (workflow.scopeKind) setResearchScope({ kind: workflow.scopeKind, ...(workflow.scopeId ? { id: workflow.scopeId } : {}), ...(workflow.fromUs !== undefined ? { fromUs: workflow.fromUs } : {}), ...(workflow.toUs !== undefined ? { toUs: workflow.toUs } : {}) })
+   setResearchTarget(workflow.targetKind && workflow.targetId ? { kind: workflow.targetKind, id: workflow.targetId } : null)
+  }, [location.search, setResearchScope, setResearchTarget])
 
   return <>{children}</>
 }

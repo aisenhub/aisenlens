@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { browserPath, createProjectAndEnterEditor, evaluate, launchBrowser, until } from "../shot-calibration/calibration-browser-harness.js"
 
-test("Overview / Analyze 在常用视口下保持可导航且研究入口可见", { timeout: 120_000 }, async (context) => {
+test("Overview / Analyze 在常用视口下保持可导航", { timeout: 120_000 }, async (context) => {
   assert.ok(browserPath, "未找到 Chrome 或 Edge；可通过 AISENLENS_CHROME_PATH 指定浏览器路径。")
   const { client, sessionId } = await launchBrowser(context, "overview-analyze")
   await createProjectAndEnterEditor(client, sessionId)
@@ -15,6 +15,8 @@ test("Overview / Analyze 在常用视口下保持可导航且研究入口可见"
     assert.equal(await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.includes('深拆')); button?.click(); return Boolean(button) })()"), true)
     await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('stage') === 'analyze'")), "深拆阶段未加载")
     await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('ANALYZE')")), "深拆内容未出现")
+    assert.equal(await evaluate(client, sessionId, "document.body.innerText.includes('研究模式')"), false)
+    assert.equal(await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => ['逐镜', '选段', '逐镜记录', '深入研究'].includes(element.textContent?.trim()))"), false)
     assert.equal(await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === 'Shots'); button?.click(); return Boolean(button) })()"), true)
     await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('研究队列')")), "研究队列未出现")
   }
@@ -27,14 +29,21 @@ test("Sound 研究范围通过真实 IndexedDB 往返并在刷新后恢复 URL �
   await until(async () => (await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '深拆'); if (!button) return false; button.click(); return true })()")), "深拆入口未出现")
   await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('stage') === 'analyze'")), "深拆阶段未加载")
   await until(async () => (await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === 'Sound'); if (!button) return false; button.click(); return true })()")), "Sound 入口未出现")
-  await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('view') === 'sound'")), "Sound 视图未加载")
-  await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('保存声音研究范围')")), "声音研究范围入口未出现")
-  await evaluate(client, sessionId, "(() => { const inputs = [...document.querySelectorAll('input[type=number]')]; const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set; if (!setter || inputs.length < 2) return false; setter.call(inputs[0], '1.25'); inputs[0].dispatchEvent(new Event('input', { bubbles: true })); setter.call(inputs[1], '2.75'); inputs[1].dispatchEvent(new Event('input', { bubbles: true })); const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.includes('保存声音研究范围')); button?.click(); return Boolean(button) })()")
+ await until(async () => (await evaluate(client, sessionId, "new URL(location.href).searchParams.get('view') === 'sound'")), "Sound 视图未加载")
+ await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('保存声音研究范围')")), "声音研究范围入口未出现")
+  await until(async () => (await evaluate(client, sessionId, "document.querySelectorAll('input[type=number]').length === 2")), "声音范围输入控件未完成挂载")
+ const setNumberInput = async (index, value) => {
+    const actual = await evaluate(client, sessionId, `(() => { const input = [...document.querySelectorAll('input[type=number]')][${index}]; const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set; if (!input || !setter) return null; input.focus(); setter.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new Event('change', { bubbles: true })); return input.value })()`)
+    assert.equal(actual, value)
+  }
+  await setNumberInput(0, "1.25")
+  await setNumberInput(1, "2.75")
+  await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.offsetParent !== null && element.textContent?.includes('保存声音研究范围')); button?.click(); return Boolean(button) })()")
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('RANGE')")), "声音研究范围未创建")
   const range = await until(async () => await evaluate(client, sessionId, "new Promise((resolve) => { const request = indexedDB.open('aisenlens-projects'); request.onsuccess = () => { const database = request.result; const projectId = new URL(location.href).searchParams.get('project'); const result = database.transaction('research-ranges', 'readonly').objectStore('research-ranges').index('projectId').getAll(IDBKeyRange.only(projectId)); result.onsuccess = () => resolve(result.result[0] ?? null); result.onerror = () => resolve(null) }; request.onerror = () => resolve(null) })"), "研究范围未写入 IndexedDB", 20_000)
   assert.deepEqual({ startUs: range.startUs, endUs: range.endUs }, { startUs: 1_250_000, endUs: 2_750_000 })
   const projectId = await evaluate(client, sessionId, "new URL(location.href).searchParams.get('project')")
-  await client.send("Page.navigate", { url: `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&stage=analyze&view=sound&mode=range&scopeKind=saved-range&scopeId=${range.id}&fromUs=1250000&toUs=2750000&targetKind=range&targetId=${range.id}` }, sessionId)
+  await client.send("Page.navigate", { url: `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&stage=analyze&view=sound&scopeKind=saved-range&scopeId=${range.id}&fromUs=1250000&toUs=2750000&targetKind=range&targetId=${range.id}` }, sessionId)
   await until(async () => (await evaluate(client, sessionId, "location.pathname === '/app' && new URL(location.href).searchParams.get('targetId') !== null")), "刷新后的研究目标 URL 未恢复")
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('ANALYZE') && document.body.innerText.includes('Sound')")), "刷新后的 Analyze 页面未加载", 20_000)
   const reloadedRange = await until(async () => await evaluate(client, sessionId, "new Promise((resolve) => { const request = indexedDB.open('aisenlens-projects'); request.onsuccess = () => { const database = request.result; const result = database.transaction('research-ranges', 'readonly').objectStore('research-ranges').get(new URL(location.href).searchParams.get('targetId')); result.onsuccess = () => resolve(result.result ?? null); result.onerror = () => resolve(null) }; request.onerror = () => resolve(null) })"), "刷新后研究范围未从 IndexedDB 恢复", 20_000)

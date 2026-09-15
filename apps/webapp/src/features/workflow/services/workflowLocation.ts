@@ -2,7 +2,7 @@ import {
   getStageDefinition,
   WORKFLOW_STAGE_DEFINITIONS,
 } from "../constants/workflowStages.ts"
-import type { ResearchMode, ResearchScopeKind, ResearchTargetKind, WorkflowLocation, WorkflowStage, WorkflowView } from "../types.ts"
+import type { ResearchScopeKind, ResearchTargetKind, WorkflowLocation, WorkflowStage, WorkflowView } from "../types.ts"
 
 const stageIds = new Set(WORKFLOW_STAGE_DEFINITIONS.map(({ id }) => id))
 
@@ -23,8 +23,6 @@ export function parseWorkflowLocation(search: string): WorkflowLocation {
     stage,
     view,
   }
-  const mode = params.get("mode")
-  if (mode === "sequential" || mode === "range") location.mode = mode
   const scopeKind = params.get("scopeKind")
   if (scopeKind === "full-film" || scopeKind === "group" || scopeKind === "saved-range" || scopeKind === "transient-range") location.scopeKind = scopeKind
   const scopeId = params.get("scopeId")
@@ -44,16 +42,17 @@ export function parseWorkflowLocation(search: string): WorkflowLocation {
 
 export function createWorkflowSearch(
   currentSearch: string,
-  next: Partial<Pick<WorkflowLocation, "projectId" | "stage" | "view" | "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>,
+  next: Partial<Pick<WorkflowLocation, "projectId" | "stage" | "view" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>,
 ) {
   const params = new URLSearchParams(currentSearch)
+  params.delete("mode")
   if (next.projectId !== undefined) {
     if (next.projectId) params.set("project", next.projectId)
     else params.delete("project")
   }
   if (next.stage !== undefined) params.set("stage", next.stage)
   if (next.view !== undefined) params.set("view", next.view)
-  for (const [key, value] of [["mode", next.mode], ["scopeKind", next.scopeKind], ["scopeId", next.scopeId], ["fromUs", next.fromUs], ["toUs", next.toUs], ["targetKind", next.targetKind], ["targetId", next.targetId]] as const) {
+  for (const [key, value] of [["scopeKind", next.scopeKind], ["scopeId", next.scopeId], ["fromUs", next.fromUs], ["toUs", next.toUs], ["targetKind", next.targetKind], ["targetId", next.targetId]] as const) {
     if (value === undefined) continue
     if (value === null || value === "") params.delete(key)
     else params.set(key, String(value))

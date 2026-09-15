@@ -3,7 +3,7 @@ import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity"
 import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import type { StoredShotRecord, MediaSourceFingerprint } from "../../project/types"
 import projectRepository from "../../project/services/projectRepository"
-import { createCalibrationDraft, formalShotsSignature, isTransientFullFilmPlaceholder, shouldSeedCalibrationFromDetection } from "../services/calibrationDraftService"
+import { createCalibrationDraft, isTransientFullFilmPlaceholder, reconcileCalibrationDraftWithFormalShots, shouldSeedCalibrationFromDetection } from "../services/calibrationDraftService"
 import { createCalibrationStore, type CalibrationStore } from "../stores/createCalibrationStore"
 import type { CalibrationDraft } from "../types"
 
@@ -63,23 +63,26 @@ export default function useCalibrationSession(input: UseCalibrationSessionInput)
       try {
         const stored = await projectRepository.getCalibrationDraft(input.projectId, mediaIdentity)
         if (cancelled) return
-        const baseShotsChanged = stored ? stored.baseFormalShotsSignature !== formalShotsSignature(input.shots) : false
-        const baseTaskChanged = stored ? stored.baseTaskUpdatedAt !== (input.task?.updatedAt ?? null) : false
         const useDetectionTask = shouldSeedCalibrationFromDetection(input.task, input.shots)
         const storedMatchesDetectionTask = !useDetectionTask || (
           stored?.initialSource === "detection" &&
           stored.baseTaskId === input.task?.id &&
           stored.baseTaskUpdatedAt === input.task?.updatedAt
         )
-        const draft = stored?.status === "editing" && stored.baseProjectUpdatedAt !== input.baseProjectUpdatedAt && (baseShotsChanged || baseTaskChanged)
-          ? { ...stored, status: "conflict" as const }
-          : stored?.status === "editing" && storedMatchesDetectionTask
-            ? stored
-            : createCalibrationDraft({ ...input, mediaIdentity, task: useDetectionTask ? input.task : null })
+        const draft = stored?.status === "editing" && storedMatchesDetectionTask
+          ? reconcileCalibrationDraftWithFormalShots(stored, input)
+          : createCalibrationDraft({ ...input, mediaIdentity, task: useDetectionTask ? input.task : null })
         const store = createCalibrationStore(draft)
         storeRef.current = store
-        persistedRevisionRef.current = stored?.revision
-        setSaveState(stored ? "saved" : "idle")
+        if (stored && draft !== stored) {
+          setSaveState("saving")
+          await projectRepository.saveCalibrationDraft(draft, stored.revision)
+          persistedRevisionRef.current = draft.revision
+          setSaveState("saved")
+        } else {
+          persistedRevisionRef.current = stored?.revision
+          setSaveState(stored ? "saved" : "idle")
+        }
         setState("ready")
       } catch (cause) {
         if (cancelled) return

@@ -71,7 +71,7 @@ import AnnotationMarkerPanel from "../../annotation/components/AnnotationMarkerP
 import { loadProjectAnnotationMarkers } from "../../annotation/services/annotationService"
 import type {
   AnnotationMarker,
-  AnnotationMarkerCategory,
+  AnnotationMarkerScope,
 } from "../../annotation/types"
 import { loadOrGenerateWaveform } from "../../video/services/waveformService"
 import { normalizeMediaSourceFingerprint } from "../../project/services/mediaService"
@@ -88,13 +88,12 @@ import type { CalibrationAnnotationRecord } from "../../scene-calibration/types"
 import ShotGroupPanel from "../../group/components/ShotGroupPanel"
 import ShotGroupInspector from "../../group/components/ShotGroupInspector"
 import {
-  adjustShotGroupRange,
-  createShotGroup,
   getContiguousShotIds,
   getShotGroupIndexes,
   loadProjectShotGroups,
   reconcileShotGroups,
 } from "../../group/services/groupService"
+import { createStructureFromSelection, deleteStructure, demoteStructureBoundary, mergeAdjacentStructures, moveStructureBoundary, promoteStructureBoundary, resolveStructureSpanAtBoundary, resizeStructureEdge, type StructureCommandResult } from "../../group/services/structureCommands"
 import type { ShotGroupKind, ShotGroupRecord } from "../../group/types"
 const ReportExportDialog = lazy(() => import("../../export/components/ReportExportDialog"))
 import { downloadReport } from "../../export/services/reportExportService"
@@ -145,6 +144,10 @@ const CreateView = lazy(() => import("../../workflow/components/CreateView"))
 import type { LearningSource } from "../../learn/services/deriveLearningSources"
 import useResearchWorkbench from "../../analysis/hooks/useResearchWorkbench"
 import type { EvidenceRef, ResearchContext, ResearchRange, ResearchTarget } from "../../analysis/types.ts"
+import { applyStructureChangeToResearchContexts } from "../../analysis/services/structureResearchImpact.ts"
+import { applyShotChangeToResearchContexts } from "../../analysis/services/shotResearchImpact.ts"
+import { applyShotMergeToGroups, applyShotSplitToGroups } from "../../shot/services/shotStructureChanges.ts"
+import type { TimelineNavigationFocus } from "../../timeline/timelineNavigation"
 import AnalysisFieldEntryInput from "../../analysis/components/AnalysisFieldEntryInput"
 import BatchAnalysisPanel from "../../analysis/components/BatchAnalysisPanel"
 import { applyAnalysisBatch } from "../../analysis/services/analysisFieldCommands"
@@ -164,7 +167,7 @@ interface EditorWorkspaceProps {
   isActive?: boolean
   workflowStage?: WorkflowStage
   workflowView?: WorkflowView
-  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
+  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
   settingsOpen: boolean
   onSettingsOpenChange: (open: boolean) => void
 }
@@ -220,15 +223,14 @@ export default function EditorWorkspace({
   const setSessionSelection = useProjectSession((state) => state.setSelection)
   const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
   const setSessionResearchTarget = useProjectSession((state) => state.setResearchTarget)
-  const setSessionResearchMode = useProjectSession((state) => state.setResearchMode)
-  const setSessionResearchScope = useProjectSession((state) => state.setResearchScope)
-  const setSessionResearchQueue = useProjectSession((state) => state.setResearchQueue)
-  const sessionResearchTargetValue = useProjectSession((state) => state.researchTarget)
+ const setSessionResearchScope = useProjectSession((state) => state.setResearchScope)
+ const sessionResearchTargetValue = useProjectSession((state) => state.researchTarget)
   const sessionResearchTarget: ResearchTarget | null = sessionResearchTargetValue && (sessionResearchTargetValue.kind === "shot" || sessionResearchTargetValue.kind === "group" || sessionResearchTargetValue.kind === "range") ? { kind: sessionResearchTargetValue.kind, id: sessionResearchTargetValue.id } : null
   const [mediaProject, setMediaProject] = useState(project)
   const [shots, setShots] = useState<ShotData[]>([])
   const autoShotDetectionRef = useRef<Record<string, ShotDetectionMeta>>({})
   const [activeShot, setActiveShot] = useState(0)
+  const [timelineNavigationFocus, setTimelineNavigationFocus] = useState<TimelineNavigationFocus>({ kind: "film" })
   const [panel, setPanel] = useState<Panel>("frame")
   const [activeTool, setActiveTool] = useState<PanelToolId>(null)
   const [mobilePanel, setMobilePanel] = useState<"shots" | "analysis" | null>(null)
@@ -341,13 +343,7 @@ export default function EditorWorkspace({
   const [annotationMarkers, setAnnotationMarkers] =
     useState<AnnotationMarker[]>([])
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null)
-  const [visibleMarkerCategories, setVisibleMarkerCategories] =
-    useState<AnnotationMarkerCategory[]>([
-      "important",
-      "composition",
-      "emotion",
-      "turning-point",
-    ])
+  const [markerCreateRequest, setMarkerCreateRequest] = useState(0)
   const [waveformPeaks, setWaveformPeaks] = useState<number[] | null>(null)
   const [waveformUnavailable, setWaveformUnavailable] = useState(false)
   const [shotGroups, setShotGroups] = useState<ShotGroupRecord[]>([])
@@ -723,6 +719,33 @@ export default function EditorWorkspace({
     () => restoreCompositionShapeHistory(compositionShapeHistoryIndex + 1),
     [compositionShapeHistoryIndex, restoreCompositionShapeHistory],
   )
+  const canUndoHistory = workflowStage !== "calibrate" && (
+    activeTool === "mask" && compositionShapeHistoryIndex > 0
+      ? true
+      : editorHistory.canUndo
+  )
+  const canRedoHistory = workflowStage !== "calibrate" && (
+    activeTool === "mask" &&
+    compositionShapeHistoryIndex < compositionShapeHistoryRef.current.length - 1
+      ? true
+      : editorHistory.canRedo
+  )
+  const handleHistoryUndo = useCallback(() => {
+    if (workflowStage === "calibrate") return
+    if (activeTool === "mask" && compositionShapeHistoryIndex > 0) {
+      undoCompositionShapes()
+      return
+    }
+    if (editorHistory.canUndo) editorHistory.undo()
+  }, [activeTool, compositionShapeHistoryIndex, editorHistory.canUndo, editorHistory.undo, undoCompositionShapes, workflowStage])
+  const handleHistoryRedo = useCallback(() => {
+    if (workflowStage === "calibrate") return
+    if (activeTool === "mask" && compositionShapeHistoryIndex < compositionShapeHistoryRef.current.length - 1) {
+      redoCompositionShapes()
+      return
+    }
+    if (editorHistory.canRedo) editorHistory.redo()
+  }, [activeTool, compositionShapeHistoryIndex, editorHistory.canRedo, editorHistory.redo, redoCompositionShapes, workflowStage])
   const deleteSelectedCompositionShape = useCallback(() => {
     if (!selectedCompositionShapeId) return
     const shapes = compositionOverlay.shapes.filter(
@@ -912,6 +935,7 @@ export default function EditorWorkspace({
     setShotDims({})
     setShotStatuses({})
     setShotGroups([])
+    setTimelineNavigationFocus({ kind: "film" })
     setSelectedShotIds([])
     setSelectedGroupId(null)
     setLoadedShotGroupProjectId(null)
@@ -1051,7 +1075,7 @@ export default function EditorWorkspace({
         setShotGroups(groups)
         setLoadedShotGroupProjectId(projectId)
       })
-      .catch((error) => { if (active) setEditorLoadError(error instanceof Error ? error.message : "分组数据读取失败，请重试。") })
+      .catch((error) => { if (active) setEditorLoadError(error instanceof Error ? error.message : "结构数据读取失败，请重试。") })
     return () => { active = false }
   }, [dataLoadRevision, projectId])
 
@@ -1180,6 +1204,20 @@ export default function EditorWorkspace({
     )
       setSelectedGroupId(null)
   }, [selectedGroupId, shotGroups])
+
+  useEffect(() => {
+    if (timelineNavigationFocus.kind === "film") return
+    const exists = timelineNavigationFocus.kind === "shot"
+      ? shots.some((shot) => shot.id === timelineNavigationFocus.id)
+      : shotGroups.some((group) => group.id === timelineNavigationFocus.id)
+    if (exists) return
+    const anchorShotId = shots[Math.max(0, Math.min(activeShot, shots.length - 1))]?.id
+    const rank: Record<ShotGroupKind, number> = { scene: 1, sequence: 2, section: 3 }
+    const fallback = shotGroups
+      .filter((group) => anchorShotId && group.shotIds.includes(anchorShotId) && (timelineNavigationFocus.kind === "shot" || rank[group.kind] > rank[timelineNavigationFocus.kind]))
+      .sort((left, right) => rank[left.kind] - rank[right.kind])[0]
+    setTimelineNavigationFocus(fallback ? { kind: fallback.kind, id: fallback.id } : { kind: "film" })
+  }, [activeShot, shotGroups, shots, timelineNavigationFocus])
 
   useEffect(() => {
     const frameRate = media.metadata?.frameRate ?? FPS
@@ -1633,9 +1671,21 @@ export default function EditorWorkspace({
     )
     const mergedRange = mergedRanges[firstIndex]
     if (!mergedRange) return
-    editorHistory.commit()
     const first = shots[firstIndex]
     const second = shots[secondIndex]
+    const now = new Date().toISOString()
+    const groupChange = applyShotMergeToGroups({
+      groups: shotGroups,
+      orderedShotIds: shots.map((shot) => shot.id),
+      retainedShotId: first.id,
+      removedShotId: second.id,
+      now,
+    })
+    if (!groupChange.ok) {
+      toast.error(groupChange.reason)
+      return
+    }
+    editorHistory.commit()
     const mergedShot = {
       ...first,
       start: mergedRange.startFrame / frameRate,
@@ -1647,34 +1697,53 @@ export default function EditorWorkspace({
       ...previous.slice(secondIndex + 1),
     ])
     setShotFrames((previous) => ({
-      ...previous,
+      ...Object.fromEntries(Object.entries(previous).filter(([id]) => id !== second.id)),
       [first.id]: {
         first: mergedRange.startFrame,
         last: mergedRange.endFrame - 1,
       },
     }))
-    setShotScreenshotIds((previous) => ({
-      ...previous,
-      [first.id]: [
-        ...(previous[first.id] ?? []),
-        ...(previous[second.id] ?? []),
-      ],
-    }))
-    setShotBoundaryScreenshotIds((previous) => ({
-      ...previous,
-      [first.id]: { first: previous[first.id]?.first ?? null, last: null },
-    }))
-    setShotNotes((previous) => ({
-      ...previous,
-      [first.id]: {
-        content: [previous[first.id]?.content, previous[second.id]?.content]
-          .filter(Boolean)
-          .join("\n\n"),
-        analysis: [previous[first.id]?.analysis, previous[second.id]?.analysis]
-          .filter(Boolean)
-          .join("\n\n"),
-      },
-    }))
+    setShotScreenshotIds((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      next[first.id] = [...(previous[first.id] ?? []), ...(previous[second.id] ?? [])]
+      return next
+    })
+    setPrimaryShotScreenshotIds((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      next[first.id] = previous[first.id] ?? previous[second.id] ?? null
+      return next
+    })
+    setShotBoundaryScreenshotIds((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      next[first.id] = { first: previous[first.id]?.first ?? previous[second.id]?.first ?? null, last: null }
+      return next
+    })
+    setShotNotes((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      next[first.id] = {
+        content: [previous[first.id]?.content, previous[second.id]?.content].filter(Boolean).join("\n\n"),
+        analysis: [previous[first.id]?.analysis, previous[second.id]?.analysis].filter(Boolean).join("\n\n"),
+      }
+      return next
+    })
+    setShotDims((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      return next
+    })
+    setShotStatuses((previous) => {
+      const next = { ...previous }
+      delete next[second.id]
+      return next
+    })
+    delete autoShotDetectionRef.current[second.id]
+    setShotGroups(groupChange.groups)
+    const contextsAfterShot = applyShotChangeToResearchContexts(researchWorkbench.contexts, { kind: "merge", retainedShotId: first.id, removedShotId: second.id }, now)
+    researchWorkbench.restore(researchWorkbench.ranges, applyStructureChangeToResearchContexts(contextsAfterShot, groupChange.changes, now))
     setActiveShot(firstIndex)
   }
 
@@ -1715,7 +1784,6 @@ export default function EditorWorkspace({
       return
     }
 
-    const now = new Date().toISOString()
     const newShot: ShotData = {
       ...originalShot,
       id: result.newRange.id,
@@ -1726,11 +1794,18 @@ export default function EditorWorkspace({
       motion: "未分析",
       color: "未分析",
     }
-    const updatedShotIds = [
-      ...shots.slice(0, originalShotIndex + 1).map((shot) => shot.id),
-      newShot.id,
-      ...shots.slice(originalShotIndex + 1).map((shot) => shot.id),
-    ]
+    const now = new Date().toISOString()
+    const groupChange = applyShotSplitToGroups({
+      groups: shotGroups,
+      orderedShotIds: shots.map((shot) => shot.id),
+      originalShotId: result.originalRange.id,
+      newShotId: newShot.id,
+      now,
+    })
+    if (!groupChange.ok) {
+      toast.error(groupChange.reason)
+      return
+    }
 
     editorHistory.commit()
     setShots((current) => [
@@ -1771,15 +1846,9 @@ export default function EditorWorkspace({
       [newShot.id]: { content: "", analysis: "" },
     }))
     setShotDims((current) => ({ ...current, [newShot.id]: {} }))
-    setAnnotationMarkers((current) =>
-      current.map((marker) =>
-        marker.shotId === result.originalRange.id &&
-        marker.frame >= result.newRange.startFrame
-          ? { ...marker, shotId: newShot.id, updatedAt: now }
-          : marker,
-      ),
-    )
-    setShotGroups((current) => reconcileShotGroups(current, updatedShotIds))
+    setShotGroups(groupChange.groups)
+    const contextsAfterShot = applyShotChangeToResearchContexts(researchWorkbench.contexts, { kind: "split", originalShotId: result.originalRange.id, newShotId: newShot.id }, now)
+    researchWorkbench.restore(researchWorkbench.ranges, applyStructureChangeToResearchContexts(contextsAfterShot, groupChange.changes, now))
     setActiveShot(originalShotIndex + 1)
     setCurrentTime(result.newRange.startFrame / frameRate)
     toast.success("已在播放头位置分割当前分镜。")
@@ -1788,23 +1857,21 @@ export default function EditorWorkspace({
   const toggleTool = (id: PanelToolId) =>
     setActiveTool((prev) => (prev === id ? null : id))
 
-  const createAnnotationMarker = (category: AnnotationMarkerCategory) => {
+  const requestAnnotationMarkerDraft = () => {
+    setActiveTool("markers")
+    setMarkerCreateRequest((request) => request + 1)
+  }
+
+  const createAnnotationMarker = (draft: { frame: number; content: string; scope: AnnotationMarkerScope }) => {
     const frameRate = media.metadata?.frameRate ?? FPS
+    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate))
     const now = new Date().toISOString()
-    const categoryLabels: Record<AnnotationMarkerCategory, string> = {
-      important: "重要镜头",
-      composition: "构图精妙",
-      emotion: "情绪高点",
-      "turning-point": "转折点",
-    }
     const marker: AnnotationMarker = {
       id: crypto.randomUUID(),
       projectId,
-      frame: Math.round(currentTime * frameRate),
-      shotId: activeShotId || null,
-      category,
-      label: categoryLabels[category],
-      note: "",
+      frame: Math.max(0, Math.min(totalFrames - 1, Math.round(draft.frame))),
+      content: draft.content.trim(),
+      scope: draft.scope,
       createdAt: now,
       updatedAt: now,
     }
@@ -1833,19 +1900,105 @@ export default function EditorWorkspace({
 
   const selectAnnotationMarker = (marker: AnnotationMarker) => {
     setSelectedMarkerId(marker.id)
-    if (marker.shotId) {
-      const index = shots.findIndex((shot) => shot.id === marker.shotId)
-      if (index >= 0) setActiveShot(index)
-    }
+    const frameRate = media.metadata?.frameRate ?? FPS
+    const index = shots.findIndex((shot) => marker.frame >= Math.round(shot.start * frameRate) && marker.frame < Math.round((shot.start + shot.duration) * frameRate))
+    if (index >= 0) setActiveShot(index)
     setActiveTool("markers")
   }
 
-  const toggleMarkerCategory = (category: AnnotationMarkerCategory) =>
-    setVisibleMarkerCategories((current) =>
-      current.includes(category)
-        ? current.filter((item) => item !== category)
-        : [...current, category],
-    )
+  const commitStructureResult = (result: StructureCommandResult): boolean => {
+    if (!result.ok) {
+      toast.error(result.reason)
+      return false
+    }
+    if (!result.affectedGroupIds.length) return false
+    editorHistory.commit()
+    setShotGroups(result.groups)
+    const nextContexts = applyStructureChangeToResearchContexts(researchWorkbench.contexts, result.changes, new Date().toISOString())
+    researchWorkbench.restore(researchWorkbench.ranges, nextContexts)
+    return true
+  }
+
+  const handleCreateStructureAtBoundary = (kind: ShotGroupKind, afterShotId: string) => {
+    const result = resolveStructureSpanAtBoundary({
+      projectId,
+      kind,
+      afterShotId,
+      orderedShots: shots.map((shot) => ({ id: shot.id })),
+      existingGroups: shotGroups,
+      now: new Date().toISOString(),
+    })
+    if (!commitStructureResult(result) || !result.ok) return
+    const created = result.changes.createdGroupIds.map((id) => result.groups.find((group) => group.id === id)).find((group): group is ShotGroupRecord => Boolean(group))
+    if (created) {
+      setSelectedGroupId(created.id)
+      setPanel("group")
+    }
+  }
+
+  const handleFocusStructure = (group: ShotGroupRecord) => {
+    setTimelineNavigationFocus({ kind: group.kind, id: group.id })
+    setSelectedGroupId(group.id)
+    setPanel("group")
+  }
+
+  const handleMoveStructureBoundary = (kind: ShotGroupKind, leftGroupId: string, rightGroupId: string, afterShotId: string) => {
+    const result = moveStructureBoundary({ projectId, kind, leftGroupId, rightGroupId, targetAfterShotId: afterShotId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+    commitStructureResult(result)
+  }
+
+  const handleResizeStructureEdge = (kind: ShotGroupKind, groupId: string, edge: "start" | "end", targetShotId: string) => {
+    const result = resizeStructureEdge({ projectId, kind, groupId, edge, targetShotId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+    commitStructureResult(result)
+  }
+
+  const handlePromoteStructure = (groupId: string) => {
+    commitStructureResult(promoteStructureBoundary({ projectId, groupId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() }))
+  }
+
+  const handleDemoteStructure = (groupId: string) => {
+    const result = demoteStructureBoundary({ projectId, groupId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+    if (commitStructureResult(result)) {
+      setSelectedGroupId((current) => current === groupId ? null : current)
+      setTimelineNavigationFocus((current) => (current.kind === "scene" || current.kind === "sequence" || current.kind === "section") && current.id === groupId ? { kind: "film" } : current)
+    }
+  }
+
+  const handleMergeStructures = (leftGroupId: string, rightGroupId: string, metadataResolution: "keep-left" | "keep-right") => {
+    const result = mergeAdjacentStructures({ projectId, kind: shotGroups.find((group) => group.id === leftGroupId)?.kind ?? "scene", leftGroupId, rightGroupId, metadataResolution, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+    if (commitStructureResult(result)) {
+      setSelectedGroupId((current) => current === rightGroupId ? leftGroupId : current)
+      setTimelineNavigationFocus((current) => current.kind !== "film" && current.id === rightGroupId ? { kind: current.kind, id: leftGroupId } : current)
+    }
+  }
+
+  const handleDrillDownStructure = (group: ShotGroupRecord) => {
+    const indexes = group.shotIds.map((id) => shots.findIndex((shot) => shot.id === id)).filter((index) => index >= 0)
+    if (!indexes.length) return null
+    const startIndex = Math.min(...indexes)
+    const endIndex = Math.max(...indexes)
+    const rank: Record<ShotGroupKind, number> = { scene: 1, sequence: 2, section: 3 }
+    const child = shotGroups
+      .filter((candidate) => rank[candidate.kind] < rank[group.kind])
+      .map((candidate) => ({ candidate, indexes: candidate.shotIds.map((id) => shots.findIndex((shot) => shot.id === id)).filter((index) => index >= 0) }))
+      .filter(({ indexes: childIndexes }) => childIndexes.length > 0 && Math.min(...childIndexes) >= startIndex && Math.max(...childIndexes) <= endIndex)
+      .sort((left, right) => Math.min(...left.indexes) - Math.min(...right.indexes))[0]?.candidate
+    if (child) {
+      const childIndexes = child.shotIds.map((id) => shots.findIndex((shot) => shot.id === id)).filter((index) => index >= 0)
+      const first = shots[Math.min(...childIndexes)]
+      const last = shots[Math.max(...childIndexes)]
+      if (!first || !last) return null
+      setTimelineNavigationFocus({ kind: child.kind, id: child.id })
+      setSelectedGroupId(child.id)
+      setPanel("group")
+      return { focus: { kind: child.kind, id: child.id } as TimelineNavigationFocus, start: first.start, end: last.start + last.duration }
+    }
+    const shot = shots[startIndex]
+    if (!shot) return null
+    setTimelineNavigationFocus({ kind: "shot", id: shot.id })
+    setActiveShot(startIndex)
+    return { focus: { kind: "shot", id: shot.id } as TimelineNavigationFocus, start: shot.start, end: shot.start + shot.duration }
+  }
 
   const updateShotSelection = (shotId: string, selected: boolean) => {
     setSelectedShotIds((current) =>
@@ -1864,17 +2017,18 @@ export default function EditorWorkspace({
           : "序列"
     const count =
       shotGroups.filter((group) => group.kind === groupKindDraft).length + 1
-    const group = createShotGroup({
+    const result = createStructureFromSelection({
       projectId,
       kind: groupKindDraft,
       title: `${prefix} ${String(count).padStart(2, "0")}`,
       selectedShotIds,
-      shotIds: shots.map((shot) => shot.id),
+      orderedShots: shots.map((shot) => ({ id: shot.id })),
       existingGroups: shotGroups,
+      now: new Date().toISOString(),
     })
+    if (!commitStructureResult(result) || !result.ok) return
+    const group = result.groups.find((item) => result.changes.createdGroupIds.includes(item.id))
     if (!group) return
-    editorHistory.commit()
-    setShotGroups((current) => [...current, group])
     setSelectedShotIds([])
     setIsSelectingGroupShots(false)
     setSelectedGroupId(group.id)
@@ -1997,16 +2151,17 @@ export default function EditorWorkspace({
     edge: "start" | "end",
     operation: "extend" | "shrink",
   ) => {
-    editorHistory.commit()
-    setShotGroups((current) =>
-      adjustShotGroupRange({
-        groups: current,
-        groupId,
-        shotIds: shots.map((shot) => shot.id),
-        edge,
-        operation,
-      }),
-    )
+    const group = shotGroups.find((item) => item.id === groupId)
+    if (!group) return
+    const indexes = getShotGroupIndexes(group, shots.map((shot) => shot.id))
+    if (!indexes) return
+    const targetIndex = operation === "extend"
+      ? edge === "start" ? indexes.first - 1 : indexes.last + 1
+      : edge === "start" ? indexes.first + 1 : indexes.last - 1
+    const targetShotId = shots[targetIndex]?.id
+    if (!targetShotId) return
+    const result = resizeStructureEdge({ projectId, kind: group.kind, groupId, edge, targetShotId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+    commitStructureResult(result)
   }
 
   const activeShotId = shots[activeShot]?.id ?? ""
@@ -2103,6 +2258,21 @@ export default function EditorWorkspace({
         .slice(selectedGroupIndexes.first, selectedGroupIndexes.last + 1)
         .reduce((total, shot) => total + shot.duration, 0)
     : 0
+  const selectedGroupFrameRange = selectedGroupIndexes && editorShotRanges[selectedGroupIndexes.first] && editorShotRanges[selectedGroupIndexes.last]
+    ? { startFrame: editorShotRanges[selectedGroupIndexes.first]!.startFrame, endFrame: editorShotRanges[selectedGroupIndexes.last]!.endFrame }
+    : null
+  const selectedGroupAdjacent = selectedGroup && selectedGroupIndexes
+    ? (() => {
+        const sameKind = shotGroups
+          .filter((group) => group.kind === selectedGroup.kind && group.id !== selectedGroup.id)
+          .map((group) => ({ group, indexes: getShotGroupIndexes(group, shots.map((shot) => shot.id)) }))
+          .filter((item): item is { group: ShotGroupRecord; indexes: { first: number; last: number } } => Boolean(item.indexes))
+        return {
+          previous: sameKind.find((item) => item.indexes.last + 1 === selectedGroupIndexes.first)?.group ?? null,
+          next: sameKind.find((item) => selectedGroupIndexes.last + 1 === item.indexes.first)?.group ?? null,
+        }
+      })()
+    : { previous: null, next: null }
   const completionByShotId = Object.fromEntries(
     shots.map((shot) => {
       const completeness = getShotAnalysisCompleteness(
@@ -2129,6 +2299,7 @@ export default function EditorWorkspace({
       screenshotIdsByShotId: shotScreenshotIds,
       primaryScreenshotIdsByShotId: primaryShotScreenshotIds,
       markers: annotationMarkers,
+      frameRate: media.metadata?.frameRate ?? FPS,
     },
     shotSearchFilters,
   )
@@ -2256,12 +2427,11 @@ export default function EditorWorkspace({
   const createResearchRange = useCallback(async (startUs: number, endUs: number) => {
     editorHistory.commit()
     const range = await researchWorkbench.createRangeForMedia({ startUs, endUs, mediaIdentityDigest: researchMediaIdentityDigest })
-    setSessionResearchMode("range")
     setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
     setSessionResearchTarget({ kind: "range", id: range.id })
-    onWorkflowNavigate?.("analyze", workflowView, { mode: "range", scopeKind: "saved-range", scopeId: range.id, fromUs: range.startUs, toUs: range.endUs, targetKind: "range", targetId: range.id })
+    onWorkflowNavigate?.("analyze", workflowView, { scopeKind: "saved-range", scopeId: range.id, fromUs: range.startUs, toUs: range.endUs, targetKind: "range", targetId: range.id })
     return range
-  }, [editorHistory.commit, onWorkflowNavigate, researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchMode, setSessionResearchScope, setSessionResearchTarget, workflowView])
+  }, [editorHistory.commit, onWorkflowNavigate, researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchScope, setSessionResearchTarget, workflowView])
   const updateResearchRange = useCallback((range: ResearchRange, patch: Partial<Pick<ResearchRange, "startUs" | "endUs" | "title" | "observation" | "interpretation" | "summary">>) => { editorHistory.commit(); return researchWorkbench.updateRange(range, patch) }, [editorHistory.commit, researchWorkbench.updateRange])
   const saveAndNextResearchShot = useCallback(async () => {
     await researchWorkbench.flush()
@@ -2444,7 +2614,7 @@ export default function EditorWorkspace({
         outFrame: frame,
       }))
     },
-    "marker.create": workflowStage === "calibrate" ? undefined : () => createAnnotationMarker("important"),
+    "marker.create": workflowStage === "calibrate" ? undefined : requestAnnotationMarkerDraft,
     "shot.splitAtPlayhead":
       workflowStage !== "calibrate" && (activeShortcutSurface === "preview" || activeShortcutSurface === "timeline")
         ? handleSplitShotAtPlayhead
@@ -2475,22 +2645,13 @@ export default function EditorWorkspace({
       setCompositionDrawingTool("select")
       setSelectedCompositionShapeId(null)
       setCompositionCancelRequest((request) => request + 1)
+      if (activeShortcutSurface === "timeline" && timelineNavigationFocus.kind !== "film") {
+        setTimelineNavigationFocus({ kind: "film" })
+      }
     },
     "help.show": () => setActiveTool("shortcuts"),
-    "history.undo":
-      workflowStage === "calibrate" ? undefined : activeTool === "mask" && compositionShapeHistoryIndex > 0
-        ? undoCompositionShapes
-        : editorHistory.canUndo
-          ? editorHistory.undo
-          : undefined,
-    "history.redo":
-      workflowStage === "calibrate" ? undefined : activeTool === "mask" &&
-      compositionShapeHistoryIndex <
-        compositionShapeHistoryRef.current.length - 1
-        ? redoCompositionShapes
-        : editorHistory.canRedo
-          ? editorHistory.redo
-          : undefined,
+    "history.undo": canUndoHistory ? handleHistoryUndo : undefined,
+    "history.redo": canRedoHistory ? handleHistoryRedo : undefined,
     "editing.delete":
       workflowStage === "calibrate" ? undefined : activeTool === "mask" && selectedCompositionShapeId
         ? deleteSelectedCompositionShape
@@ -2684,56 +2845,19 @@ export default function EditorWorkspace({
 
               <div className="flex-1 overflow-y-auto p-3">
                 {activeTool === "markers" && (
-                  <div>
-                    <div className="flex items-center justify-center gap-2">
-                      {([
-                        ["important", "bg-yellow-500", "重要镜头"],
-                        ["composition", "bg-blue-500", "构图精妙"],
-                        ["emotion", "bg-purple-500", "情绪高点"],
-                        ["turning-point", "bg-red-500", "转折点"],
-                      ] as const).map(([category, color, label]) => {
-                        const isVisible =
-                          visibleMarkerCategories.includes(category)
-                        return (
-                          <button
-                            key={category}
-                            type="button"
-                            aria-label={`${label}：${
-                              isVisible ? "显示" : "隐藏"
-                            }`}
-                            aria-pressed={isVisible}
-                            title={`${label}：${isVisible ? "显示" : "隐藏"}`}
-                            onClick={() => toggleMarkerCategory(category)}
-                            className={`flex size-5 items-center justify-center rounded-full border transition-opacity ${
-                              isVisible
-                                ? "border-white/30"
-                                : "border-transparent opacity-30"
-                            }`}
-                          >
-                            <span
-                              className={`size-2.5 rounded-full ${color}`}
-                            />
-                          </button>
-                        )
-                      })}
-                    </div>
-                    <div className="mt-4 border-t border-border pt-4">
-                      <AnnotationMarkerPanel
-                        markers={annotationMarkers}
-                        selectedMarkerId={selectedMarkerId}
-                        frameRate={media.metadata?.frameRate ?? FPS}
-                        onCreate={createAnnotationMarker}
-                        onUpdate={updateAnnotationMarker}
-                        onDelete={removeAnnotationMarker}
-                        onSeek={(frame) =>
-                          setCurrentTime(
-                            frame / (media.metadata?.frameRate ?? FPS),
-                          )
-                        }
-                        onSelect={selectAnnotationMarker}
-                      />
-                    </div>
-                  </div>
+                  <AnnotationMarkerPanel
+                    markers={annotationMarkers}
+                    selectedMarkerId={selectedMarkerId}
+                    frameRate={media.metadata?.frameRate ?? FPS}
+                    currentFrame={Math.round(currentTime * (media.metadata?.frameRate ?? FPS))}
+                    defaultScope={timelineNavigationFocus.kind === "film" ? "free" : timelineNavigationFocus.kind}
+                    createRequest={markerCreateRequest}
+                    onCreate={createAnnotationMarker}
+                    onUpdate={updateAnnotationMarker}
+                    onDelete={removeAnnotationMarker}
+                    onSeek={(frame) => setCurrentTime(frame / (media.metadata?.frameRate ?? FPS))}
+                    onSelect={selectAnnotationMarker}
+                  />
                 )}
 
                 {/* ── 开发者工具 / 标定 ── */}
@@ -2983,7 +3107,6 @@ export default function EditorWorkspace({
             activeShotIndex={activeShot}
             selectedGroupId={selectedGroupId}
             selectedMarkerId={selectedMarkerId}
-            visibleMarkerCategories={visibleMarkerCategories}
             currentTime={currentTime}
             isPlaying={playing}
             durationSeconds={durationSeconds}
@@ -2995,6 +3118,10 @@ export default function EditorWorkspace({
             onCurrentTimeChange={setCurrentTime}
             onPreviewTimeChange={previewCurrentTime}
             onActivate={() => setActiveShortcutSurface("timeline")}
+            canUndo={canUndoHistory}
+            canRedo={canRedoHistory}
+            onUndo={handleHistoryUndo}
+            onRedo={handleHistoryRedo}
             zoomRequest={timelineZoomRequest}
             viewRange={viewRange}
             audioTracks={mediaProject.audioTracks}
@@ -3006,8 +3133,14 @@ export default function EditorWorkspace({
               setPanel("group")
             }}
             onSelectMarker={selectAnnotationMarker}
-            onToggleMarkerCategory={toggleMarkerCategory}
             markers={annotationMarkers}
+            onCreateStructureAtBoundary={handleCreateStructureAtBoundary}
+            onMoveStructureBoundary={handleMoveStructureBoundary}
+            onResizeStructureEdge={handleResizeStructureEdge}
+            onDoubleClickStructure={handleFocusStructure}
+            onDrillDownStructure={handleDrillDownStructure}
+            navigationFocus={timelineNavigationFocus}
+            onNavigateFocus={setTimelineNavigationFocus}
             waveformPeaks={waveformPeaks}
             waveformUnavailable={waveformUnavailable}
             matchingShotIds={matchingShotIds}
@@ -3054,6 +3187,7 @@ export default function EditorWorkspace({
             screenshotIdsByShotId={shotScreenshotIds}
             primaryScreenshotIdsByShotId={primaryShotScreenshotIds}
             markers={annotationMarkers}
+            frameRate={media.metadata?.frameRate ?? FPS}
             onLocateShot={(index) => {
               setActiveShot(index)
               setCurrentTime(shots[index]?.start ?? 0)
@@ -3073,13 +3207,11 @@ export default function EditorWorkspace({
             }}
             onPlayGroup={playShotGroup}
             onDeleteGroup={(groupId) => {
-              editorHistory.commit()
-              setShotGroups((current) =>
-                current.filter((group) => group.id !== groupId),
-              )
-              setSelectedGroupId((current) =>
-                current === groupId ? null : current,
-              )
+              const result = deleteStructure({ projectId, groupId, orderedShots: shots.map((shot) => ({ id: shot.id })), existingGroups: shotGroups, now: new Date().toISOString() })
+              if (commitStructureResult(result)) {
+                setSelectedGroupId((current) => current === groupId ? null : current)
+                setTimelineNavigationFocus((current) => current.kind !== "film" && current.id === groupId ? { kind: "film" } : current)
+              }
             }}
             onPlayShot={playShot}
             onDeleteShot={handleMergeShotAtIndex}
@@ -3103,7 +3235,7 @@ export default function EditorWorkspace({
                 ["frame", "画面"],
                 ["dims", "维度"],
                 ["notes", "批注"],
-                ["group", "分组"],
+                ["group", "结构"],
               ] as [Panel, string][]).map(([tab, label]) => (
                 <TabsTrigger
                   key={tab}
@@ -3291,6 +3423,16 @@ export default function EditorWorkspace({
               durationSeconds={selectedGroupDuration}
               onUpdate={updateCurrentShotGroup}
               onAdjustRange={adjustCurrentShotGroup}
+              markers={annotationMarkers}
+              startFrame={selectedGroupFrameRange?.startFrame}
+              endFrame={selectedGroupFrameRange?.endFrame}
+              frameRate={editorFrameRate}
+              onSelectMarker={selectAnnotationMarker}
+              onSeek={(frame) => setCurrentTime(frame / editorFrameRate)}
+              adjacent={selectedGroupAdjacent}
+              onPromote={handlePromoteStructure}
+              onDemote={handleDemoteStructure}
+              onMerge={handleMergeStructures}
             />
           )}
         </aside>
@@ -3300,7 +3442,7 @@ export default function EditorWorkspace({
       {workflowStage !== "analyze" ? (
       workflowStage === "prepare" ? (
         <PrepareView
-          project={project}
+          project={mediaProject}
           media={media}
           videoUrl={videoUrl}
           isSelectingVideo={isSelectingVideo}
@@ -3313,7 +3455,10 @@ export default function EditorWorkspace({
               mediaIdentity: autoShotRun.mediaIdentity,
               mediaSource: autoShotMediaFingerprint,
               frameRate: editorFrameRate,
-              baseProjectUpdatedAt: project.updatedAt,
+              // ProjectMediaGate does not own editor autosave updates. Use the
+              // workspace's current revision so a draft created here is based
+              // on the same project version the calibration page receives.
+              baseProjectUpdatedAt: mediaProject.updatedAt,
               task: autoShotRun,
               shots: calibrationFormalShots,
             })
@@ -3351,22 +3496,6 @@ export default function EditorWorkspace({
             setCurrentTime(shots[index]?.start ?? 0)
             setSelectedGroupId(null)
           }}
-          onEnterResearch={(shot) => {
-            const startUs = Math.round(shot.start * 1_000_000)
-            const endUs = Math.round((shot.start + shot.duration) * 1_000_000)
-            setSessionResearchMode("range")
-            setSessionResearchScope({ kind: "transient-range", fromUs: startUs, toUs: endUs })
-            setSessionResearchQueue([shot.id])
-            setSessionResearchTarget({ kind: "shot", id: shot.id })
-            onWorkflowNavigate?.("analyze", "shots", { mode: "range", scopeKind: "transient-range", fromUs: startUs, toUs: endUs, targetKind: "shot", targetId: shot.id })
-          }}
-          onEnterSequential={() => {
-            setSessionResearchMode("sequential")
-            setSessionResearchScope({ kind: "full-film" })
-            setSessionResearchQueue(shots.map((shot) => shot.id), activeShot)
-            setSessionResearchTarget(shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
-            onWorkflowNavigate?.("analyze", "shots", { mode: "sequential", scopeKind: "full-film", targetKind: "shot", targetId: shots[activeShot]?.id })
-          }}
           onOpenScene={(group) => {
             setSelectedGroupId(group.id)
             const firstIndex = shots.findIndex((shot) => shot.id === group.shotIds[0])
@@ -3403,7 +3532,6 @@ export default function EditorWorkspace({
               const range = researchWorkbench.ranges.find((item) => item.id === source.id)
               if (range) {
                 setCurrentTime(range.startUs / 1_000_000)
-                setSessionResearchMode("range")
                 setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
               }
             }

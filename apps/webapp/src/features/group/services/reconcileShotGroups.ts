@@ -13,9 +13,19 @@ export function getContiguousShotIds(shotIds: string[], selectedShotIds: string[
 export function reconcileShotGroups(groups: ShotGroupRecord[], shotIds: string[]): ShotGroupRecord[] {
   return groups.map((group) => {
     const members = getContiguousShotIds(shotIds, group.shotIds);
-    const next = { ...group, shotIds: members };
     const hasMissingMembers = group.shotIds.some((id) => !shotIds.includes(id));
-    const validity = hasMissingMembers ? { valid: false, reason: "结构中的部分正式镜头已不存在或被移除。" } : members.length ? validateStructureChange(next, groups) : { valid: false, reason: "结构中的正式镜头已不存在或不再连续。" };
+    const hasNonContiguousMembers = !hasMissingMembers && members.length !== group.shotIds.length;
+    const next = {
+      ...group,
+      // Keep broken references intact for diagnosis and recovery. Only normalize a fully
+      // resolvable range into the project's chronological order.
+      shotIds: hasMissingMembers || hasNonContiguousMembers ? [...group.shotIds] : members,
+    };
+    const validity = hasMissingMembers
+      ? { valid: false, reason: "结构中的部分正式镜头已不存在或被移除。" }
+      : hasNonContiguousMembers
+        ? { valid: false, reason: "结构中的正式镜头已不再形成连续片段。" }
+        : validateStructureChange(next, groups, shotIds);
     return { ...next, validity: { status: validity.valid ? "valid" : "needs-review", reason: validity.reason } };
   });
 }
