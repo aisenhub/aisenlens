@@ -1,7 +1,6 @@
 import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { ResearchContext, ResearchRange } from "../../analysis/types";
 import type { AnnotationMarker } from "../../annotation/types";
-import { assertAnnotationMarker, migrateLegacyAnnotationMarker } from "../../annotation/services/normalizeAnnotationMarker";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
@@ -13,7 +12,7 @@ import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettin
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 18;
+const DATABASE_VERSION = 17;
 const PROJECTS_STORE = "projects";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
 const MEDIA_ASSET_BLOBS_STORE = "media-asset-blobs";
@@ -114,34 +113,6 @@ function deleteProjectRecords(store: IDBObjectStore, projectId: string): void {
   };
 }
 
-function migrateStoreRecords<T>(store: IDBObjectStore, map: (value: unknown) => T): void {
-  const request = store.openCursor();
-  request.onerror = () => {
-    try { store.transaction.abort(); } catch { /* the upgrade is already aborting */ }
-  };
-  request.onsuccess = () => {
-    const cursor = request.result;
-    if (!cursor) return;
-    try {
-      cursor.update(map(cursor.value));
-      cursor.continue();
-    } catch {
-      try { store.transaction.abort(); } catch { /* the upgrade is already aborting */ }
-    }
-  };
-}
-
-function migrateMarkerStores(transaction: IDBTransaction): void {
-  migrateStoreRecords(transaction.objectStore(ANNOTATION_MARKERS_STORE), migrateLegacyAnnotationMarker);
-  migrateStoreRecords(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE), (value) => {
-    if (!value || typeof value !== "object" || !Array.isArray((value as { markers?: unknown }).markers)) {
-      throw new Error("恢复快照中的标记数据无效，数据库升级已取消。");
-    }
-    const snapshot = value as ProjectRecoverySnapshot;
-    return { ...snapshot, markers: snapshot.markers.map(migrateLegacyAnnotationMarker) };
-  });
-}
-
 function openDatabase(): Promise<IDBDatabase> {
   if (databasePromise) return databasePromise;
 
@@ -164,7 +135,7 @@ function openDatabase(): Promise<IDBDatabase> {
       };
       resolve(database);
     };
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(PROJECTS_STORE)) {
         const projects = database.createObjectStore(PROJECTS_STORE, { keyPath: "id" });
@@ -239,7 +210,6 @@ function openDatabase(): Promise<IDBDatabase> {
         contexts.createIndex("projectId", "projectId", { unique: false });
         contexts.createIndex("projectTarget", ["projectId", "target.kind", "target.id"], { unique: true });
       }
-      if (event.oldVersion === 17 && request.transaction) migrateMarkerStores(request.transaction);
     };
   });
 
@@ -937,7 +907,6 @@ export function createProjectRepository(): ProjectRepository {
     },
 
     async replaceProjectAnnotationMarkers(projectId: string, markers: AnnotationMarker[]) {
-      markers.forEach(assertAnnotationMarker);
       const database = await openDatabase();
       const transaction = database.transaction(ANNOTATION_MARKERS_STORE, "readwrite");
       const store = transaction.objectStore(ANNOTATION_MARKERS_STORE);
@@ -953,7 +922,6 @@ export function createProjectRepository(): ProjectRepository {
     },
 
     async saveProjectAnnotationMarker(marker: AnnotationMarker) {
-      assertAnnotationMarker(marker);
       const database = await openDatabase();
       const transaction = database.transaction(ANNOTATION_MARKERS_STORE, "readwrite");
       transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, updatedAt: new Date().toISOString() });

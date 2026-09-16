@@ -2,7 +2,7 @@
 
 > 状态：当前实现基线与已批准演进边界
 >
-> 最后核对：2026-09-15
+> 最后核对：2026-09-14
 
 本文档记录当前代码已经采用的长期架构边界。具体功能的历史计划、实施过程和已失效的数据模型不作为项目规范保留。
 
@@ -50,11 +50,11 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 18，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。v17→v18 只在数据库升级事务中执行一次显式 Marker v2 转换；转换失败会 abort 升级并保留原库，运行时不保留旧 Marker fallback。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 17，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目没有生产旧数据或旧格式兼容契约，仓库只读取当前项目记录，不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
 
-正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。当前备份格式为 v4，恢复快照与备份中的 Marker 均使用 v2 字段；导入时先验证再通过仓库服务写回。未来新增持久化结构必须通过 `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB；不得借此重新引入旧项目兼容迁移。
+正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。备份服务导出经校验的项目包；恢复快照保存项目、镜头、镜头组、标注和模板，恢复时通过仓库服务写回。未来新增持久化结构必须通过 `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB；不得借此重新引入旧项目兼容迁移。
 
-时间轴和镜头领域以整数帧与半开区间 `[startFrame, endFrame)` 表达时间范围；跨功能传递或持久化时应保持这一语义。时间轴的正式轨道由 `trackRegistry.ts` 统一注册：Section、Sequence、Scene、Visual、Markers、Primary Audio；Marker 独立于 Visual，结构轨道只展示可验证的范围和边界。结构编辑统一经过 `structureCommands.ts` 与通用层级 validator，导航 focus、语义缩放和 Marker scope 属于编辑器 UI 状态，不写入项目备份。
+时间轴和镜头领域以整数帧与半开区间 `[startFrame, endFrame)` 表达时间范围；跨功能传递或持久化时应保持这一语义。
 
 ## 4. 编辑器能力边界
 

@@ -1,6 +1,6 @@
 # AisenLens 开发指南
 
-> 最后核对：2026-09-15
+> 最后核对：2026-09-14
 >
 > 本文承载项目技术栈、目录职责、开发命令和实现约束。Agent 的行为规则只放在根目录
 > `AGENTS.md`；历史计划与过程记录位于 `docs/archive/`。
@@ -58,16 +58,12 @@ corepack pnpm dev:webapp
 corepack pnpm dev:webhome
 corepack pnpm build:web
 corepack pnpm verify:web
-corepack pnpm test:timeline-semantic
 corepack pnpm scene-engine:verify:core
 corepack pnpm scene-engine:verify:web-preview
 ```
 
 `verify:web` 是两个 Web release unit 的综合门禁，包含 typecheck、lint、核心回归、构建、
 预渲染和边界检查。平台壳只有在任务明确纳入范围时才执行其专项命令。
-
-`test:timeline-semantic` 是时间轴语义升级的稳定定向测试，覆盖 Marker v2 转换、结构边界
-命令、半开区间上下文、语义缩放阈值和 Marker 聚类；涉及时间轴领域逻辑的改动必须纳入该门禁。
 
 ## UI 实现顺序
 
@@ -84,8 +80,7 @@ corepack pnpm scene-engine:verify:web-preview
 
 - 组件不得直接操作 IndexedDB、文件、媒体或外部服务，统一经过 `services/`。
 - Zustand 不替代数据库，不保存大型 Blob、File、Worker、WASM runtime 或候选大数组。
-- 数据结构改动必须同步当前 schema、类型、仓储和验证记录；本次批准的 v17→v18 是一次性、事务内
-  的显式 Marker 转换，不得在运行时保留旧格式 fallback，也不得为其他没有生产数据的历史格式增加迁移兼容层。
+- 数据结构改动必须同步当前 schema、类型、仓储和验证记录；不得为没有生产数据的历史格式增加迁移兼容层。
 - 新依赖加入前先确认现有依赖无法满足需求，并在变更记录中说明理由。
 - 共享 package 只在有清晰的独立构建、测试或运行时边界时创建；不要为了猜测未来复用提前拆包。
 

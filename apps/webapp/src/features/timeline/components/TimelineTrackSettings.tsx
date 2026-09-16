@@ -11,10 +11,9 @@ interface TimelineTrackSettingsProps {
   onVisibleChange: (trackId: TimelineTrackId, visible: boolean) => void;
   onHeightChange: (trackId: TimelineTrackId, height: number) => void;
   onMove: (trackId: TimelineTrackId, direction: -1 | 1) => void;
-  canMove?: (trackId: TimelineTrackId) => boolean;
 }
 
-export default function TimelineTrackSettings({ order, labels, preferences, onVisibleChange, onHeightChange, onMove, canMove = () => true }: TimelineTrackSettingsProps) {
+export default function TimelineTrackSettings({ order, labels, preferences, onVisibleChange, onHeightChange, onMove }: TimelineTrackSettingsProps) {
   return <DropdownMenu>
     <Tooltip>
       <TooltipTrigger render={<DropdownMenuTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="轨道设置" className="size-6 text-text-muted hover:text-text-base"><Layers3 /></Button>} />} />
@@ -32,8 +31,8 @@ export default function TimelineTrackSettings({ order, labels, preferences, onVi
               <Button type="button" variant="ghost" size="icon-xs" aria-label={`减小${labels[trackId]}高度`} onClick={() => onHeightChange(trackId, preference.height - 8)} className="size-6 text-text-muted hover:text-text-base"><Minus /></Button>
               <span className="w-8 text-center font-mono text-[10px] text-text-muted">{preference.height}</span>
               <Button type="button" variant="ghost" size="icon-xs" aria-label={`增大${labels[trackId]}高度`} onClick={() => onHeightChange(trackId, preference.height + 8)} className="size-6 text-text-muted hover:text-text-base"><Plus /></Button>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label={`上移${labels[trackId]}`} disabled={!canMove(trackId) || index === 0} onClick={() => onMove(trackId, -1)} className="size-6 text-text-muted hover:text-text-base"><ChevronUp /></Button>
-              <Button type="button" variant="ghost" size="icon-xs" aria-label={`下移${labels[trackId]}`} disabled={!canMove(trackId) || index === order.length - 1} onClick={() => onMove(trackId, 1)} className="size-6 text-text-muted hover:text-text-base"><ChevronDown /></Button>
+              <Button type="button" variant="ghost" size="icon-xs" aria-label={`上移${labels[trackId]}`} disabled={index === 0} onClick={() => onMove(trackId, -1)} className="size-6 text-text-muted hover:text-text-base"><ChevronUp /></Button>
+              <Button type="button" variant="ghost" size="icon-xs" aria-label={`下移${labels[trackId]}`} disabled={index === order.length - 1} onClick={() => onMove(trackId, 1)} className="size-6 text-text-muted hover:text-text-base"><ChevronDown /></Button>
             </div>
           </div>;
         })}

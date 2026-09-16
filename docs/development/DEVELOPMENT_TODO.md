@@ -14,19 +14,6 @@
 
 仍需单独推进的能力：正式 Pattern/Technique、嵌套 Structure、ASR/OCR/语义声音轨、Storyboard/Prompt/节奏模板生成，以及真实浏览器长片性能与故障注入矩阵。它们保持 Coming Soon 或后续 Domain，不在本轮伪造完成。
 
-### 1.1 Semantic Timeline Upgrade（第一期实现状态）
-
-2026-09-15 已在本地工作区完成 Phase 01–06：Marker v2、IndexedDB v18/Backup v4
-契约、六轨 Track Registry、通用结构校验与 Boundary First commands、结构上下文与导航
-focus、Marker scope、语义缩放和可见窗口渲染已接入 `apps/webapp`。21 项定向测试、
-`verify:web`、隔离 Chrome 浏览器工作流、真实 IndexedDB migration/fault/stale、
-Recovery/Backup、响应式与 1000/3000 镜头压力回归均已通过。
-
-仍未宣称的范围：全设备矩阵、10s/5min/2h × 24/30/60fps 的完整长片 KPI、
-autosave single-flight 的独立专项、细粒度结构拖拽全矩阵，以及 Desktop/Mobile
-平台适配。Phase 07–09 已完成研究/准入判断，但产品能力分别等待真实高层信号、
-Dialogue/Emotion canonical source 和至少两类真实分析轨。
-
 ## 2. Web 发布构建与加载优化（非阻塞）
 
 **背景**：2026-08-28 的 Vercel 生产部署是本项目的历史发布基线；2026-09-14 已完成

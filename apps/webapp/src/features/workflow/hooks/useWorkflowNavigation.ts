@@ -12,7 +12,7 @@ export default function useWorkflowNavigation(projectId?: string | null) {
   const effectiveProjectId = projectId ?? parsed.projectId
 
   const goTo = useCallback(
-    (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => {
+    (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => {
       const definition = getStageDefinition(stage)
       const nextView = view && definition.views.includes(view) ? view : definition.defaultView
       const params = createWorkflowSearch(location.search, {

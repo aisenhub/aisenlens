@@ -27,12 +27,11 @@ test("opens a project in preparation when no stage is requested", () => {
 })
 
 test("preserves unrelated query params when navigating", () => {
-  const params = createWorkflowSearch("?project=p1&foo=keep&mode=sequential", {
-   stage: "learn",
-   view: "notes",
- })
- assert.equal(params.get("foo"), "keep")
- assert.equal(params.get("stage"), "learn")
- assert.equal(params.get("view"), "notes")
-  assert.equal(params.get("mode"), null)
+  const params = createWorkflowSearch("?project=p1&foo=keep", {
+    stage: "learn",
+    view: "notes",
+  })
+  assert.equal(params.get("foo"), "keep")
+  assert.equal(params.get("stage"), "learn")
+  assert.equal(params.get("view"), "notes")
 })

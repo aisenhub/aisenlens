@@ -1,5 +1,4 @@
 import type { AnnotationMarker } from "../../annotation/types";
-import { assertAnnotationMarker } from "../../annotation/services/normalizeAnnotationMarker";
 import type { ShotGroupRecord } from "../../group/types";
 import type { ShotRecord } from "../../shot/types";
 import projectRepository from "./projectRepository";
@@ -7,7 +6,7 @@ import type { ProjectRecord, ProjectTemplateSnapshotRecord, ScreenshotRecord, St
 import type { ResearchContext, ResearchRange } from "../../analysis/types";
 
 const FORMAT = "aisenlens-project-backup";
-const VERSION = 4;
+const VERSION = 3;
 const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
@@ -91,7 +90,7 @@ function validate(value: unknown): asserts value is ProjectBackup {
     if ([shot.primaryScreenshotId, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId].some((id) => id !== null && !screenshotIds.has(id)) || shot.screenshotIds.some((id) => !screenshotIds.has(id))) throw new Error("备份包含失效的分镜截图引用。");
   }
   for (const group of backup.groups) if (!group || !Array.isArray(group.shotIds) || group.shotIds.some((id) => !shotIds.has(id))) throw new Error("备份包含失效的分组引用。");
-  for (const marker of backup.markers) assertAnnotationMarker(marker);
+  for (const marker of backup.markers) if (!marker || (marker.shotId !== null && !shotIds.has(marker.shotId))) throw new Error("备份包含失效的标记引用。");
   const rangeIds = new Set(backup.researchRanges.map((range) => range?.id).filter((id): id is string => typeof id === "string"));
   if (rangeIds.size !== backup.researchRanges.length || backup.researchRanges.some((range) => !Number.isSafeInteger(range.startUs) || !Number.isSafeInteger(range.endUs) || range.endUs <= range.startUs)) throw new Error("备份包含无效的研究范围。");
   if (backup.researchContexts.some((context) => !context || !context.target || (context.target.kind === "range" && !rangeIds.has(context.target.id)))) throw new Error("备份包含失效的研究目标引用。");
@@ -100,7 +99,7 @@ function validate(value: unknown): asserts value is ProjectBackup {
 function filename(title: string) { return `${title.trim().replace(/[\\/:*?"<>|]/g, "-") || "AisenLens-项目备份"}.aisenlens-backup.zip`; }
 function download(blob: Blob, name: string) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = name; link.style.display = "none"; document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1_000); }
 
-export async function exportProjectBackupBlob(projectId: string, onProgress?: (progress: BackupProgress) => void) {
+export async function downloadProjectBackup(projectId: string, onProgress?: (progress: BackupProgress) => void) {
   onProgress?.({ phase: "preparing", completed: 0, total: 1 });
   const project = await projectRepository.getProject(projectId);
   if (!project) throw new Error("项目不存在或已删除。");
@@ -116,12 +115,7 @@ export async function exportProjectBackupBlob(projectId: string, onProgress?: (p
   }
   const backup: ProjectBackup = { format: FORMAT, version: VERSION, exportedAt: new Date().toISOString(), project, shots, groups, markers, template, researchRanges, researchContexts, screenshots: screenshotEntries };
   onProgress?.({ phase: "saving", completed: total, total });
-  return { blob: new Blob([createZip([{ path: "manifest.json", data: encoder.encode(JSON.stringify(backup)) }, ...imageFiles])], { type: "application/zip" }), name: filename(project.title) };
-}
-
-export async function downloadProjectBackup(projectId: string, onProgress?: (progress: BackupProgress) => void) {
-  const { blob, name } = await exportProjectBackupBlob(projectId, onProgress);
-  download(blob, name);
+  download(new Blob([createZip([{ path: "manifest.json", data: encoder.encode(JSON.stringify(backup)) }, ...imageFiles])], { type: "application/zip" }), filename(project.title));
 }
 
 export async function importProjectBackup(file: File) {
@@ -161,7 +155,7 @@ export async function importProjectBackup(file: File) {
     for (const { screenshot, path } of backup.screenshots) { const bytes = entries.get(path); if (!bytes) throw new Error("备份截图资源缺失。"); await projectRepository.saveScreenshot({ ...screenshot, id: screenshotIdMap.get(screenshot.id)!, projectId: created.id, capturedAt: now }, new Blob([new Uint8Array(bytes)], { type: screenshot.mimeType })); }
     const shots: StoredShotRecord[] = backup.shots.map((shot, order) => ({ ...shot, id: shotIdMap.get(shot.id)!, projectId: created.id, order, primaryScreenshotId: shot.primaryScreenshotId ? screenshotIdMap.get(shot.primaryScreenshotId) ?? null : null, screenshotIds: shot.screenshotIds.map((id) => screenshotIdMap.get(id)).filter((id): id is string => Boolean(id)), firstFrameScreenshotId: shot.firstFrameScreenshotId ? screenshotIdMap.get(shot.firstFrameScreenshotId) ?? null : null, lastFrameScreenshotId: shot.lastFrameScreenshotId ? screenshotIdMap.get(shot.lastFrameScreenshotId) ?? null : null, createdAt: now, updatedAt: now }));
     const groups = backup.groups.map((group) => ({ ...group, id: groupIdMap.get(group.id)!, projectId: created.id, shotIds: group.shotIds.map((id) => shotIdMap.get(id)!), createdAt: now, updatedAt: now }));
-    const markers = backup.markers.map((marker) => ({ ...marker, id: markerIdMap.get(marker.id)!, projectId: created.id, createdAt: now, updatedAt: now }));
+    const markers = backup.markers.map((marker) => ({ ...marker, id: markerIdMap.get(marker.id)!, projectId: created.id, shotId: marker.shotId ? shotIdMap.get(marker.shotId) ?? null : null, createdAt: now, updatedAt: now }));
     const template = backup.template ? { ...backup.template, id: crypto.randomUUID(), projectId: created.id, createdAt: now, updatedAt: now } : null;
     const researchRanges = backup.researchRanges.map((range) => ({ ...range, id: rangeIdMap.get(range.id)!, projectId: created.id, createdAt: now, updatedAt: now, revision: 1 }));
     const researchContexts = backup.researchContexts.map((context) => ({

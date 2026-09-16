@@ -22,10 +22,7 @@ export function formalShotsSignature(shots: readonly StoredShotRecord[]): string
   // formal save. It has no stable identity and must not invalidate a draft
   // merely because the page was refreshed.
   const meaningfulShots = shots.length === 1 && shots[0]?.startFrame === 0 ? [] : shots
-  // Calibration only depends on the formal structure. Notes, analysis fields,
-  // screenshots and status are edited in other workflow surfaces and must not
-  // invalidate a calibration draft when those surfaces autosave.
-  return JSON.stringify(meaningfulShots.map((shot) => [shot.id, shot.order, shot.startFrame, shot.endFrame]))
+  return JSON.stringify(meaningfulShots.map((shot) => [shot.order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.primaryScreenshotId, shot.screenshotIds, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId, shot.analysisFields, shot.description, shot.notes]))
 }
 
 export function isTransientFullFilmPlaceholder(shots: readonly StoredShotRecord[]): boolean {
@@ -50,8 +47,8 @@ export function createDetectionCalibrationDraft(seed: CalibrationDraftSeed, stor
   const task = seed.task
   if (!task || task.status !== "completed" || task.candidates.length === 0) throw new Error("请先完成自动分镜扫描。")
   if (task.projectId !== seed.projectId || task.mediaIdentity.mediaIdentityDigest !== seed.mediaIdentity.mediaIdentityDigest) throw new Error("检测结果与当前素材不匹配。")
-  const sameDetectionTask = stored?.status === "editing" && stored.initialSource === "detection" && stored.baseTaskId === task.id && stored.baseTaskUpdatedAt === task.updatedAt
-  if (sameDetectionTask) return reconcileCalibrationDraftWithFormalShots(stored, seed)
+  const sameBaseline = stored?.baseFormalShotsSignature === formalShotsSignature(seed.shots)
+  if (stored?.status === "editing" && sameBaseline && stored.initialSource === "detection" && stored.baseTaskId === task.id && stored.baseTaskUpdatedAt === task.updatedAt) return stored
   return { ...createCalibrationDraft(seed), revision: (stored?.revision ?? -1) + 1 }
 }
 
@@ -128,123 +125,6 @@ function boundariesFromShots(shots: readonly StoredShotRecord[], totalFrames: nu
     transitionRange: null,
     }
   }).filter((boundary) => boundary.frame > 0 && boundary.frame < totalFrames)
-}
-
-function isCalibrationBoundaryUserOwned(boundary: CalibrationBoundary): boolean {
-  return boundary.source === "manual" || boundary.wasManuallyAdjusted
-}
-
-function boundarySourceShotIds(draft: CalibrationDraft): Map<string, string> {
-  const sourceShotIds = new Map<string, string>()
-  draft.segments.forEach((segment) => {
-    if (segment.endBoundaryId && segment.sourceShotId) sourceShotIds.set(segment.endBoundaryId, segment.sourceShotId)
-  })
-  return sourceShotIds
-}
-
-function boundaryShotId(boundary: CalibrationBoundary): string | null {
-  return boundary.id.startsWith("shot-boundary:") ? boundary.id.slice("shot-boundary:".length) : null
-}
-
-/**
- * Rebase an editing draft onto the latest formal shot structure.
- *
- * A calibration draft and the editor are intentionally separate working
- * copies. The editor may still receive a structural edit while the draft is
- * open (for example, a split made during deep analysis). The latest formal
- * boundaries are therefore merged into the draft instead of turning the
- * whole page into a dead-end conflict. Manual calibration boundaries remain
- * authoritative; formal-source boundaries are updated/removed by stable shot
- * identity, and detection-source boundaries are retained because they are the
- * user's current calibration baseline.
- */
-export function reconcileCalibrationDraftWithFormalShots(
-  draft: CalibrationDraft,
-  input: Pick<CalibrationDraftSeed, "baseProjectUpdatedAt" | "shots" | "task">,
-): CalibrationDraft {
-  const nextSignature = formalShotsSignature(input.shots)
-  const hasMeaningfulFormalShots = !isTransientFullFilmPlaceholder(input.shots)
-  const currentFormalBoundaries = hasMeaningfulFormalShots
-    ? boundariesFromShots(input.shots, draft.timebase.totalFrames)
-    : []
-  const previousSourceShotIds = boundarySourceShotIds(draft)
-  const previousById = new Map(draft.boundaries.map((boundary) => [boundary.id, boundary]))
-  const previousByCandidate = new Map(
-    draft.boundaries
-      .filter((boundary) => boundary.candidateId)
-      .map((boundary) => [boundary.candidateId!, boundary]),
-  )
-  const previousBySourceShot = new Map(
-    draft.boundaries
-      .map((boundary) => [previousSourceShotIds.get(boundary.id), boundary] as const)
-      .filter((entry): entry is readonly [string, CalibrationBoundary] => Boolean(entry[0])),
-  )
-  const merged: CalibrationBoundary[] = []
-  const usedPrevious = new Set<string>()
-
-  const addBoundary = (boundary: CalibrationBoundary) => {
-    const existingIndex = merged.findIndex((item) => item.frame === boundary.frame)
-    if (existingIndex >= 0) {
-      // User-owned calibration edits win when they occupy the same frame as a
-      // formal boundary added by another workflow surface.
-      if (isCalibrationBoundaryUserOwned(boundary) && !isCalibrationBoundaryUserOwned(merged[existingIndex]!)) merged[existingIndex] = boundary
-      return
-    }
-    merged.push(boundary)
-  }
-
-  if (draft.initialSource === "detection" || !hasMeaningfulFormalShots) {
-    // Detection drafts do not have a reliable formal-shot identity for every
-    // segment. Keeping their existing boundaries preserves calibration work;
-    // the latest formal boundaries are added below.
-    draft.boundaries.forEach((boundary) => {
-      addBoundary(boundary)
-      usedPrevious.add(boundary.id)
-    })
-  } else {
-    // For drafts seeded from formal shots, a non-manual boundary can safely be
-    // moved or removed by matching the stable source shot at its left edge.
-    currentFormalBoundaries.forEach((currentBoundary) => {
-      const sourceShotId = boundaryShotId(currentBoundary)
-      const previous = previousById.get(currentBoundary.id)
-        ?? (currentBoundary.candidateId ? previousByCandidate.get(currentBoundary.candidateId) : undefined)
-        ?? (sourceShotId ? previousBySourceShot.get(sourceShotId) : undefined)
-      if (previous) {
-        usedPrevious.add(previous.id)
-        if (isCalibrationBoundaryUserOwned(previous)) addBoundary(previous)
-        else addBoundary({ ...currentBoundary, id: previous.id })
-      } else {
-        addBoundary(currentBoundary)
-      }
-    })
-    draft.boundaries.filter((boundary) => isCalibrationBoundaryUserOwned(boundary)).forEach((boundary) => {
-      if (!usedPrevious.has(boundary.id)) addBoundary(boundary)
-    })
-  }
-
-  if (draft.initialSource === "detection" && hasMeaningfulFormalShots) {
-    currentFormalBoundaries.forEach((boundary) => {
-      const previous = boundary.candidateId ? previousByCandidate.get(boundary.candidateId) : undefined
-      addBoundary(previous && !isCalibrationBoundaryUserOwned(previous) ? { ...boundary, id: previous.id } : boundary)
-    })
-  }
-
-  merged.sort((left, right) => left.frame - right.frame)
-  const boundariesChanged = JSON.stringify(merged) !== JSON.stringify([...draft.boundaries].sort((left, right) => left.frame - right.frame))
-  const metadataChanged = draft.baseProjectUpdatedAt !== input.baseProjectUpdatedAt || draft.baseFormalShotsSignature !== nextSignature
-  if (!boundariesChanged && !metadataChanged) return draft
-
-  const next: CalibrationDraft = {
-    ...structuredClone(draft),
-    baseProjectUpdatedAt: input.baseProjectUpdatedAt,
-    baseFormalShotsSignature: nextSignature,
-    boundaries: merged,
-    segments: deriveCalibrationSegments(draft.timebase.totalFrames, merged, input.shots, input.task?.candidates ?? [], draft.segments),
-    revision: draft.revision + 1,
-    updatedAt: now(),
-  }
-  validateCalibrationDraft(next)
-  return next
 }
 
 export function createCalibrationDraft(seed: CalibrationDraftSeed): CalibrationDraft {

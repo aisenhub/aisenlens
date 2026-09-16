@@ -6,7 +6,7 @@ import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 
 const repositoryDirectory = resolve(import.meta.dirname, "..")
-const outputDirectory = resolve(repositoryDirectory, "apps", "webapp", "test", "fixtures", "auto-shot")
+const outputDirectory = resolve(repositoryDirectory, "apps", "web", "test", "fixtures", "auto-shot")
 const outputPath = resolve(outputDirectory, "synthetic.webm")
 const chromePath = [
   process.env.AISENLENS_CHROME_PATH,

@@ -5,7 +5,6 @@ const commands = [
   ["typecheck"],
   ["lint"],
   ["test:editor-history"],
-  ["test:timeline-semantic"],
   ["test:retain-shot-map"],
   ["test:auto-shot-task-state"],
   ["test:auto-shot-media-fingerprint"],
