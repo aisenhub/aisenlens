@@ -50,7 +50,7 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 17，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目没有生产旧数据或旧格式兼容契约，仓库只读取当前项目记录，不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 18，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。回滚后的旧版标注 UI 通过仓储适配器读取 v17 与 v18 标注记录，并统一以 v18 结构写回，避免 IndexedDB 降级；这只覆盖当前回滚恢复所需的标注边界，不重新引入旧项目整体兼容层。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
 
 正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。备份服务导出经校验的项目包；恢复快照保存项目、镜头、镜头组、标注和模板，恢复时通过仓库服务写回。未来新增持久化结构必须通过 `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB；不得借此重新引入旧项目兼容迁移。
 

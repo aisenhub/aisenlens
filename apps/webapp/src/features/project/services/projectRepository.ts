@@ -1,6 +1,7 @@
 import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { ResearchContext, ResearchRange } from "../../analysis/types";
 import type { AnnotationMarker } from "../../annotation/types";
+import { normalizeStoredAnnotationMarker, toStoredAnnotationMarker } from "../../annotation/services/annotationStorageCompatibility";
 import type { ShotGroupRecord } from "../../group/types";
 import type { AutoShotTaskRecord } from "../../auto-shot/types";
 import type { AutoShotMediaIdentity } from "../../auto-shot/mediaIdentity";
@@ -12,7 +13,9 @@ import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettin
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 
 const DATABASE_NAME = "aisenlens-projects";
-const DATABASE_VERSION = 17;
+// Keep the database at the highest version already used by the shipped app.
+// IndexedDB does not support opening an existing database at a lower version.
+const DATABASE_VERSION = 18;
 const PROJECTS_STORE = "projects";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
 const MEDIA_ASSET_BLOBS_STORE = "media-asset-blobs";
@@ -380,18 +383,19 @@ export function createProjectRepository(): ProjectRepository {
         requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as Promise<ProjectRecord | undefined>,
         requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
         requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
-        requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnnotationMarker[]>,
+        requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<unknown[]>,
         requestResult(transaction.objectStore(PROJECT_TEMPLATES_STORE).index("projectId").get(projectId)) as Promise<ProjectTemplateSnapshotRecord | undefined>,
         requestResult(transaction.objectStore(RESEARCH_RANGES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchRange[]>,
         requestResult(transaction.objectStore(RESEARCH_CONTEXTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchContext[]>,
       ]);
       await transactionResult(transaction);
       if (!project) return null;
+      const normalizedMarkers = markers.map(normalizeStoredAnnotationMarker);
       return {
         project: normalizeProject(project),
         shots: shots.sort((left, right) => left.order - right.order),
         groups: groups.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
-        markers: markers.sort((left, right) => left.frame - right.frame || left.createdAt.localeCompare(right.createdAt)),
+        markers: normalizedMarkers.sort((left, right) => left.frame - right.frame || left.createdAt.localeCompare(right.createdAt)),
         template: template ?? null,
         researchRanges: researchRanges.sort((left, right) => left.startUs - right.startUs),
         researchContexts: researchContexts.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
@@ -422,7 +426,7 @@ export function createProjectRepository(): ProjectRepository {
         injectProjectRepositoryFault("groups-write");
         state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
         injectProjectRepositoryFault("markers-write");
-        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
+        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, state.project.id, now)));
         injectProjectRepositoryFault("template-write");
         if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
         if (state.researchRanges !== undefined) {
@@ -791,7 +795,7 @@ export function createProjectRepository(): ProjectRepository {
         injectProjectRepositoryFault("groups-write");
         state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
         injectProjectRepositoryFault("markers-write");
-        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId: state.project.id, updatedAt: now }));
+        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, state.project.id, now)));
         injectProjectRepositoryFault("template-write");
         if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
         injectProjectRepositoryFault("task-write");
@@ -902,7 +906,8 @@ export function createProjectRepository(): ProjectRepository {
     async listProjectAnnotationMarkers(projectId: string) {
       const database = await openDatabase();
       const transaction = database.transaction(ANNOTATION_MARKERS_STORE, "readonly");
-      const markers = await requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as AnnotationMarker[];
+      const storedMarkers = await requestResult(transaction.objectStore(ANNOTATION_MARKERS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as unknown[];
+      const markers = storedMarkers.map(normalizeStoredAnnotationMarker);
       return markers.sort((left, right) => left.frame - right.frame || left.createdAt.localeCompare(right.createdAt));
     },
 
@@ -917,14 +922,16 @@ export function createProjectRepository(): ProjectRepository {
         cursor.delete();
         cursor.continue();
       };
-      markers.forEach((marker) => store.put({ ...marker, projectId }));
+      const updatedAt = new Date().toISOString();
+      markers.forEach((marker) => store.put(toStoredAnnotationMarker(marker, projectId, updatedAt)));
       await transactionResult(transaction);
     },
 
     async saveProjectAnnotationMarker(marker: AnnotationMarker) {
       const database = await openDatabase();
       const transaction = database.transaction(ANNOTATION_MARKERS_STORE, "readwrite");
-      transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, updatedAt: new Date().toISOString() });
+      const updatedAt = new Date().toISOString();
+      transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, marker.projectId, updatedAt));
       await transactionResult(transaction);
     },
 
@@ -985,7 +992,8 @@ export function createProjectRepository(): ProjectRepository {
     async listProjectRecoverySnapshots(projectId: string) {
       const database = await openDatabase();
       const transaction = database.transaction(RECOVERY_SNAPSHOTS_STORE, "readonly");
-      const snapshots = await requestResult(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as import("../types").ProjectRecoverySnapshot[];
+      const storedSnapshots = await requestResult(transaction.objectStore(RECOVERY_SNAPSHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as import("../types").ProjectRecoverySnapshot[];
+      const snapshots = storedSnapshots.map((snapshot) => ({ ...snapshot, markers: snapshot.markers.map(normalizeStoredAnnotationMarker) }));
       return snapshots.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
     },
 
@@ -994,7 +1002,7 @@ export function createProjectRepository(): ProjectRepository {
       const transaction = database.transaction(RECOVERY_SNAPSHOTS_STORE, "readwrite");
       const store = transaction.objectStore(RECOVERY_SNAPSHOTS_STORE);
       const existing = await requestResult(store.index("projectId").getAll(IDBKeyRange.only(snapshot.projectId))) as import("../types").ProjectRecoverySnapshot[];
-      store.put(snapshot);
+      store.put({ ...snapshot, markers: snapshot.markers.map((marker) => toStoredAnnotationMarker(marker)) });
       [...existing, snapshot]
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
         .slice(3)
@@ -1016,7 +1024,7 @@ export function createProjectRepository(): ProjectRepository {
       if (snapshot.template) templateStore.put({ ...snapshot.template, projectId });
       snapshot.shots.forEach((shot) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId }));
       snapshot.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId }));
-      snapshot.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put({ ...marker, projectId }));
+      snapshot.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, projectId)));
       if (snapshot.researchRanges !== undefined) {
         await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), projectId);
         snapshot.researchRanges.forEach((range) => transaction.objectStore(RESEARCH_RANGES_STORE).put({ ...range, projectId }));

@@ -1,5 +1,18 @@
 # 参考项目索引
 
+## 2026-09-16 时间轴优化架构评审（建议，未实施）
+
+复核 `docs/Plans/AisenLens_时间轴优化架构方案.md` 与当前工作树，参考 OpenTimelineIO Time Ranges、ELAN tier type/attributes、wavesurfer pre-decoded peaks 官方文档，并读取本地 OpenReel 下列时间轴文件。完整结论与证据限制见 [时间轴架构评审](../docs/Plans/AisenLens_时间轴优化架构评审_2026-09-16.md)。首轮旧分享链接未取得正文；后续从用户提供的新分享链接 `https://chatgpt.com/share/6aaa08c5-b588-83ea-938b-ae7d1e5dc5bb` 成功提取并阅读文字对话，新增评审第 10 节：区分用户要求与助手提议，补 Story 视角、Beat、结构方案作用域、Inspector 联动与 AI 证据契约，并建议将剪辑节奏提前。生成图片未作视觉复核，未自动采信对话内的外部引用。
+
+| 查阅对象 | 确认事实 | AisenLens 建议（待批准） |
+| --- | --- | --- |
+| OpenReel `apps/web/src/components/editor/Timeline.tsx`、`stores/timeline-store.ts` | UI 组合与视口状态分开，提供可见时间范围与坐标换算 | 复用边界设计，保留本项目整数帧/PTS 语义 |
+| OpenReel `components/editor/timeline/{utils,Playhead,TimeRuler,TrackLane}.tsx`（utils 实为 `.ts`） | 吸附使用像素阈值换算与优先级；播放头 transform；标尺有可见筛选；所读 TrackLane clip 路径全量 map | 借鉴局部交互，不认定其具备万级镜头虚拟化或性能保证 |
+| AisenLens `structureValidation`、`groupService`、`reconcileShotGroups` | 当前单镜结构合法，同类互斥，Scene/Sequence 有包含检查，Section 约束未全面覆盖；失效成员可能缩短/清空并标记待复核 | 以本次源码事实修正旧索引理解；采用完整层级不变量与显式身份重映射 |
+| AisenLens `EditorTimeline`、`useTimelineViewport`、`FrameThumbnailStrip` | Shot 全量渲染、成员逐项查找；缩放 1–20 且至少 1px/s；帧带已按视口加缓冲采样 | 保留现有媒体调度，补全片适配、逐帧尺度、可见索引与预算 |
+
+设计决定：按用户要求已整合进 `docs/Plans/AisenLens_时间轴优化架构方案.md` 2.0。Group 为 V1 唯一正式结构记录，边界派生；一个方案内支持局部连续范围、跳层与完整包含；镜头校准和结构范围编辑分命令，拖动一次提交一次撤销；保留 Shot/Scene/Story Inspector 联动，首批分析为 Editing Pace 与真实 Dialogue。Beat 与多结构方案后续按需实现。以上为文档设计决定，未复制参考代码、未迁移项目数据、未实施产品代码或执行性能基准。
+
 ## 2026-09-09 总览与深拆职责、研究范围和上下文（设计研究）
 
 用户明确“顺序逐镜记录”和“带问题选段研究”同等重要。本轮先查 Cinemetrics 官方测量说明、Columbia Deconstructor 历史教学工具说明及 Film Language Glossary，形成“总览选范围/建结构，深拆在同一播放器上下文收集证据与解释”的初案，再依 OpenReel → OpenCut 顺序读取相关片段。仅设计研究，未修改产品代码，未声称完成浏览器验收。
