@@ -1,0 +1,30 @@
+{
+  "package": "AisenLens Agent Execution Plans",
+  "generated": "2026-09-17",
+  "source_package": "AisenLens_Architecture_Reviewed_Optimized_2026-09-17",
+  "implementation_executed": false,
+  "tests_executed": false,
+  "git_operations_executed": false,
+  "files": [
+    "00-master-execution-plan.md",
+    "01-repository-verification.md",
+    "02-contract-runtime-baseline.md",
+    "03-global-shell-design-system.md",
+    "04-preparation-shot-authority.md",
+    "05-analysis-data-evidence-template.md",
+    "06-analysis-workspace-inspector.md",
+    "07-timeline-domain-application-view.md",
+    "08-results-export-creative.md",
+    "09-ai-candidate-context.md",
+    "10-hardening-release-gate.md",
+    "11-governance-closeout.md",
+    "README.md",
+    "agent-handoff.md",
+    "architecture-traceability.md",
+    "plan-inputs.md",
+    "verification-record.md",
+    "PLAN_COVERAGE_REVIEW_2026-09-17.md"
+  ],
+  "reviewed_against_master_and_architecture": "2026-09-17",
+  "coverage_review": "PLAN_COVERAGE_REVIEW_2026-09-17.md"
+}

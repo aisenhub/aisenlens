@@ -1,0 +1,364 @@
+{
+  "package_name": "AisenLens_Architecture_Reviewed_Optimized_2026-09-17",
+  "generated_at": "2026-09-17T17:05:00+08:00",
+  "architecture_version": "1.2-reviewed",
+  "content_preservation_policy": "Original archive content preserved. Formal architecture reviewed and strengthened; changes recorded in CHANGELOG.",
+  "repository_baseline": {
+    "repo": "aisenhub/aisenlens",
+    "branch": "main",
+    "tree_sha": "e08e0cc38b121078ddece7ae4395db21f9bc6e20",
+    "verified_at": "2026-09-17"
+  },
+  "review": {
+    "scope": "all package files plus nested design.7z inventory; formal architecture fully reviewed; archive retained as non-normative trace material",
+    "review_docs": [
+      "audit/ARCHITECTURE_REVIEW_2026-09-17.md",
+      "audit/MASTER_PLAN_COVERAGE_MATRIX.md"
+    ]
+  },
+  "files": [
+    {
+      "path": "00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md",
+      "size": 12066,
+      "sha256": "6a82da34acebdb17a955e3d4cb976caf76c945d00da2757cc24420697ea66157",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "00-global/WORKSPACE_DESIGN_SYSTEM.md",
+      "size": 20298,
+      "sha256": "2046d33ed8dc0c0b60c96bfd6b806e00dc580baf647a4afca176f9fbac1ca0b4",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "01-preparation/PREPARATION_WORKSPACE.md",
+      "size": 41167,
+      "sha256": "6034ab79ebed1d9d42c1dd4c29a6388a5792633cd39a35ecf7e964c988524189",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md",
+      "size": 909,
+      "sha256": "bca0ef022a61cc9a4db70d39c70336018a7dd1e88f0889f3e41a6d5273468a55",
+      "status": "draft",
+      "doc_type": "md"
+    },
+    {
+      "path": "02-analysis/ANALYSIS_WORKSPACE.md",
+      "size": 41473,
+      "sha256": "c27f3907a1f3ff3e3f41d05033f3d0f57860facd3bd0b539ebdb43c4e57e3f3c",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "02-analysis/inspector/ANALYSIS_INSPECTOR.md",
+      "size": 27017,
+      "sha256": "f32400019fa66cfcde0a14c31217453fa969dff3e38fdef95d98b677a185051a",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "03-results/RESULTS_WORKSPACE.md",
+      "size": 9963,
+      "sha256": "7d24852865eb132e232a8c7452b03c530cf74c414c4e480fcdb573bf2d27045b",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "04-domain/analysis-data/ANALYSIS_DATA_MODEL.md",
+      "size": 10188,
+      "sha256": "26c7597f2cd45540adcfa2494063f4a02444a0006a5027560b3193f5d6d21dd7",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md",
+      "size": 3032,
+      "sha256": "e2f86c3cf9e560089d7b0d9f59dc1199124f3dae0747cbcfb4c0a3fa01bf2ce2",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md",
+      "size": 3523,
+      "sha256": "5fc3098d05a5097aa696a2913af22caaf779bf64f9b988bc50acd27c0e64b9c4",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "04-domain/template/TEMPLATE_CONTRACT.md",
+      "size": 5035,
+      "sha256": "b706449cade80e71774cf094b4de85b8225ef7972be5e8f256b5cc43b2a67e34",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "04-domain/timeline/TIMELINE_ARCHITECTURE.md",
+      "size": 49425,
+      "sha256": "bb7df8e34d3a8ca92432b8db82e79ba5393a2b3cc83896d7a1d2ef8901887f87",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "05-runtime/OPERATIONAL_ARCHITECTURE.md",
+      "size": 8233,
+      "sha256": "37f77f0e5a51422a21e2790e69a429a058df9f0a76063f393d813e85c4d7ac7d",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "90-implementation/IMPLEMENTATION_MAP.md",
+      "size": 2570,
+      "sha256": "da58d9e8973c356a8a21120d00d7e321aef75bbaf5f26b461b9d27f5588cd9ba",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/ORIGINAL_INPUT_INDEX.md",
+      "size": 1202,
+      "sha256": "2eb3b406772f14205b60506cf510a551972e924bad65d7f97446f6ae3a00cf60",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/00整体UI设计方案/AisenLens_Global_Workspace_UI_Architecture.md",
+      "size": 29343,
+      "sha256": "21c020b896f47d8d5d071d2d2632b1b6f920c9cf247e7d295d8720b9cc6ba333",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/00整体UI设计方案/DESIGN.md",
+      "size": 19803,
+      "sha256": "c0045f263897d95048363215935c85d50a4314c850283a126201cb1bb1b7233f",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/01前处理设计方案/AisenLens_Preprocessing_Design_v2_Global_Aligned.md",
+      "size": 40402,
+      "sha256": "98b83268c6cdb3f1ee809fcea562dac1d3315af924331f9bc0f88120655bc1bd",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/01前处理设计方案/关键帧方案.txt",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "archived",
+      "doc_type": "txt"
+    },
+    {
+      "path": "99-archive/original-input/02逐镜分析设计方案/AisenLens_Analysis_Inspector_UI_UX_数据交互架构方案.md",
+      "size": 35648,
+      "sha256": "adb5cffa8d395c93f764af88dcf881a82028c607b30211ad111ac5cbef7be83c",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/02逐镜分析设计方案/AisenLens_时间轴优化架构方案.md",
+      "size": 48702,
+      "sha256": "d0cb9e2b70ccab9621194dfa123b8600acb41a2802fba9a03984b665219b9d22",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/02逐镜分析设计方案/AisenLens_逐镜分析工作台_UI_UX_交互架构方案.md",
+      "size": 52339,
+      "sha256": "2f1b9669d7b12c42b6d34c0bb441f7a455a8d6a5a6c8116fedfaa7d65af0b27d",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/task-input/AisenLens 连续架构审计、拆分重构与最终打包 Prompt.md",
+      "size": 28051,
+      "sha256": "9c4f88277b276745a296790a49d07289c43755e3795b3e3e6a319614a1a35cd0",
+      "status": "archived",
+      "doc_type": "md"
+    },
+    {
+      "path": "99-archive/original-input/task-input/design.7z",
+      "size": 69181,
+      "sha256": "effaffa7d1e67a14d2a355d193917f89ceee2f5a1bda4053c5f624640057a3c8",
+      "status": "n/a",
+      "doc_type": "7z"
+    },
+    {
+      "path": "ARCHITECTURE_INDEX.md",
+      "size": 3585,
+      "sha256": "56f32bfec264acc43f2338267e6706ea575971de43f83afe28273bfd3aee4e83",
+      "status": "unknown",
+      "doc_type": "md"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "size": 2383,
+      "sha256": "ff5524f1c7b2342edd30e2c393aaaf912b69291959d13e8c66aed3012495678b",
+      "status": "unknown",
+      "doc_type": "md"
+    },
+    {
+      "path": "Plans/AisenLens_MASTER_DEVELOPMENT_PLAN_2026-09-17.md",
+      "size": 85163,
+      "sha256": "e2abe8959beb88d5313ff01ce90194d9131ab46c8a04470e813c11860e1e2bf9",
+      "status": "approved-plan",
+      "doc_type": "development-plan"
+    },
+    {
+      "path": "README.md",
+      "size": 5615,
+      "sha256": "c9b5ce265398e37c26e0a887b5e62b88037a6a01a3c66e8b50c0a37b50578dd0",
+      "status": "approved",
+      "doc_type": "design-index"
+    },
+    {
+      "path": "audit/ARCHITECTURE_REVIEW_2026-09-17.md",
+      "size": 1904,
+      "sha256": "58afd1e0158d3f8768af1cadd5ff9b5dd846d969ba1bc3d6e5c6d124938fdb85",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/AUTHORITY_MAP.md",
+      "size": 2387,
+      "sha256": "0018d34c905e0b2566e5fde6cd7684112c37d9d179e97471aaefcd5388a13935",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/COMMAND_EVENT_MAP.md",
+      "size": 2186,
+      "sha256": "052b60d246827ab0c1a1648e3dd5087fc0760d93a0b330818368c6cfc0f15769",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/CONCEPT_REGISTRY.md",
+      "size": 6606,
+      "sha256": "f985c9a3de4ae70bd2743f9d80f128a14be5d274aa44a866340336bd8d5cba53",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/CONFLICT_AUDIT.md",
+      "size": 2003,
+      "sha256": "123a4dce689afc15d3eaff00cce9f5bc940232e1cc373865405969ec744ffd5e",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/CONFLICT_MATRIX.md",
+      "size": 1852,
+      "sha256": "47f7a677ed1aa495d776dd35b6b38bc044e513085e5949736c1109d190311651",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/CURRENT_REPOSITORY_BASELINE.md",
+      "size": 1825,
+      "sha256": "8b8a18c38d7eb8a39ba8a2f40b5e3e4e235673c8b65f1bed17364206f96e7199",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/DECISION_LOG.md",
+      "size": 1706,
+      "sha256": "e069e97d92bedb7ce2dd92b2adb16e74928f9c33c0f6ed114681a4e46bad4070",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/DEPENDENCY_GRAPH.md",
+      "size": 2073,
+      "sha256": "cc6ca0079437c677cb7f463069971dbe431486ba8ad4f39ada835d9b68974d90",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/DOCUMENT_QUALITY_CHECK.md",
+      "size": 359,
+      "sha256": "a6177c5806e2fcb102451156600128d4051e9bcf4981c93ee26d5ab97e5ed184",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/DUPLICATE_AUDIT.md",
+      "size": 1453,
+      "sha256": "a16911c6c1e6e2999017b56721afd1ec614b609f6db0936375b079bb1c328ab2",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/FINAL_ARCHITECTURE_AUDIT.md",
+      "size": 6136,
+      "sha256": "bab8a9f4f26cd3cf19ceb2ef837deb39f92bfca1a0b8364f05252a8d6b61f56e",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/FINAL_CONCEPT_REGISTRY.md",
+      "size": 6575,
+      "sha256": "5c92afd0cd1c2d75d0f6b27bf77e915ba3c6c6268c269aa6dcbbc9aad9403281",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/FINAL_SOURCE_OF_TRUTH_MATRIX.md",
+      "size": 2097,
+      "sha256": "8d8eaef64508114057fda0719530dbea9b3be54e20e7a02e161d687f23a6ebff",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/MASTER_PLAN_COVERAGE_MATRIX.md",
+      "size": 2939,
+      "sha256": "3144eee762483e99ce2ae6ac95a59a4fea0fc04e8efc54f3f42ea9078437643c",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/SOURCE_OF_TRUTH_MATRIX.md",
+      "size": 2091,
+      "sha256": "dd050060666959c154863fb5867e644a884550f0f9db9d270a72c4a06cc787a0",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/STATE_OWNERSHIP.md",
+      "size": 1878,
+      "sha256": "1a392a68a54110b5025672c13d5f4dab838b6013bfe1451d9346e5db4eede92f",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "audit/WORKSPACE_BOUNDARY_AUDIT.md",
+      "size": 1376,
+      "sha256": "1eb958095773c1bc1d3e050c7ed1cd91e8180a59a4c4aea59262d40aa7fb35e7",
+      "status": "approved-audit",
+      "doc_type": "audit"
+    },
+    {
+      "path": "implementation/AI_DEVELOPMENT_GUIDE.md",
+      "size": 1515,
+      "sha256": "658e60f95ef43d24921f2f6bd374ee633497c3738aabd87b7dacfb454ff4031b",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "implementation/IMPLEMENTATION_BOUNDARY.md",
+      "size": 2926,
+      "sha256": "af850faee86a0361fe187370778eeabd6105d4fd93f7a10198923f0574fefb39",
+      "status": "target-design",
+      "doc_type": "md"
+    },
+    {
+      "path": "implementation/MIGRATION_PLAN.md",
+      "size": 3209,
+      "sha256": "1cd9f9cb3a6ecf6575075d7d9773dc58e43f540326e064fdc7ac45536c944794",
+      "status": "target-design",
+      "doc_type": "md"
+    }
+  ]
+}
