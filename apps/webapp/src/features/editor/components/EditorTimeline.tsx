@@ -494,12 +494,8 @@ export default function EditorTimeline(props: Props) {
       </TimelineTrack>
     ),
   }
-  const audioTimelineHeight = audioTracks.length * 44
   return (
-    <div
-      className="flex min-h-0 shrink-0 border-t border-border bg-bg-panel"
-      style={{ height: 192 + audioTimelineHeight }}
-    >
+    <div className="flex h-full min-h-0 border-t border-border bg-bg-panel">
       <div
         ref={trackHeaderScrollRef}
         className="z-40 flex w-24 shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-border bg-bg-panel"

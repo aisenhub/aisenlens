@@ -40,7 +40,7 @@ test("研究队列在 1000/3000 镜头压力数据下保持有界 DOM", { timeou
         clear.onerror = () => reject(clear.error)
       }
     })`)
-    const navigationUrl = `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&stage=analyze&view=shots`
+    const navigationUrl = `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&workspace=analysis&view=shots`
     void client.send("Page.navigate", { url: navigationUrl }, sessionId).catch(() => undefined)
     await until(async () => (await evaluate(client, sessionId, `document.body.innerText.includes('${count}/${count}')`)), `${count} 镜头未加载`, 30_000)
     const bounded = await evaluate(client, sessionId, "({ rows: document.querySelectorAll('button[aria-label^=播放镜头]').length, videos: document.querySelectorAll('video').length, height: document.querySelectorAll('button[aria-label^=播放镜头]').length })")

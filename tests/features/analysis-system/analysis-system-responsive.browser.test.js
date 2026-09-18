@@ -9,7 +9,7 @@ test("P3 Focus/Batch 在宽、中、窄视口处理 IME、重复键与 Escape", 
   const { projectId } = await seedProject(client, sessionId, 4)
   for (const viewport of [{ width: 1440, height: 900 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
     await client.send("Emulation.setDeviceMetricsOverride", { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: viewport.width < 500 }, sessionId)
-    await navigateToProject(client, sessionId, serverPort, projectId, "stage=analyze&view=scenes")
+    await navigateToProject(client, sessionId, serverPort, projectId, "workspace=analysis&view=scenes")
     if (viewport.width <= 1100) {
       await until(async () => await evaluate(client, sessionId, "document.querySelector('.editor-workspace')?.getAttribute('data-mobile-panel') === 'analysis' || [...document.querySelectorAll('.editor-mobile-panel-switcher button')].some((element) => element.textContent?.trim() === '分析')"), `${viewport.width} 视口分析面板切换入口未出现`)
       const analysisPanelOpen = await evaluate(client, sessionId, "document.querySelector('.editor-workspace')?.getAttribute('data-mobile-panel') === 'analysis'")
@@ -22,7 +22,7 @@ test("P3 Focus/Batch 在宽、中、窄视口处理 IME、重复键与 Escape", 
     await evaluate(client, sessionId, "[...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '批量记录' && element.getClientRects().length > 0)?.click()")
     await until(async () => await evaluate(client, sessionId, "document.querySelector('button[aria-label=\"关闭批量记录\"]') !== null"), `${viewport.width} 视口 Batch 面板未打开`)
     await evaluate(client, sessionId, "document.querySelector('button[aria-label=\"关闭批量记录\"]')?.click()")
-    await navigateToProject(client, sessionId, serverPort, projectId, "stage=analyze&view=shots&mode=sequential")
+    await navigateToProject(client, sessionId, serverPort, projectId, "workspace=analysis&view=shots&mode=sequential")
     await until(async () => await evaluate(client, sessionId, "new URL(location.href).searchParams.get('view') === 'shots'"), `${viewport.width} 视口 Shots 未加载`)
     await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === 'Focus' && element.getClientRects().length > 0)"), `${viewport.width} 视口 Focus 入口未出现`)
     await evaluate(client, sessionId, "[...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === 'Focus' && element.getClientRects().length > 0)?.click()")

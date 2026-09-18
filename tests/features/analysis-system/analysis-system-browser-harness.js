@@ -11,7 +11,7 @@ export async function attachPage(client, serverPort, label) {
   return attached.sessionId
 }
 
-export async function navigateToProject(client, sessionId, serverPort, projectId, query = "stage=analyze&view=scenes") {
+export async function navigateToProject(client, sessionId, serverPort, projectId, query = "workspace=analysis&view=scenes") {
   const expectedParams = [...new URLSearchParams(query).entries()]
   const readyExpression = ["location.pathname === '/app'", ...expectedParams.map(([key, value]) => `new URL(location.href).searchParams.get(${JSON.stringify(key)}) === ${JSON.stringify(value)}`)].join(" && ")
   void client.send("Page.navigate", { url: `http://127.0.0.1:${serverPort}/app?project=${projectId}&${query}` }, sessionId).catch(() => undefined)

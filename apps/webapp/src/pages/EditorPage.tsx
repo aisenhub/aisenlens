@@ -46,8 +46,8 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
         <ProjectSessionProvider projectId={project.id}>
           <ProjectSessionRuntime isLoading={false} hasError={false}>
             <ProjectWorkspaceShell
-              activeStage={workflow.stage}
-              onStageChange={workflow.goTo}
+              activeWorkspace={workflow.workspace}
+              onWorkspaceChange={workflow.goTo}
               onOpenSettings={() => setIsSettingsOpen(true)}
             >
           <EditorWorkspace
@@ -64,7 +64,7 @@ export default function EditorPage({ projectId, onProjectLoaded, ...editorProps 
                 coverScreenshotId={project.coverScreenshotId}
                 onProjectUpdated={onProjectLoaded}
             isActive
-            workflowStage={workflow.stage}
+            workflowWorkspace={workflow.workspace}
             workflowView={workflow.view}
             onWorkflowNavigate={workflow.goTo}
             settingsOpen={isSettingsOpen}

@@ -2,6 +2,10 @@ import { lazy, Suspense, useCallback, useMemo, useState, useRef, useEffect } fro
 import { toast } from "sonner"
 import {
   LoaderCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   TriangleAlert,
 } from "lucide-react"
 import { FRAMES_PER_SECOND } from "../constants/editor"
@@ -135,13 +139,17 @@ import useMultiTrackAudioPreview from "../../media/hooks/useMultiTrackAudioPrevi
 import { saveAudioTracks } from "../../media/services/audioTrackProjectService"
 import { canonicalizeSceneDetectionConfig } from "@aisenlens/scene-engine"
 import { useProjectSession } from "../session/ProjectSessionProvider"
-import type { WorkflowLocation, WorkflowStage, WorkflowView } from "../../workflow/types.ts"
+import type { WorkflowLocation, WorkflowView, WorkflowWorkspace } from "../../workflow/types.ts"
+import useWorkspacePreferences from "../../workflow/hooks/useWorkspacePreferences.ts"
+import ResizableWorkspacePanel from "../../workflow/components/ResizableWorkspacePanel.tsx"
+import ResizableTimelineSurface from "../../workflow/components/ResizableTimelineSurface.tsx"
 const PrepareView = lazy(() => import("../../workflow/components/PrepareView"))
 const CalibrateView = lazy(() => import("../../workflow/components/CalibrateView"))
 const OverviewView = lazy(() => import("../../overview/components/OverviewView"))
 const AnalyzeWorkspace = lazy(() => import("../../analysis/components/AnalyzeWorkspace"))
 const LearnView = lazy(() => import("../../learn/components/LearnView"))
 const CreateView = lazy(() => import("../../workflow/components/CreateView"))
+const ResultsPlaceholderView = lazy(() => import("../../workflow/components/ResultsPlaceholderView"))
 import type { LearningSource } from "../../learn/services/deriveLearningSources"
 import useResearchWorkbench from "../../analysis/hooks/useResearchWorkbench"
 import type { EvidenceRef, ResearchContext, ResearchRange, ResearchTarget } from "../../analysis/types.ts"
@@ -162,9 +170,9 @@ interface EditorWorkspaceProps {
   coverScreenshotId: string | null
   onProjectUpdated: (project: ProjectRecord) => void
   isActive?: boolean
-  workflowStage?: WorkflowStage
+  workflowWorkspace?: WorkflowWorkspace
   workflowView?: WorkflowView
-  onWorkflowNavigate?: (stage: WorkflowStage, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
+  onWorkflowNavigate?: (workspace: WorkflowWorkspace, view?: WorkflowView, research?: Partial<Pick<WorkflowLocation, "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>) => void
   settingsOpen: boolean
   onSettingsOpenChange: (open: boolean) => void
 }
@@ -211,12 +219,16 @@ export default function EditorWorkspace({
   coverScreenshotId,
   onProjectUpdated,
   isActive = true,
-  workflowStage = "prepare",
-  workflowView = "scenes",
+  workflowWorkspace = "preparation",
+  workflowView = "media",
   onWorkflowNavigate,
   settingsOpen,
   onSettingsOpenChange,
 }: EditorWorkspaceProps) {
+  const isBoundaryReview = workflowWorkspace === "preparation" && workflowView === "boundary-review"
+  const isAnalysisWorkbench = workflowWorkspace === "analysis" && (workflowView === "scenes" || workflowView === "shots" || workflowView === "sound")
+  const { preferences: workspacePreferences, updateWorkspace: updateWorkspacePreference } = useWorkspacePreferences()
+  const analysisLayout = workspacePreferences.workspaces.analysis
   const setSessionSelection = useProjectSession((state) => state.setSelection)
   const setSessionPlaybackTime = useProjectSession((state) => state.setPlaybackTime)
   const setSessionResearchTarget = useProjectSession((state) => state.setResearchTarget)
@@ -2247,7 +2259,7 @@ export default function EditorWorkspace({
     setCurrentTime(0)
     markDirty()
     toast.success(`已应用 ${nextShots.length} 个镜头；应用前快照已保存。`)
-    onWorkflowNavigate?.("overview", "film")
+    onWorkflowNavigate?.("analysis", "timeline")
   }
 
   const updateResearchContext = useCallback((target: ResearchTarget, patch: Partial<Pick<ResearchContext, "question" | "status" | "needsReview">>) => { editorHistory.commit(); return researchWorkbench.updateContext(target, patch) }, [editorHistory.commit, researchWorkbench.updateContext])
@@ -2259,7 +2271,7 @@ export default function EditorWorkspace({
     setSessionResearchMode("range")
     setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
     setSessionResearchTarget({ kind: "range", id: range.id })
-    onWorkflowNavigate?.("analyze", workflowView, { mode: "range", scopeKind: "saved-range", scopeId: range.id, fromUs: range.startUs, toUs: range.endUs, targetKind: "range", targetId: range.id })
+    onWorkflowNavigate?.("analysis", workflowView, { mode: "range", scopeKind: "saved-range", scopeId: range.id, fromUs: range.startUs, toUs: range.endUs, targetKind: "range", targetId: range.id })
     return range
   }, [editorHistory.commit, onWorkflowNavigate, researchMediaIdentityDigest, researchWorkbench.createRangeForMedia, setSessionResearchMode, setSessionResearchScope, setSessionResearchTarget, workflowView])
   const updateResearchRange = useCallback((range: ResearchRange, patch: Partial<Pick<ResearchRange, "startUs" | "endUs" | "title" | "observation" | "interpretation" | "summary">>) => { editorHistory.commit(); return researchWorkbench.updateRange(range, patch) }, [editorHistory.commit, researchWorkbench.updateRange])
@@ -2386,7 +2398,7 @@ export default function EditorWorkspace({
               viewRange.outFrame! / (media.metadata?.frameRate ?? FPS),
             )
         : undefined,
-    "shot.trimStartToPlayhead": workflowStage === "calibrate" ? undefined : () => {
+    "shot.trimStartToPlayhead": isBoundaryReview ? undefined : () => {
       if (activeShot <= 0) return
       const frameRate = media.metadata?.frameRate ?? FPS
       const range = getShotRanges(frameRate)[activeShot]
@@ -2398,7 +2410,7 @@ export default function EditorWorkspace({
       )
         handleBoundaryCommit(activeShot - 1, currentFrame, activeShot)
     },
-    "shot.trimEndToPlayhead": workflowStage === "calibrate" ? undefined : () => {
+    "shot.trimEndToPlayhead": isBoundaryReview ? undefined : () => {
       if (activeShot >= shots.length - 1) return
       const frameRate = media.metadata?.frameRate ?? FPS
       const range = getShotRanges(frameRate)[activeShot]
@@ -2410,7 +2422,7 @@ export default function EditorWorkspace({
       )
         handleBoundaryCommit(activeShot, currentFrame + 1, activeShot)
     },
-    "selection.setInPoint": workflowStage === "calibrate" ? undefined : () => {
+    "selection.setInPoint": isBoundaryReview ? undefined : () => {
       const frameRate = media.metadata?.frameRate ?? FPS
       const frame = Math.max(
         0,
@@ -2427,7 +2439,7 @@ export default function EditorWorkspace({
             : range.outFrame,
       }))
     },
-    "selection.setOutPoint": workflowStage === "calibrate" ? undefined : () => {
+    "selection.setOutPoint": isBoundaryReview ? undefined : () => {
       const frameRate = media.metadata?.frameRate ?? FPS
       const frame = Math.max(
         0,
@@ -2444,9 +2456,9 @@ export default function EditorWorkspace({
         outFrame: frame,
       }))
     },
-    "marker.create": workflowStage === "calibrate" ? undefined : () => createAnnotationMarker("important"),
+    "marker.create": isBoundaryReview ? undefined : () => createAnnotationMarker("important"),
     "shot.splitAtPlayhead":
-      workflowStage !== "calibrate" && (activeShortcutSurface === "preview" || activeShortcutSurface === "timeline")
+      !isBoundaryReview && (activeShortcutSurface === "preview" || activeShortcutSurface === "timeline")
         ? handleSplitShotAtPlayhead
         : undefined,
     "preview.toggleFullscreen":
@@ -2478,13 +2490,13 @@ export default function EditorWorkspace({
     },
     "help.show": () => setActiveTool("shortcuts"),
     "history.undo":
-      workflowStage === "calibrate" ? undefined : activeTool === "mask" && compositionShapeHistoryIndex > 0
+      isBoundaryReview ? undefined : activeTool === "mask" && compositionShapeHistoryIndex > 0
         ? undoCompositionShapes
         : editorHistory.canUndo
           ? editorHistory.undo
           : undefined,
     "history.redo":
-      workflowStage === "calibrate" ? undefined : activeTool === "mask" &&
+      isBoundaryReview ? undefined : activeTool === "mask" &&
       compositionShapeHistoryIndex <
         compositionShapeHistoryRef.current.length - 1
         ? redoCompositionShapes
@@ -2492,7 +2504,7 @@ export default function EditorWorkspace({
           ? editorHistory.redo
           : undefined,
     "editing.delete":
-      workflowStage === "calibrate" ? undefined : activeTool === "mask" && selectedCompositionShapeId
+      isBoundaryReview ? undefined : activeTool === "mask" && selectedCompositionShapeId
         ? deleteSelectedCompositionShape
         : shots.length > 1
           ? () => handleMergeShotAtIndex(activeShot)
@@ -2551,6 +2563,16 @@ export default function EditorWorkspace({
 
         <div className="flex-1" />
 
+        {isAnalysisWorkbench && (
+          <div className="hidden items-center gap-1 lg:flex">
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={analysisLayout.navigationOpen ? "隐藏分镜导航" : "显示分镜导航"} title={analysisLayout.navigationOpen ? "隐藏分镜导航" : "显示分镜导航"} aria-pressed={analysisLayout.navigationOpen} onClick={() => updateWorkspacePreference("analysis", { navigationOpen: !analysisLayout.navigationOpen })} className="text-text-muted hover:text-text-base">
+              {analysisLayout.navigationOpen ? <PanelLeftClose className="size-3.5" /> : <PanelLeftOpen className="size-3.5" />}
+            </Button>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={analysisLayout.inspectorOpen ? "隐藏检查器" : "显示检查器"} title={analysisLayout.inspectorOpen ? "隐藏检查器" : "显示检查器"} aria-pressed={analysisLayout.inspectorOpen} onClick={() => updateWorkspacePreference("analysis", { inspectorOpen: !analysisLayout.inspectorOpen })} className="text-text-muted hover:text-text-base">
+              {analysisLayout.inspectorOpen ? <PanelRightClose className="size-3.5" /> : <PanelRightOpen className="size-3.5" />}
+            </Button>
+          </div>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -2592,7 +2614,7 @@ export default function EditorWorkspace({
             <Button type="button" variant="ghost" size="xs" onClick={() => setDataLoadRevision((revision) => revision + 1)} className="shrink-0 px-1.5 text-red-100 hover:bg-red-500/15 hover:text-white">重试读取</Button>
           </div>
         )}
-        {workflowStage !== "calibrate" && (
+        {!isBoundaryReview && (
           <div className="editor-mobile-panel-switcher ml-1 hidden items-center gap-1">
             <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "shots" ? null : "shots")} aria-pressed={mobilePanel === "shots"} className={mobilePanel === "shots" ? "bg-accent/15 text-accent" : "text-text-muted"}>分镜</Button>
             <Button type="button" variant="ghost" size="xs" onClick={() => setMobilePanel((current) => current === "analysis" ? null : "analysis")} aria-pressed={mobilePanel === "analysis"} className={mobilePanel === "analysis" ? "bg-accent/15 text-accent" : "text-text-muted"}>分析</Button>
@@ -2602,7 +2624,7 @@ export default function EditorWorkspace({
 
       {/* ══ Main body ══ */}
       <Suspense fallback={<div className="flex min-h-0 flex-1 items-center justify-center text-sm text-text-muted">正在加载工作区…</div>}>
-      {workflowStage !== "calibrate" ? <div className={workflowStage === "analyze" ? "contents" : "hidden"}>
+      {!isBoundaryReview ? <div className={isAnalysisWorkbench ? "contents" : "hidden"}>
       <AnalyzeWorkspace
         view={workflowView}
         shots={shots}
@@ -2622,7 +2644,7 @@ export default function EditorWorkspace({
         researchContexts={researchWorkbench.contexts}
         firstScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.first : null}
         lastScreenshotId={activeShotId ? shotBoundaryScreenshotIds[activeShotId]?.last : null}
-        onViewChange={(view) => onWorkflowNavigate?.("analyze", view)}
+        onViewChange={(view) => onWorkflowNavigate?.("analysis", view)}
         activeTool={activeTool === "mask" || activeTool === "markers" ? activeTool : null}
         onToggleTool={(tool) => toggleTool(tool)}
         onLocateShot={(index) => {
@@ -2977,6 +2999,14 @@ export default function EditorWorkspace({
             </div>
           </div>
 
+          <ResizableTimelineSurface
+            height={analysisLayout.timelineHeight}
+            extraHeight={mediaProject.audioTracks.length * 44}
+            defaultHeight={192}
+            minHeight={120}
+            maxHeight={360}
+            onHeightCommit={(timelineHeight) => updateWorkspacePreference("analysis", { timelineHeight })}
+          >
           <EditorTimeline
             shots={shots}
             groups={shotGroups}
@@ -3014,9 +3044,20 @@ export default function EditorWorkspace({
             isFilteringShots={isFilteringShots}
             completionByShotId={completionByShotId}
           />
+          </ResizableTimelineSurface>
         </div>
 
-        <div className="editor-shot-list flex min-h-0 shrink-0 flex-col">
+        {(analysisLayout.navigationOpen || mobilePanel === "shots") && (
+        <ResizableWorkspacePanel
+          side="left"
+          width={analysisLayout.navigationWidth}
+          defaultWidth={240}
+          minWidth={180}
+          maxWidth={360}
+          onWidthCommit={(navigationWidth) => updateWorkspacePreference("analysis", { navigationWidth })}
+          ariaLabel="调整分镜导航宽度"
+          className="editor-shot-list flex min-h-0 flex-col"
+        >
           {isSelectingGroupShots && (
             <div className="shrink-0 border-b border-border bg-bg-panel px-3">
               <ShotGroupPanel
@@ -3086,10 +3127,21 @@ export default function EditorWorkspace({
             manualSplitDisabledReason={manualSplitDisabledReason}
             onSplitAtPlayhead={handleSplitShotAtPlayhead}
           />
-        </div>
+        </ResizableWorkspacePanel>
+        )}
 
         {/* ── Right: analysis panel ── */}
-        <aside className="editor-analysis-panel w-64 border-l border-border flex flex-col bg-bg-panel shrink-0 overflow-hidden">
+        {(analysisLayout.inspectorOpen || mobilePanel === "analysis") && (
+        <ResizableWorkspacePanel
+          side="right"
+          width={analysisLayout.inspectorWidth}
+          defaultWidth={320}
+          minWidth={280}
+          maxWidth={480}
+          onWidthCommit={(inspectorWidth) => updateWorkspacePreference("analysis", { inspectorWidth })}
+          ariaLabel="调整检查器宽度"
+          className="editor-analysis-panel border-l border-border flex flex-col bg-bg-panel overflow-hidden"
+        >
           <Tabs
             value={panel}
             onValueChange={(value) => setPanel(value as Panel)}
@@ -3293,19 +3345,20 @@ export default function EditorWorkspace({
               onAdjustRange={adjustCurrentShotGroup}
             />
           )}
-        </aside>
+        </ResizableWorkspacePanel>
+        )}
       </div>
       </AnalyzeWorkspace>
       </div> : null}
-      {workflowStage !== "analyze" ? (
-      workflowStage === "prepare" ? (
+      {!isAnalysisWorkbench ? (
+      workflowWorkspace === "preparation" && workflowView === "media" ? (
         <PrepareView
           project={project}
           media={media}
           videoUrl={videoUrl}
           isSelectingVideo={isSelectingVideo}
           onImportVideo={onImportVideo}
-          onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
+          onGoToAnalyze={() => onWorkflowNavigate?.("analysis", "scenes")}
           onGoToCalibrate={async () => {
             if (!videoUrl || !autoShotRun) throw new Error("当前视频或检测结果不可用。")
             await prepareDetectionCalibration(videoUrl, {
@@ -3317,7 +3370,7 @@ export default function EditorWorkspace({
               task: autoShotRun,
               shots: calibrationFormalShots,
             })
-            onWorkflowNavigate?.("calibrate", "candidates")
+            onWorkflowNavigate?.("preparation", "boundary-review")
           }}
           onOpenSettings={() => setIsTemplateEditorOpen(true)}
           settings={autoShotControl.settings}
@@ -3335,7 +3388,7 @@ export default function EditorWorkspace({
           advancedDetectionEnabled={advancedDetectionEnabled}
           onAdvancedDetectionChange={setAdvancedDetectionEnabled}
         />
-      ) : workflowStage === "overview" ? (
+      ) : workflowWorkspace === "analysis" && (workflowView === "timeline" || workflowView === "structure") ? (
         <OverviewView
           view={workflowView}
           shots={shots}
@@ -3345,7 +3398,7 @@ export default function EditorWorkspace({
           durationSeconds={durationSeconds}
           frameRate={media.metadata?.frameRate ?? null}
           selectedShotId={shots[activeShot]?.id ?? null}
-          onViewChange={(view) => onWorkflowNavigate?.("overview", view)}
+          onViewChange={(view) => onWorkflowNavigate?.("analysis", view)}
           onSelectShot={(index) => {
             setActiveShot(index)
             setCurrentTime(shots[index]?.start ?? 0)
@@ -3358,28 +3411,28 @@ export default function EditorWorkspace({
             setSessionResearchScope({ kind: "transient-range", fromUs: startUs, toUs: endUs })
             setSessionResearchQueue([shot.id])
             setSessionResearchTarget({ kind: "shot", id: shot.id })
-            onWorkflowNavigate?.("analyze", "shots", { mode: "range", scopeKind: "transient-range", fromUs: startUs, toUs: endUs, targetKind: "shot", targetId: shot.id })
+            onWorkflowNavigate?.("analysis", "shots", { mode: "range", scopeKind: "transient-range", fromUs: startUs, toUs: endUs, targetKind: "shot", targetId: shot.id })
           }}
           onEnterSequential={() => {
             setSessionResearchMode("sequential")
             setSessionResearchScope({ kind: "full-film" })
             setSessionResearchQueue(shots.map((shot) => shot.id), activeShot)
             setSessionResearchTarget(shots[activeShot] ? { kind: "shot", id: shots[activeShot].id } : null)
-            onWorkflowNavigate?.("analyze", "shots", { mode: "sequential", scopeKind: "full-film", targetKind: "shot", targetId: shots[activeShot]?.id })
+            onWorkflowNavigate?.("analysis", "shots", { mode: "sequential", scopeKind: "full-film", targetKind: "shot", targetId: shots[activeShot]?.id })
           }}
           onOpenScene={(group) => {
             setSelectedGroupId(group.id)
             const firstIndex = shots.findIndex((shot) => shot.id === group.shotIds[0])
             if (firstIndex >= 0) setActiveShot(firstIndex)
-            onWorkflowNavigate?.("analyze", "scenes")
+            onWorkflowNavigate?.("analysis", "scenes")
           }}
           onStartSelection={() => {
             setSelectedShotIds([])
             setIsSelectingGroupShots(true)
-            onWorkflowNavigate?.("analyze", "scenes")
+            onWorkflowNavigate?.("analysis", "scenes")
           }}
         />
-      ) : workflowStage === "learn" ? (
+      ) : workflowWorkspace === "analysis" && workflowView === "notes" ? (
         <LearnView
           shots={shots}
           groups={shotGroups}
@@ -3407,14 +3460,16 @@ export default function EditorWorkspace({
                 setSessionResearchScope({ kind: "saved-range", id: range.id, fromUs: range.startUs, toUs: range.endUs })
               }
             }
-            onWorkflowNavigate?.("analyze", "scenes")
+            onWorkflowNavigate?.("analysis", "scenes")
           }}
-          onGoToAnalyze={() => onWorkflowNavigate?.("analyze", "scenes")}
-          onGoToCreate={() => onWorkflowNavigate?.("create", "coming-soon")}
+          onGoToAnalyze={() => onWorkflowNavigate?.("analysis", "scenes")}
+          onGoToCreate={() => onWorkflowNavigate?.("results", "creative")}
         />
-      ) : workflowStage === "create" ? (
-        <CreateView onBackToLearn={() => onWorkflowNavigate?.("learn", "notes")} />
-      ) : (
+      ) : workflowWorkspace === "results" && workflowView === "creative" ? (
+        <CreateView onBackToAnalysis={() => onWorkflowNavigate?.("analysis", "notes")} />
+      ) : workflowWorkspace === "results" && (workflowView === "data" || workflowView === "export") ? (
+        <ResultsPlaceholderView view={workflowView} />
+      ) : isBoundaryReview ? (
         <CalibrateView
           projectId={projectId}
           projectUpdatedAt={mediaProject.updatedAt}
@@ -3489,9 +3544,9 @@ export default function EditorWorkspace({
             onFullscreenToggle: () => setFullscreenRequest((request) => request + 1),
           }}
           onApply={applyCalibrationDraftToEditor}
-          onBackToPrepare={() => onWorkflowNavigate?.("prepare", "media")}
+          onBackToPrepare={() => onWorkflowNavigate?.("preparation", "media")}
         />
-      )
+      ) : null
       ) : null}
       </Suspense>
       <WorkspaceSettingsDialog

@@ -1,18 +1,18 @@
 import {
-  getStageDefinition,
-  WORKFLOW_STAGE_DEFINITIONS,
-} from "../constants/workflowStages.ts"
-import type { ResearchMode, ResearchScopeKind, ResearchTargetKind, WorkflowLocation, WorkflowStage, WorkflowView } from "../types.ts"
+  getWorkspaceDefinition,
+  WORKFLOW_WORKSPACE_DEFINITIONS,
+} from "../constants/workflowWorkspaces.ts"
+import type { ResearchMode, ResearchScopeKind, ResearchTargetKind, WorkflowLocation, WorkflowView, WorkflowWorkspace } from "../types.ts"
 
-const stageIds = new Set(WORKFLOW_STAGE_DEFINITIONS.map(({ id }) => id))
+const workspaceIds = new Set(WORKFLOW_WORKSPACE_DEFINITIONS.map(({ id }) => id))
 
 export function parseWorkflowLocation(search: string): WorkflowLocation {
   const params = new URLSearchParams(search)
-  const requestedStage = params.get("stage")
-  const stage: WorkflowStage = stageIds.has(requestedStage as WorkflowStage)
-    ? (requestedStage as WorkflowStage)
-    : "prepare"
-  const definition = getStageDefinition(stage)
+  const requestedWorkspace = params.get("workspace")
+  const workspace: WorkflowWorkspace = workspaceIds.has(requestedWorkspace as WorkflowWorkspace)
+    ? (requestedWorkspace as WorkflowWorkspace)
+    : "preparation"
+  const definition = getWorkspaceDefinition(workspace)
   const requestedView = params.get("view") as WorkflowView | null
   const view = definition.views.includes(requestedView as WorkflowView)
     ? (requestedView as WorkflowView)
@@ -20,7 +20,7 @@ export function parseWorkflowLocation(search: string): WorkflowLocation {
 
   const location: WorkflowLocation = {
     projectId: params.get("project") || null,
-    stage,
+    workspace,
     view,
   }
   const mode = params.get("mode")
@@ -44,14 +44,15 @@ export function parseWorkflowLocation(search: string): WorkflowLocation {
 
 export function createWorkflowSearch(
   currentSearch: string,
-  next: Partial<Pick<WorkflowLocation, "projectId" | "stage" | "view" | "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>,
+  next: Partial<Pick<WorkflowLocation, "projectId" | "workspace" | "view" | "mode" | "scopeKind" | "scopeId" | "fromUs" | "toUs" | "targetKind" | "targetId">>,
 ) {
   const params = new URLSearchParams(currentSearch)
+  params.delete("stage")
   if (next.projectId !== undefined) {
     if (next.projectId) params.set("project", next.projectId)
     else params.delete("project")
   }
-  if (next.stage !== undefined) params.set("stage", next.stage)
+  if (next.workspace !== undefined) params.set("workspace", next.workspace)
   if (next.view !== undefined) params.set("view", next.view)
   for (const [key, value] of [["mode", next.mode], ["scopeKind", next.scopeKind], ["scopeId", next.scopeId], ["fromUs", next.fromUs], ["toUs", next.toUs], ["targetKind", next.targetKind], ["targetId", next.targetId]] as const) {
     if (value === undefined) continue

@@ -21,7 +21,7 @@ test("Sound 研究范围通过真实 IndexedDB 往返并在刷新后恢复 URL �
   assert.equal(range?.__error, undefined, range?.__error)
   assert.deepEqual({ startUs: range.startUs, endUs: range.endUs }, { startUs: 1_250_000, endUs: 2_750_000 })
   const projectId = await evaluate(client, sessionId, "new URL(location.href).searchParams.get('project')")
-  const navigationUrl = `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&stage=analyze&view=sound&mode=range&scopeKind=saved-range&scopeId=${range.id}&fromUs=1250000&toUs=2750000&targetKind=range&targetId=${range.id}`
+  const navigationUrl = `http://127.0.0.1:${(await evaluate(client, sessionId, "location.port"))}/app?project=${projectId}&workspace=analysis&view=sound&mode=range&scopeKind=saved-range&scopeId=${range.id}&fromUs=1250000&toUs=2750000&targetKind=range&targetId=${range.id}`
   void client.send("Page.navigate", { url: navigationUrl }, sessionId).catch(() => undefined)
   await until(async () => (await evaluate(client, sessionId, "location.pathname === '/app' && new URL(location.href).searchParams.get('targetId') !== null")), "刷新后的研究目标 URL 未恢复")
   await until(async () => (await evaluate(client, sessionId, "document.body.innerText.includes('ANALYZE') && document.body.innerText.includes('Sound')")), "刷新后的 Analyze 页面未加载", 20_000)

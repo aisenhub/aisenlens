@@ -2,39 +2,30 @@
 @import 'tailwindcss';
 
 @theme inline {
-  /* Backgrounds */
-  --color-bg:        var(--app-bg);
-  --color-bg-card:   var(--app-bg-card);
-  --color-bg-deep:   var(--app-bg-deep);
-  --color-bg-nav:    var(--app-bg-nav);
-  --color-bg-panel:  var(--app-bg-panel);
-  --color-bg-input:  var(--app-bg-input);
-  --color-bg-hover:  var(--app-bg-hover);
-
-  /* Accent — single solid blue, no gradients */
-  --color-accent:    var(--app-accent);
-  --color-accent-dim: rgba(59,130,246,0.15);
-  --color-app-accent: var(--app-accent);
-  --color-app-selected-bg: var(--app-selected-bg);
+  --color-bg: var(--app-bg);
+  --color-bg-card: var(--app-bg-card);
+  --color-bg-deep: var(--app-bg-deep);
+  --color-bg-nav: var(--app-bg-nav);
+  --color-bg-panel: var(--app-bg-panel);
+  --color-bg-input: var(--app-bg-input);
+  --color-bg-hover: var(--app-bg-hover);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-soft);
+  --color-app-accent: var(--accent);
+  --color-app-selected-bg: var(--surface-selected);
   --color-viewer-bg: var(--viewer-bg);
-  --color-playhead: var(--playhead);
-  --color-waveform: var(--waveform);
+  --color-playhead: var(--timeline-playhead);
+  --color-waveform: var(--timeline-waveform);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --color-ai: var(--ai);
-
-  /* Typography */
-  --color-text-base:  var(--app-text-base);
-  --color-text-dim:   var(--app-text-dim);
-  --color-text-muted: var(--app-text-muted);
-  --color-text-faint: var(--app-text-faint);
-
-  /* Borders */
-  --color-border:     var(--app-border);
-  --color-border-mid: var(--app-border-mid);
-
-  /* shadcn/ui semantic tokens */
+  --color-ai: var(--intelligence-a);
+  --color-text-base: var(--text-primary);
+  --color-text-dim: var(--text-secondary);
+  --color-text-muted: var(--text-tertiary);
+  --color-text-faint: var(--text-disabled);
+  --color-border: var(--stroke-soft);
+  --color-border-mid: var(--stroke-default);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -50,110 +41,156 @@
   --color-destructive: var(--destructive);
   --color-input: var(--input);
   --color-ring: var(--ring);
-
-  /* Fonts */
-  --font-display: 'Arial Narrow', 'Geist', sans-serif;
-  --font-body:    'Geist', sans-serif;
-  --font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: 'Geist', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --font-body: 'Geist', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* ── Light theme (editor only) ── */
 :root {
   color-scheme: dark;
-  --app-bg: #080808;
-  --app-bg-card: #111111;
-  --app-bg-deep: #050505;
-  --app-bg-nav: #0a0a0a;
-  --app-bg-panel: #0d0d0d;
-  --app-bg-input: rgba(255,255,255,0.04);
-  --app-bg-hover: rgba(255,255,255,0.04);
-  --app-accent: #3b82f6;
-  --app-selected-bg: rgba(59,130,246,0.15);
-  --viewer-bg: #050505;
-  --playhead: #ef4444;
-  --waveform: #64748b;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
-  --ai: #a78bfa;
-  --app-text-base: #f0f0f0;
-  --app-text-dim: #888888;
-  --app-text-muted: #8f8f8f;
-  --app-text-faint: #333333;
-  --app-border: #1e1e1e;
-  --app-border-mid: #2a2a2a;
-  --timeline-shot: #161d2a;
-  --timeline-shot-played: #243a5e;
-  --timeline-shot-hover: #2d4770;
-  --timeline-shot-active: #3b82f6;
-  --timeline-shot-marker: #fbbf24;
-  --background: var(--app-bg);
-  --foreground: var(--app-text-base);
-  --card: var(--app-bg-card);
-  --card-foreground: var(--app-text-base);
-  --popover: var(--app-bg-card);
-  --popover-foreground: var(--app-text-base);
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: var(--app-bg-panel);
-  --secondary-foreground: var(--app-text-base);
-  --muted: var(--app-bg-hover);
-  --muted-foreground: var(--app-text-dim);
-  --accent: var(--app-bg-hover);
-  --accent-foreground: var(--app-text-base);
-  --destructive: #f87171;
-  --input: var(--app-border);
-  --ring: #3b82f6;
-  --radius: 0.625rem;
-  --radius-md: 0.5rem;
+  --window-bg: #080A0D;
+  --workspace-bg: #0D1014;
+  --panel-bg: #11151A;
+  --surface-1: #151A20;
+  --surface-2: #1A2027;
+  --surface-3: #202832;
+  --surface-hover: #242D38;
+  --surface-pressed: #2A3541;
+  --surface-selected: #1B3043;
+  --viewer-bg: #050609;
+  --stroke-soft: rgba(255,255,255,.055);
+  --stroke-default: rgba(255,255,255,.095);
+  --stroke-strong: rgba(255,255,255,.17);
+  --stroke-highlight: rgba(255,255,255,.24);
+  --text-primary: #F4F7FB;
+  --text-secondary: #B7C0CC;
+  --text-tertiary: #818C9A;
+  --text-disabled: #59626E;
+  --accent: #63B3FF;
+  --accent-hover: #7AC0FF;
+  --accent-pressed: #3F9EEA;
+  --accent-soft: rgba(99,179,255,.16);
+  --accent-strong: #9ACFFF;
+  --accent-foreground: #07111A;
+  --success: #4FD49A;
+  --warning: #F2B84B;
+  --danger: #FF6B78;
+  --info: #63B3FF;
+  --intelligence-a: #7F8CFF;
+  --intelligence-b: #55D7C4;
+  --material-glass: rgba(17,21,26,.72);
+  --material-glass-strong: rgba(17,21,26,.88);
+  --material-glass-stroke: rgba(255,255,255,.12);
+  --shadow-float: 0 16px 44px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.22);
+  --shadow-popover: 0 12px 32px rgba(0,0,0,.24), 0 1px 4px rgba(0,0,0,.18);
+  --shadow-modal: 0 28px 80px rgba(0,0,0,.36);
+  --radius-control: 6px;
+  --radius-input: 7px;
+  --radius-surface: 8px;
+  --radius-panel: 10px;
+  --radius-float: 12px;
+  --radius-modal: 14px;
+  --radius: 8px;
+  --radius-md: 7px;
+  --motion-instant: 60ms;
+  --motion-hover: 90ms;
+  --motion-control: 120ms;
+  --motion-reveal: 160ms;
+  --motion-panel: 220ms;
+  --motion-workspace: 280ms;
+  --ease-standard: cubic-bezier(.2,.8,.2,1);
+  --ease-out-spring: cubic-bezier(.16,1,.3,1);
+  --ease-in: cubic-bezier(.4,0,1,1);
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-floating: 20;
+  --z-dropdown: 30;
+  --z-popover: 40;
+  --z-drawer: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-command: 80;
+  --z-tooltip: 90;
+  --timeline-playhead: #E9F5FF;
+  --timeline-waveform: #8196AD;
+  --timeline-shot: var(--surface-2);
+  --timeline-shot-played: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+  --timeline-shot-hover: var(--surface-hover);
+  --timeline-shot-active: var(--accent);
+  --timeline-shot-marker: var(--warning);
+  --app-bg: var(--workspace-bg);
+  --app-bg-card: var(--surface-1);
+  --app-bg-deep: var(--window-bg);
+  --app-bg-nav: var(--panel-bg);
+  --app-bg-panel: var(--panel-bg);
+  --app-bg-input: var(--surface-2);
+  --app-bg-hover: var(--surface-hover);
+  --app-accent: var(--accent);
+  --app-selected-bg: var(--surface-selected);
+  --app-text-base: var(--text-primary);
+  --app-text-dim: var(--text-secondary);
+  --app-text-muted: var(--text-tertiary);
+  --app-text-faint: var(--text-disabled);
+  --app-border: var(--stroke-soft);
+  --app-border-mid: var(--stroke-default);
+  --playhead: var(--timeline-playhead);
+  --waveform: var(--timeline-waveform);
+  --ai: var(--intelligence-a);
+  --background: var(--workspace-bg);
+  --foreground: var(--text-primary);
+  --card: var(--surface-1);
+  --card-foreground: var(--text-primary);
+  --popover: var(--material-glass-strong);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-foreground);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-hover);
+  --muted-foreground: var(--text-secondary);
+  --destructive: var(--danger);
+  --input: var(--stroke-default);
+  --ring: var(--accent);
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --app-bg: #f1f1f1;
-  --app-bg-card: #ffffff;
-  --app-bg-deep: #e3e3e3;
-  --app-bg-nav: #e9e9e9;
-  --app-bg-panel: #f5f5f5;
-  --app-bg-input: rgba(0,0,0,0.04);
-  --app-bg-hover: rgba(0,0,0,0.05);
-  --app-accent: #2563eb;
-  --app-selected-bg: rgba(37,99,235,0.12);
-  --viewer-bg: #050505;
-  --playhead: #dc2626;
-  --waveform: #64748b;
-  --success: #047857;
-  --warning: #a16207;
-  --danger: #b91c1c;
-  --ai: #6d28d9;
-  --app-text-base: #20242b;
-  --app-text-dim: #475569;
-  --app-text-muted: #5b6675;
-  --app-text-faint: #94a3b8;
-  --app-border: #d2d6dc;
-  --app-border-mid: #b8c0ca;
-  --timeline-shot: #dce4ef;
-  --timeline-shot-played: #bed6f7;
-  --timeline-shot-hover: #ccddf3;
-  --timeline-shot-active: #2563eb;
-  --timeline-shot-marker: #b7791f;
-  --background: var(--app-bg);
-  --foreground: var(--app-text-base);
-  --card: var(--app-bg-card);
-  --card-foreground: var(--app-text-base);
-  --popover: var(--app-bg-card);
-  --popover-foreground: var(--app-text-base);
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --secondary: var(--app-bg-panel);
-  --secondary-foreground: var(--app-text-base);
-  --muted: var(--app-bg-hover);
-  --muted-foreground: var(--app-text-dim);
-  --accent: var(--app-bg-hover);
-  --accent-foreground: var(--app-text-base);
-  --destructive: #dc2626;
-  --input: var(--app-border);
-  --ring: #2563eb;
+  --window-bg: #E8EBEF;
+  --workspace-bg: #F1F3F6;
+  --panel-bg: #F7F8FA;
+  --surface-1: #FFFFFF;
+  --surface-2: #F2F4F7;
+  --surface-3: #E9EDF2;
+  --surface-hover: #E5EAF0;
+  --surface-pressed: #DCE3EB;
+  --surface-selected: #E1F0FF;
+  --viewer-bg: #07090C;
+  --stroke-soft: rgba(15,23,34,.065);
+  --stroke-default: rgba(15,23,34,.11);
+  --stroke-strong: rgba(15,23,34,.19);
+  --stroke-highlight: rgba(15,23,34,.28);
+  --text-primary: #171C24;
+  --text-secondary: #4C5664;
+  --text-tertiary: #778291;
+  --text-disabled: #A6AFBA;
+  --accent: #006BDC;
+  --accent-hover: #0A78EC;
+  --accent-pressed: #0058B7;
+  --accent-soft: rgba(0,107,220,.12);
+  --accent-strong: #004E9F;
+  --accent-foreground: #FFFFFF;
+  --success: #147A52;
+  --warning: #9B6500;
+  --danger: #C93545;
+  --info: #006BDC;
+  --material-glass: rgba(248,250,252,.74);
+  --material-glass-strong: rgba(248,250,252,.9);
+  --material-glass-stroke: rgba(255,255,255,.72);
+  --shadow-float: 0 16px 44px rgba(31,41,55,.16), 0 2px 8px rgba(31,41,55,.10);
+  --shadow-popover: 0 12px 32px rgba(31,41,55,.16), 0 1px 4px rgba(31,41,55,.10);
+  --shadow-modal: 0 28px 80px rgba(31,41,55,.22);
+  --timeline-playhead: #075EA8;
+  --timeline-waveform: #6F8296;
 }
 
 [data-theme="light"] .text-white,
@@ -198,33 +235,76 @@ html, body, #root {
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* ── Font helpers ── */
-.font-display { font-family: 'Arial Narrow', 'Geist', sans-serif; }
+.font-display { font-family: 'Geist', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif; }
 .font-mono    { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-@media (max-width: 1100px) {
+.native-studio-window {
+  --native-control-height: 36px;
+  --native-panel-spacing: 8px;
+  --native-row-height: 32px;
+}
+
+.native-studio-window[data-density="comfort"] {
+  --native-control-height: 40px;
+  --native-panel-spacing: 10px;
+  --native-row-height: 36px;
+}
+
+.native-studio-window[data-density="compact"] {
+  --native-control-height: 32px;
+  --native-panel-spacing: 6px;
+  --native-row-height: 28px;
+}
+
+.native-workspace-nav-mobile { display: none; }
+.native-workspace-nav-desktop { display: flex; }
+
+/* Compact desktop: docked panels remain visible, expanded global chrome tightens slightly. */
+@media (min-width: 1180px) and (max-width: 1439px) {
+  .native-workspace-nav-desktop.w-44 { width: 10rem; }
+}
+
+/* Focus desktop: keep the desktop rail and expose side panels through temporary overlays. */
+@media (min-width: 960px) and (max-width: 1179px) {
   .editor-workspace .editor-mobile-panel-switcher { display: flex; }
+}
+
+/* Focus + Review-Survival: avoid squeezing side panels into the primary work surface. */
+@media (max-width: 1179px) {
+  .native-panel-resize-handle,
+  .native-timeline-resize-handle { display: none; }
+
   .editor-workspace .editor-tool-panel {
     position: absolute;
     top: 2.75rem;
     bottom: 0;
     left: 4rem;
-    z-index: 40;
+    z-index: var(--z-drawer);
     width: min(20rem, calc(100vw - 4rem));
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-float);
   }
+
   .editor-workspace .editor-shot-list,
   .editor-workspace .editor-analysis-panel {
     position: absolute;
     top: 2.75rem;
     right: 0;
     bottom: 0;
-    z-index: 35;
+    z-index: var(--z-popover);
     display: none;
     width: min(22rem, calc(100vw - 4rem));
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-float);
   }
+
   .editor-workspace[data-mobile-panel="shots"] .editor-shot-list,
   .editor-workspace[data-mobile-panel="analysis"] .editor-analysis-panel { display: flex; }
+}
+
+/* Review-Survival: replace the vertical rail with a horizontal workspace strip. */
+@media (max-width: 959px) {
+  .native-workspace-nav-mobile { display: flex; }
+  .native-workspace-nav-desktop { display: none; }
+  .editor-workspace .editor-mobile-panel-switcher { display: flex; }
 }
 
 @media (max-width: 640px) {
@@ -255,7 +335,7 @@ html, body, #root {
 
 .editor-timeline-shot[data-active="true"] {
   background: var(--timeline-shot-active);
-  color: #ffffff;
+  color: var(--accent-foreground);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, white 35%, transparent);
 }
 
@@ -278,7 +358,7 @@ html, body, #root {
 .editor-range::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(to right, #3b82f6 0 var(--editor-range-progress), var(--app-border-mid) var(--editor-range-progress) 100%);
+  background: linear-gradient(to right, var(--accent) 0 var(--editor-range-progress), var(--stroke-default) var(--editor-range-progress) 100%);
 }
 
 .editor-range::-webkit-slider-thumb {
@@ -289,7 +369,7 @@ html, body, #root {
   border: 1px solid var(--app-bg-panel);
   border-radius: 999px;
   background: #ffffff;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .editor-range::-moz-range-track {
@@ -301,7 +381,7 @@ html, body, #root {
 .editor-range::-moz-range-progress {
   height: 3px;
   border-radius: 999px;
-  background: #3b82f6;
+  background: var(--accent);
 }
 
 .editor-range::-moz-range-thumb {
@@ -310,12 +390,12 @@ html, body, #root {
   border: 1px solid var(--app-bg-panel);
   border-radius: 999px;
   background: #ffffff;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .editor-range:focus-visible { outline: none; }
-.editor-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
-.editor-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
+.editor-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.editor-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
 
 /* ── Compact editor native controls ── */
 .editor-select {
@@ -329,8 +409,8 @@ html, body, #root {
 .editor-select:focus-visible,
 .editor-number:focus-visible {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .editor-checkbox {
@@ -345,8 +425,8 @@ html, body, #root {
 }
 
 .editor-checkbox:checked {
-  border-color: #3b82f6;
-  background-color: #3b82f6;
+  border-color: var(--accent);
+  background-color: var(--accent);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
@@ -354,7 +434,7 @@ html, body, #root {
 
 .editor-checkbox:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .editor-number {
@@ -378,7 +458,7 @@ html, body, #root {
 .editor-color-input::-webkit-color-swatch-wrapper { padding: 0; }
 .editor-color-input::-webkit-color-swatch { border: 0; border-radius: 0.1875rem; }
 .editor-color-input::-moz-color-swatch { border: 0; border-radius: 0.1875rem; }
-.editor-color-input:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25); }
+.editor-color-input:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
 
 /* ── Editor typography roles ── */
 .editor-page-title { font-size: 16px; line-height: 22px; }
@@ -389,7 +469,68 @@ html, body, #root {
 .editor-clip-label { font-size: 8px; line-height: 12px; }
 
 /* ── Subtle glow on accent elements only ── */
-.glow-btn { box-shadow: 0 0 24px rgba(59,130,246,0.2); }
+.glow-btn { box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 12%, transparent); }
+
+.native-studio-rail { transition: width var(--motion-panel) var(--ease-standard); }
+.native-resizable-panel {
+  width: var(--native-panel-width);
+}
+.native-panel-resize-handle {
+  z-index: var(--z-sticky);
+  touch-action: none;
+  outline: none;
+}
+.native-panel-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2.5px;
+  width: 1px;
+  background: transparent;
+  transition: background-color var(--motion-hover) var(--ease-standard);
+}
+.native-panel-resize-handle:hover::after,
+.native-panel-resize-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+.native-timeline-resize-handle {
+  display: block;
+  touch-action: none;
+}
+.native-timeline-resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2.5px;
+  height: 1px;
+  background: transparent;
+  transition: background-color var(--motion-hover) var(--ease-standard);
+}
+.native-timeline-resize-handle:hover::after,
+.native-timeline-resize-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+.native-studio-glass {
+  background: var(--material-glass);
+  border: 1px solid var(--material-glass-stroke);
+  box-shadow: var(--shadow-popover);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+@supports not ((backdrop-filter: blur(1px))) {
+  .native-studio-glass { background: var(--material-glass-strong); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .native-studio-window *, .native-studio-window *::before, .native-studio-window *::after {
+    scroll-behavior: auto !important;
+    transition-duration: var(--motion-instant) !important;
+    animation-duration: var(--motion-instant) !important;
+    animation-iteration-count: 1 !important;
+  }
+}
 
 /* ── Animations ── */
 @keyframes fade-up {
