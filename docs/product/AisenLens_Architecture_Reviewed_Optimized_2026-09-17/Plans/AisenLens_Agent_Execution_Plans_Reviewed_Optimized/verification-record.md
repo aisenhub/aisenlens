@@ -158,6 +158,7 @@
 | 2026-09-18 | 01 | `7fa9a0b4d3604284c0278bce6490afc88294835c` | Chrome 152.0.7977.83；isolated profile；`test/scene-engine-module.worker.ts` | `$env:AISENLENS_ONLY_WASM_SMOKE='1'; corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline` | 0 | browser worker/WASM probe `status=ready`、backend `wasm-baseline`；测试 1 pass | 仅 WASM smoke；未宣称完整媒体/应用流程 | `test-results/scene-engine-module-probe.json`（ignored generated report） |
 | 2026-09-18 | 01 | `7fa9a0b4d3604284c0278bce6490afc88294835c` | Chrome/Edge CDP harness；empty project intended | `corepack pnpm run test:workflow-browser` | 1 | Workflow E2E 未执行到应用断言；测试引用不存在的 `apps/web` | 未修复，Phase 01 只记录；Phase 02/10 需修 harness 后复测 | 终端输出；`tests/features/workflow/workflow-end-to-end.browser.test.js` |
 | 2026-09-18 | 01 | `7fa9a0b4d3604284c0278bce6490afc88294835c` | repository files; no mutation | `git status --short --branch`; `git remote -v`; branch/SHA/log; `git diff --check` | 0 | 起始树干净、remote/branch/SHA 已冻结；diff check 通过 | 无 | 终端输出 |
+| 2026-09-18 | 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | docs-only 收尾；产品代码排除 | 精确旧阶段引用扫描；`git diff --cached --check`；`PLAN_MANIFEST.json` 解析/文件存在检查；`git diff --cached --name-only -- apps packages tests scripts`；`git ls-remote --heads origin codex/phase-01-repository-verification` | 0 | 新执行顺序引用一致；Manifest 18 文件完整；产品代码无变更；远程分支精确指向 `dd8e069...` | 初次宽泛扫描把正确的“待 Phase 05”当成命中，改为精确旧映射扫描后通过 | 终端输出 |
 
 ### 4.1 UI baseline
 
@@ -198,7 +199,9 @@
 
 | Phase | Commit SHA | Branch | Commit 说明 | Push 是否成功 | 远程是否包含 | GitHub 链接 | 备注 |
 |---|---|---|---|---|---|---|---|
-| 01 | `2a7921cc34282b476090af6786298213fdd35a50` | `codex/phase-01-repository-verification` | `docs(phase-01): freeze repository verification baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 本阶段记录已按计划提交并推送；本次后续提交仅补齐交付证据，不 amend |
+| 01 | `2a7921cc34282b476090af6786298213fdd35a50` | `codex/phase-01-repository-verification` | `docs(phase-01): freeze repository verification baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | Phase 01 主基线提交；后续证据与顺序收尾均以新提交追加，不改写历史 |
+| 01 | `069913ae13de06d1f3024084c062e93d0b521e12` | `codex/phase-01-repository-verification` | `docs(phase-01): record delivery evidence` | 是 | 是 | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 回填主交付证据 |
+| 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | `codex/phase-01-repository-verification` | `docs(phase-01): align execution order for closeout` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 对齐 03 Analysis → 04 Shell → 05 Preparation 的最新执行顺序；仅文档/索引/阶段文件改名 |
 
 ## 6. 关键失败 / 阻塞日志
 
@@ -214,5 +217,5 @@
 - Phase 02 必须先解决：修复/验证 browser harness 的 `apps/web` 旧路径；保留 `apps/webapp` 为唯一产品入口，不创建重复 `apps/web` 目录。
 - 可直接复用：`projectRepository.readProjectEditorState/saveProjectEditorState/applyCalibrationDraft`；CalibrationDraft v3 与 `applyCalibrationCommand`；auto-shot task lifecycle/repository；template validation/profile resolver；CDP harness 的隔离 profile/fixture 机制（修正入口后）；现有 fault/pressure/lifecycle fixtures。
 - 不应重复实施：IndexedDB v18 store 创建、project editor 原子保存、recovery snapshot、auto-shot pause/cancel 基础状态、template v2 validation、report escaping。
-- 当前未提交修改及归属：Phase 01 主交付记录已推送；随后发现的新执行顺序计划变更作为收尾对齐纳入本专用分支；产品代码无修改。
+- 当前修改归属：Phase 01 主交付与新执行顺序收尾对齐均已提交并推送到专用分支；产品代码无修改；本记录仅回填已完成的 Git/验证证据。
 - 需要用户决定的事项：无。按阶段计划执行专用分支、提交和远程推送；不部署、不改生产/第三方设置。
