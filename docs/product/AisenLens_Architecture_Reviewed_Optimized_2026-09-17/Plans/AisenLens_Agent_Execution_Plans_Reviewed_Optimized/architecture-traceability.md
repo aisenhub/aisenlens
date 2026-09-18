@@ -637,14 +637,14 @@
 |---:|---|---|
 | 14 | AisenLens 设计 → 代码实施映射 | 未开始 |
 | 30 | ↳ 推荐实施顺序 | 未开始 |
-| 50 | ↳ 每个 Phase 的最小出口条件 | 未开始 |
+| 50 | ↳ 每个 Phase 的最小出口条件 | 已核对（01基线） |
 
 ### `implementation/IMPLEMENTATION_BOUNDARY.md` → Phase 01/02/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | IMPLEMENTATION BOUNDARY | 未开始 |
-| 19 | ↳ Cross-cutting runtime boundary | 未开始 |
+| 1 | IMPLEMENTATION BOUNDARY | 已核对（01基线） |
+| 19 | ↳ Cross-cutting runtime boundary | 已核对（01基线） |
 
 ### `implementation/MIGRATION_PLAN.md` → Phase 02/04/05/07/08/09/10/11
 
@@ -656,9 +656,9 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | AI DEVELOPMENT GUIDE | 未开始 |
-| 15 | ↳ Conflict precedence | 未开始 |
-| 23 | ↳ Mandatory rules | 未开始 |
+| 1 | AI DEVELOPMENT GUIDE | 已核对（01基线） |
+| 15 | ↳ Conflict precedence | 已核对（01基线） |
+| 23 | ↳ Mandatory rules | 已核对（01基线） |
 
 ### `audit/AUTHORITY_MAP.md` → Phase 02/11
 
@@ -696,37 +696,37 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | FINAL SOURCE OF TRUTH MATRIX | 未开始 |
-| 17 | ↳ Enforcement rule | 未开始 |
+| 1 | FINAL SOURCE OF TRUTH MATRIX | 已核对（01基线） |
+| 17 | ↳ Enforcement rule | 已核对（01基线） |
 
 ### `audit/ARCHITECTURE_REVIEW_2026-09-17.md` → Phase 01/02/10/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | ARCHITECTURE REVIEW — 2026-09-17 | 未开始 |
-| 3 | ↳ Overall assessment | 未开始 |
-| 7 | ↳ Findings fixed in this package | 未开始 |
-| 9 | ↳ ↳ P0 documentation correctness | 未开始 |
-| 13 | ↳ ↳ P1 architecture completeness | 未开始 |
-| 18 | ↳ ↳ P1 implementation governance | 未开始 |
-| 23 | ↳ Accepted / deferred items | 未开始 |
-| 29 | ↳ Recommended implementation order | 未开始 |
+| 1 | ARCHITECTURE REVIEW — 2026-09-17 | 已核对（01基线） |
+| 3 | ↳ Overall assessment | 已核对（01基线） |
+| 7 | ↳ Findings fixed in this package | 已核对（01基线） |
+| 9 | ↳ ↳ P0 documentation correctness | 已核对（01基线） |
+| 13 | ↳ ↳ P1 architecture completeness | 已核对（01基线） |
+| 18 | ↳ ↳ P1 implementation governance | 已核对（01基线） |
+| 23 | ↳ Accepted / deferred items | 已核对（01基线） |
+| 29 | ↳ Recommended implementation order | 已核对（01基线） |
 
 ### `audit/MASTER_PLAN_COVERAGE_MATRIX.md` → Phase 01–11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | MASTER PLAN COVERAGE MATRIX | 未开始 |
-| 27 | ↳ Conclusion | 未开始 |
+| 1 | MASTER PLAN COVERAGE MATRIX | 已核对（01基线） |
+| 27 | ↳ Conclusion | 已核对（01基线） |
 
 ### `audit/CURRENT_REPOSITORY_BASELINE.md` → Phase 01
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | Current Repository Baseline | 未开始 |
-| 5 | ↳ Verified CURRENT facts | 未开始 |
-| 14 | ↳ Important CURRENT/TARGET gap | 未开始 |
-| 18 | ↳ Verification scope | 未开始 |
+| 1 | Current Repository Baseline | 已核对（01基线） |
+| 5 | ↳ Verified CURRENT facts | 已核对（01基线） |
+| 14 | ↳ Important CURRENT/TARGET gap | 已核对（01基线） |
+| 18 | ↳ Verification scope | 已核对（01基线） |
 
 ### `audit/DECISION_LOG.md` → Phase 02/11
 
@@ -745,35 +745,35 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | CONCEPT REGISTRY — PRE/POST GOVERNANCE CONSOLIDATED | 未开始 |
-| 43 | ↳ Alias / non-alias decisions | 未开始 |
+| 1 | CONCEPT REGISTRY — PRE/POST GOVERNANCE CONSOLIDATED | 已核对（01基线） |
+| 43 | ↳ Alias / non-alias decisions | 已核对（01基线） |
 
 ### `audit/FINAL_CONCEPT_REGISTRY.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | FINAL CONCEPT REGISTRY | 未开始 |
-| 43 | ↳ Alias / non-alias decisions | 未开始 |
+| 1 | FINAL CONCEPT REGISTRY | 已核对（01基线） |
+| 43 | ↳ Alias / non-alias decisions | 已核对（01基线） |
 
 ### `audit/SOURCE_OF_TRUTH_MATRIX.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | SOURCE OF TRUTH MATRIX | 未开始 |
-| 17 | ↳ Enforcement rule | 未开始 |
+| 1 | SOURCE OF TRUTH MATRIX | 已核对（01基线） |
+| 17 | ↳ Enforcement rule | 已核对（01基线） |
 
 ### `audit/CONFLICT_AUDIT.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | CONFLICT AUDIT | 未开始 |
-| 16 | ↳ Notes | 未开始 |
+| 1 | CONFLICT AUDIT | 已核对（01基线） |
+| 16 | ↳ Notes | 已核对（01基线） |
 
 ### `audit/CONFLICT_MATRIX.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | CONFLICT MATRIX | 未开始 |
+| 1 | CONFLICT MATRIX | 已核对（01基线） |
 
 ### `audit/WORKSPACE_BOUNDARY_AUDIT.md` → Phase 03/04/06/08/11
 
@@ -799,50 +799,50 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | FINAL ARCHITECTURE AUDIT | 未开始 |
-| 3 | ↳ Executive Summary | 未开始 |
-| 7 | ↳ Current Architecture | 未开始 |
-| 11 | ↳ Target Architecture | 未开始 |
-| 25 | ↳ Concept Registry Summary | 未开始 |
-| 29 | ↳ Authority Map | 未开始 |
-| 37 | ↳ Source of Truth Summary | 未开始 |
-| 41 | ↳ Major Duplicates | 未开始 |
-| 45 | ↳ Major Conflicts | 未开始 |
-| 47 | ↳ ↳ P0 | 未开始 |
-| 52 | ↳ ↳ P1 | 未开始 |
-| 55 | ↳ Workspace Boundaries | 未开始 |
-| 59 | ↳ Timeline Decision | 未开始 |
-| 63 | ↳ Analysis / Inspector Decision | 未开始 |
-| 67 | ↳ Evidence Decision | 未开始 |
-| 71 | ↳ Template Decision | 未开始 |
-| 75 | ↳ AI Boundary | 未开始 |
-| 79 | ↳ State Ownership | 未开始 |
-| 83 | ↳ Dependency Rules | 未开始 |
-| 87 | ↳ Final Documentation Architecture | 未开始 |
-| 91 | ↳ Implementation Boundary | 未开始 |
-| 95 | ↳ Migration Priorities | 未开始 |
-| 99 | ↳ Runtime / Engineering Architecture Review | 未开始 |
-| 105 | ↳ Remaining Risks | 未开始 |
-| 111 | ↳ Final validation result | 未开始 |
+| 1 | FINAL ARCHITECTURE AUDIT | 已核对（01基线） |
+| 3 | ↳ Executive Summary | 已核对（01基线） |
+| 7 | ↳ Current Architecture | 已核对（01基线） |
+| 11 | ↳ Target Architecture | 已核对（01基线） |
+| 25 | ↳ Concept Registry Summary | 已核对（01基线） |
+| 29 | ↳ Authority Map | 已核对（01基线） |
+| 37 | ↳ Source of Truth Summary | 已核对（01基线） |
+| 41 | ↳ Major Duplicates | 已核对（01基线） |
+| 45 | ↳ Major Conflicts | 已核对（01基线） |
+| 47 | ↳ ↳ P0 | 已核对（01基线） |
+| 52 | ↳ ↳ P1 | 已核对（01基线） |
+| 55 | ↳ Workspace Boundaries | 已核对（01基线） |
+| 59 | ↳ Timeline Decision | 已核对（01基线） |
+| 63 | ↳ Analysis / Inspector Decision | 已核对（01基线） |
+| 67 | ↳ Evidence Decision | 已核对（01基线） |
+| 71 | ↳ Template Decision | 已核对（01基线） |
+| 75 | ↳ AI Boundary | 已核对（01基线） |
+| 79 | ↳ State Ownership | 已核对（01基线） |
+| 83 | ↳ Dependency Rules | 已核对（01基线） |
+| 87 | ↳ Final Documentation Architecture | 已核对（01基线） |
+| 91 | ↳ Implementation Boundary | 已核对（01基线） |
+| 95 | ↳ Migration Priorities | 已核对（01基线） |
+| 99 | ↳ Runtime / Engineering Architecture Review | 已核对（01基线） |
+| 105 | ↳ Remaining Risks | 已核对（01基线） |
+| 111 | ↳ Final validation result | 已核对（01基线） |
 
 ### `ARCHITECTURE_INDEX.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | ARCHITECTURE INDEX | 未开始 |
+| 1 | ARCHITECTURE INDEX | 已核对（01基线） |
 
 ### `README.md` → Phase 01/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 15 | AisenLens 优化设计总目录 | 未开始 |
-| 25 | ↳ 目录 | 未开始 |
-| 62 | ↳ 产品主链 | 未开始 |
-| 82 | ↳ Authority Chain | 未开始 |
-| 93 | ↳ Source of Truth | 未开始 |
-| 110 | ↳ 文档状态 | 未开始 |
-| 123 | ↳ 维护规则 | 未开始 |
-| 133 | ↳ 内容守恒规则（本轮新增硬约束） | 未开始 |
+| 15 | AisenLens 优化设计总目录 | 已核对（01基线） |
+| 25 | ↳ 目录 | 已核对（01基线） |
+| 62 | ↳ 产品主链 | 已核对（01基线） |
+| 82 | ↳ Authority Chain | 已核对（01基线） |
+| 93 | ↳ Source of Truth | 已核对（01基线） |
+| 110 | ↳ 文档状态 | 已核对（01基线） |
+| 123 | ↳ 维护规则 | 已核对（01基线） |
+| 133 | ↳ 内容守恒规则（本轮新增硬约束） | 已核对（01基线） |
 
 ### `CHANGELOG.md` → Phase 11
 
@@ -863,19 +863,19 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 33 | AisenLens 总开发计划（Master Development Plan） | 未开始 |
-| 41 | 1. 总目标 | 未开始 |
-| 93 | 2. 开发主线与优先级 | 未开始 |
-| 115 | 3. UI / UX 提升为一级开发目标 | 未开始 |
-| 117 | ↳ 3.1 UI/UX 的开发地位 | 未开始 |
-| 131 | ↳ 3.2 UI/UX 总体设计原则 | 未开始 |
-| 147 | ↳ 3.3 UI/UX 阶段门 | 未开始 |
-| 162 | 4. Phase 0 — 基线冻结、覆盖核对与实施准备 | 未开始 |
-| 164 | ↳ 4.1 目标 | 未开始 |
-| 168 | ↳ 4.2 工作内容 | 未开始 |
-| 178 | ↳ ↳ Runtime baseline | 未开始 |
-| 187 | ↳ 4.3 UI/UX 交付 | 未开始 |
-| 193 | ↳ 4.4 Exit Criteria | 未开始 |
+| 33 | AisenLens 总开发计划（Master Development Plan） | 已核对（01基线） |
+| 41 | 1. 总目标 | 已核对（01基线） |
+| 93 | 2. 开发主线与优先级 | 已核对（01基线） |
+| 115 | 3. UI / UX 提升为一级开发目标 | 已核对（01基线） |
+| 117 | ↳ 3.1 UI/UX 的开发地位 | 已核对（01基线） |
+| 131 | ↳ 3.2 UI/UX 总体设计原则 | 已核对（01基线） |
+| 147 | ↳ 3.3 UI/UX 阶段门 | 已核对（01基线） |
+| 162 | 4. Phase 0 — 基线冻结、覆盖核对与实施准备 | 已核对（01基线） |
+| 164 | ↳ 4.1 目标 | 已核对（01基线） |
+| 168 | ↳ 4.2 工作内容 | 已核对（01基线） |
+| 178 | ↳ ↳ Runtime baseline | 已核对（01基线） |
+| 187 | ↳ 4.3 UI/UX 交付 | 已核对（01基线） |
+| 193 | ↳ 4.4 Exit Criteria | 已核对（01基线） |
 | 203 | 5. Phase 1 — Global Shell + Workspace Design System | 未开始 |
 | 205 | ↳ 5.1 Global Shell | 未开始 |
 | 219 | ↳ 5.2 Design System | 未开始 |
