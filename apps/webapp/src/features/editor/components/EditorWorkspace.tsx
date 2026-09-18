@@ -50,14 +50,8 @@ import type { MediaAsset } from "../../project/types"
 import type { ProjectRecord } from "../../project/types"
 import { loadProjectShots } from "../../shot/services/shotService"
 import type { ShotDetectionMeta } from "../../shot/types"
-import {
-  mergeAdjacentShotRanges,
-  moveSharedShotBoundary,
-} from "../../shot/services/shotBoundaryService"
-import {
-  getManualShotSplitFailureMessage,
-  splitManualShotAtFrame,
-} from "../../shot/services/manualShotService"
+import { getManualShotSplitFailureMessage } from "../../shot/services/manualShotService"
+import { applyShotCommand } from "../../shot/services/shotCommandService"
 import { loadOrCreateProjectTemplate } from "../../template/services/templateService"
 import { resolveAutoShotTotalFrames } from "../../auto-shot/applyAutoShotCandidates"
 import {
@@ -1481,13 +1475,13 @@ export default function EditorWorkspace({
       Number.isFinite(detectedFrameRate) && detectedFrameRate! > 0
         ? detectedFrameRate!
         : FPS
-    const ranges = getShotRanges(frameRate)
-    const updatedRanges = moveSharedShotBoundary(
-      ranges,
+    const commandResult = applyShotCommand(calibrationFormalShots, {
+      type: "move-boundary",
       boundaryIndex,
-      Math.round(frame),
-    )
-    if (updatedRanges === ranges) return
+      frame: Math.round(frame),
+    })
+    if (!commandResult.ok || commandResult.affectedShotIds.length === 0) return
+    const updatedRanges = commandResult.shots.map(({ id, startFrame, endFrame }) => ({ id, startFrame, endFrame }))
     editorHistory.commit()
     const rangeById = new Map(updatedRanges.map((range) => [range.id, range]))
     setShots((currentShots) =>
@@ -1639,11 +1633,9 @@ export default function EditorWorkspace({
     const firstIndex = index === 0 ? 0 : index - 1
     const secondIndex = firstIndex + 1
     const frameRate = media.metadata?.frameRate ?? FPS
-    const mergedRanges = mergeAdjacentShotRanges(
-      getShotRanges(frameRate),
-      firstIndex,
-    )
-    const mergedRange = mergedRanges[firstIndex]
+    const commandResult = applyShotCommand(calibrationFormalShots, { type: "merge", firstIndex })
+    if (!commandResult.ok) return
+    const mergedRange = commandResult.shots[firstIndex]
     if (!mergedRange) return
     editorHistory.commit()
     const first = shots[firstIndex]
@@ -1702,12 +1694,28 @@ export default function EditorWorkspace({
       return { ok: false as const, code: "media-not-ready" as const }
     }
     const frameRate = media.metadata?.frameRate ?? FPS
-    return splitManualShotAtFrame({
-      ranges: getShotRanges(frameRate),
-      targetShotId: shots[activeShot]?.id ?? null,
-      splitFrame: Math.round(currentTime * frameRate),
-      createShotId,
+    const targetShotId = shots[activeShot]?.id ?? null
+    const newShotId = createShotId()
+    const commandResult = applyShotCommand(calibrationFormalShots, {
+      type: "split",
+      shotId: targetShotId,
+      frame: Math.round(currentTime * frameRate),
+      newShotId,
     })
+    if (!commandResult.ok) {
+      const code = commandResult.code === "boundary-not-found" || commandResult.code === "shots-not-adjacent"
+        ? "no-active-shot"
+        : commandResult.code
+      return { ok: false as const, code }
+    }
+    const original = commandResult.shots.find((shot) => shot.id === targetShotId)
+    const created = commandResult.shots.find((shot) => shot.id === newShotId)
+    if (!original || !created) return { ok: false as const, code: "no-active-shot" as const }
+    return {
+      ok: true as const,
+      originalRange: { id: original.id, startFrame: original.startFrame, endFrame: original.endFrame },
+      newRange: { id: created.id, startFrame: created.startFrame, endFrame: created.endFrame },
+    }
   }
 
   const handleSplitShotAtPlayhead = () => {
@@ -3359,7 +3367,7 @@ export default function EditorWorkspace({
           isSelectingVideo={isSelectingVideo}
           onImportVideo={onImportVideo}
           onGoToAnalyze={() => onWorkflowNavigate?.("analysis", "scenes")}
-          onGoToCalibrate={async () => {
+          onGoToBoundaryReview={async () => {
             if (!videoUrl || !autoShotRun) throw new Error("当前视频或检测结果不可用。")
             await prepareDetectionCalibration(videoUrl, {
               projectId,
@@ -3372,7 +3380,7 @@ export default function EditorWorkspace({
             })
             onWorkflowNavigate?.("preparation", "boundary-review")
           }}
-          onOpenSettings={() => setIsTemplateEditorOpen(true)}
+          onOpenDetectionSettings={() => onSettingsOpenChange(true)}
           settings={autoShotControl.settings}
           resolved={autoShotControl.resolved}
           presets={autoShotPresets}

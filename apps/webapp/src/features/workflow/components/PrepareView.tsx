@@ -1,11 +1,10 @@
-import { ArrowRight, FileCog, Map, RefreshCw, Settings2 } from "lucide-react"
+import { ArrowRight, CircleCheck, Map, RefreshCw, Settings2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "../../../components/ui/button"
 import AutoShotControlPanel from "../../auto-shot/components/AutoShotControlPanel"
-import AutoShotResultDialog from "../../auto-shot/components/AutoShotResultDialog"
 import type { AutoShotControlSettings, AutoShotPresetDefinition, ResolvedAutoShotConfiguration } from "../../auto-shot/config/types"
-import type { AutoShotCandidate, AutoShotTaskRecord } from "../../auto-shot/types"
+import type { AutoShotTaskRecord } from "../../auto-shot/types"
 import MediaStatusPanel from "../../project/components/MediaStatusPanel"
 import type { MediaAsset, ProjectRecord } from "../../project/types"
 
@@ -16,8 +15,8 @@ interface PrepareViewProps {
   isSelectingVideo: boolean
   onImportVideo: () => void
   onGoToAnalyze: () => void
-  onGoToCalibrate: () => Promise<void>
-  onOpenSettings: () => void
+  onGoToBoundaryReview: () => Promise<void>
+  onOpenDetectionSettings: () => void
   settings: AutoShotControlSettings | null
   resolved: ResolvedAutoShotConfiguration | null
   presets: AutoShotPresetDefinition[]
@@ -34,15 +33,13 @@ interface PrepareViewProps {
   onAdvancedDetectionChange: (enabled: boolean) => void
 }
 
-export default function PrepareView({ project, media, videoUrl, isSelectingVideo, onImportVideo, onGoToAnalyze, onGoToCalibrate, onOpenSettings, settings, resolved, presets, record, isActive, error, onChange, onStart, onPause, onRestart, onResetSettings, settingsDirty, advancedDetectionEnabled, onAdvancedDetectionChange }: PrepareViewProps) {
-  const [isAutoShotDialogOpen, setIsAutoShotDialogOpen] = useState(false)
+export default function PrepareView({ project, media, videoUrl, isSelectingVideo, onImportVideo, onGoToAnalyze, onGoToBoundaryReview, onOpenDetectionSettings, settings, resolved, presets, record, isActive, error, onChange, onStart, onPause, onRestart, onResetSettings, settingsDirty, advancedDetectionEnabled, onAdvancedDetectionChange }: PrepareViewProps) {
   const [isApplying, setIsApplying] = useState(false)
   const applyDetection = async () => {
     if (isApplying) return
     setIsApplying(true)
     try {
-      await onGoToCalibrate()
-      setIsAutoShotDialogOpen(false)
+      await onGoToBoundaryReview()
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "无法准备校准草稿，请重试。")
     } finally {
@@ -51,10 +48,10 @@ export default function PrepareView({ project, media, videoUrl, isSelectingVideo
   }
   const isRunning = isActive || record?.status === "running"
   const canRestart = Boolean(record && record.status !== "paused" && record.status !== "running")
-  const scanActionLabel = record?.status === "completed" ? "重新扫描" : isRunning ? "查看扫描进度" : record?.status === "paused" ? "继续扫描" : "开始自动分镜"
+  const scanActionLabel = record?.status === "completed" ? "进入切点复核" : isRunning ? "识别进行中" : record?.status === "paused" ? "继续识别" : "开始智能切分"
 
-  const openAutoShotDialog = () => {
-    setIsAutoShotDialogOpen(true)
+  const handlePrimaryAction = () => {
+    if (record?.status === "completed") { void applyDetection(); return }
     if (isRunning) return
     if (canRestart) onRestart()
     else onStart()
@@ -64,19 +61,21 @@ export default function PrepareView({ project, media, videoUrl, isSelectingVideo
     <main className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-end justify-between gap-4">
-          <div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">Prepare</p><h1 className="mt-1 text-xl font-semibold text-text-base">准备素材与镜头地图</h1><p className="mt-2 text-sm text-text-muted">{project.title} · 先确认真实素材，再运行检测。</p></div>
-          <Button type="button" size="sm" onClick={onGoToAnalyze} className="gap-2 bg-accent text-white hover:bg-accent/90">进入深拆<ArrowRight className="size-4" /></Button>
+          <div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">Prepare</p><h1 className="mt-1 text-xl font-semibold text-text-base">准备素材与镜头地图</h1><p className="mt-2 text-sm text-text-muted">{project.title} · 导入 → 智能切分 → 切点复核 → 完成</p></div>
+          <Button type="button" variant="outline" size="sm" onClick={onOpenDetectionSettings} className="gap-2"><Settings2 className="size-3.5" />切分设置</Button>
         </div>
         <div className="space-y-4">
           <MediaStatusPanel media={media} videoUrl={videoUrl} isSelectingVideo={isSelectingVideo} onImportVideo={onImportVideo} />
-          <section className="border border-border bg-bg-panel p-4">
-            <div className="mb-4 flex items-start justify-between gap-4"><div><h2 className="text-sm font-medium text-text-base">研究模板</h2><p className="mt-1 text-xs leading-5 text-text-muted">沿用当前项目模板与自定义字段，不新增未保存的研究意图。</p></div><Button type="button" variant="outline" size="sm" onClick={onOpenSettings} className="gap-2 border-border text-text-dim"><Settings2 className="size-3.5" />模板设置</Button></div>
-            <div className="flex items-center gap-3 border-t border-border pt-3 text-xs text-text-dim"><FileCog className="size-4 text-text-muted" /><span>{settings ? `当前预设：${settings.presetId}` : "正在读取当前视频配置…"}</span><span className="ml-auto font-mono text-text-muted">{record?.status === "completed" ? "已完成一次扫描" : "尚未扫描"}</span></div>
+          <section className="grid grid-cols-4 border border-border bg-bg-panel text-xs">
+            {["导入", "智能切分", "切点复核", "完成"].map((label, index) => {
+              const active = !videoUrl ? index === 0 : record?.status !== "completed" ? index === 1 : index === 2
+              const done = Boolean(videoUrl) && (index === 0 || (record?.status === "completed" && index === 1))
+              return <div key={label} className={`flex items-center gap-2 border-r border-border px-3 py-2.5 last:border-r-0 ${active ? "bg-accent/10 text-accent" : done ? "text-text-base" : "text-text-muted"}`}><span className="font-mono text-[10px]">{String(index + 1).padStart(2, "0")}</span><span>{label}</span></div>
+            })}
           </section>
-          <section className="border border-border bg-bg-panel p-4"><div className="mb-4 flex items-start gap-3"><Map className="mt-0.5 size-4 text-accent" /><div><h2 className="text-sm font-medium text-text-base">建立镜头地图</h2><p className="mt-1 text-xs leading-5 text-text-muted">自动分镜只提出候选区间；应用前会在校准阶段复核并创建恢复快照。</p></div></div><AutoShotControlPanel settings={settings} resolved={resolved} presets={presets} record={record} isActive={isActive} error={error} showRunStatus={false} resetSettingsDisabled={!settingsDirty} onResetSettings={onResetSettings} advancedDetectionEnabled={advancedDetectionEnabled} onAdvancedDetectionChange={onAdvancedDetectionChange} onChange={onChange} onStart={onStart} onPause={onPause} onRestart={onRestart} /><Button type="button" size="sm" disabled={!resolved} onClick={openAutoShotDialog} className="mt-3 h-9 w-full gap-2 bg-accent text-white hover:bg-accent/90"><RefreshCw className="size-3.5" />{scanActionLabel}</Button></section>
+          <section className="border border-border bg-bg-panel p-4"><div className="mb-4 flex items-start gap-3"><Map className="mt-0.5 size-4 text-accent" /><div><h2 className="text-sm font-medium text-text-base">建立镜头地图</h2><p className="mt-1 text-xs leading-5 text-text-muted">检测器只提出候选切点；显式复核并应用后才会写入正式 Shot。</p></div></div><AutoShotControlPanel settings={settings} resolved={resolved} presets={presets} record={record} isActive={isActive} error={error} showRunStatus={false} resetSettingsDisabled={!settingsDirty} onResetSettings={onResetSettings} advancedDetectionEnabled={advancedDetectionEnabled} onAdvancedDetectionChange={onAdvancedDetectionChange} onChange={onChange} onStart={onStart} onPause={onPause} onRestart={onRestart} /><Button type="button" size="sm" disabled={!resolved} onClick={handlePrimaryAction} className="mt-3 h-9 w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90"><RefreshCw className="size-3.5" />{scanActionLabel}</Button></section>
         </div>
       </div>
-      <AutoShotResultDialog open={isAutoShotDialogOpen} onOpenChange={setIsAutoShotDialogOpen} record={record} frameRate={media.metadata?.frameRate ?? 30} isActive={isActive} error={error} resolved={resolved} onStart={onStart} onPause={onPause} onRestart={onRestart} isApplying={isApplying} onApply={() => void applyDetection()} />
     </main>
   )
 }

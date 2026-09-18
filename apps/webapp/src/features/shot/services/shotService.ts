@@ -1,6 +1,6 @@
 import projectRepository from "../../project/services/projectRepository";
 import { analysisEntriesByShotId, shotNotesByShotId } from "../../analysis/services/analysisRecordService.ts";
-import type { ShotAnalysisView, ShotRecord } from "../types";
+import type { ShotAnalysisView } from "../types";
 
 export async function loadProjectShots(projectId: string): Promise<ShotAnalysisView[]> {
   const [shots, analysisRecords] = await Promise.all([
@@ -15,8 +15,4 @@ export async function loadProjectShots(projectId: string): Promise<ShotAnalysisV
     description: notes[shot.id]?.content ?? "",
     notes: notes[shot.id]?.analysis ?? "",
   }));
-}
-
-export async function saveProjectShots(projectId: string, shots: ShotRecord[]) {
-  return projectRepository.replaceProjectShots(projectId, shots);
 }
