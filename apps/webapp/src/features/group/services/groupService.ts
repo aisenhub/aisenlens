@@ -45,6 +45,6 @@ export async function loadProjectShotGroups(projectId: string): Promise<ShotGrou
   return projectRepository.listProjectShotGroups(projectId);
 }
 
-export async function saveProjectShotGroups(projectId: string, groups: ShotGroupRecord[]): Promise<void> {
-  await projectRepository.replaceProjectShotGroups(projectId, groups);
+export async function saveProjectShotGroups(projectId: string, groups: ShotGroupRecord[], expectedUpdatedAt: string) {
+  return projectRepository.replaceProjectShotGroups(projectId, groups, expectedUpdatedAt);
 }

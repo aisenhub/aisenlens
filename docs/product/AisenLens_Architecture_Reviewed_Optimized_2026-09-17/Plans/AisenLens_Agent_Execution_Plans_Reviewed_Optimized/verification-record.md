@@ -1,5 +1,5 @@
 > **用途**：本文件是 AisenLens 分阶段执行的动态事实记录。代码现状以执行时本地仓库为准；目标行为以 `AisenLens_Architecture_Reviewed_Optimized_2026-09-17` 架构包及总计划为准。
-> **本阶段边界**：Phase 01 只冻结仓库事实、调用链、验证能力和后续差异；不改产品代码、不安装依赖、不部署。
+> **本阶段边界**：当前执行 Phase 02 — Contract & Runtime Baseline；只收敛跨阶段 revision/transaction/task/error/trust/diagnostic/migration 基线与必要 fixture，不提前实施 Phase 03 Analysis migration，不部署。
 
 # Verification Record — 实施进度与验证记录
 
@@ -20,7 +20,7 @@
 - package manager / runtime：`pnpm 11.24.0`（Corepack），`Node v24.19.0`；仓库 packageManager 与 lockfile 均存在。
 - 工作区：Windows / PowerShell；依赖已存在，本阶段未安装软件或依赖。
 - CI：未发现 `.github` 目录或 CI workflow；只能核对本地 package scripts。
-- 已知 baseline failure：浏览器 Workflow E2E harness 引用不存在的 `apps/web`；真实产品目录为 `apps/webapp`。详见 §6。
+- Phase 01 的 `apps/web` Workflow browser harness 阻塞已在 Phase 02 修正为 `apps/webapp` 并复测通过；真实 `synthetic.webm` 精确帧校准用例仍有 CFR/VFR 验证超时，详见 §6。
 
 ### 1.1 已核实命令登记
 
@@ -31,7 +31,7 @@
 | CMD-LINT | lint | `corepack pnpm run verify:web` | 根 `package.json`、`scripts/verify-web*.mjs` | 通过；含 webhome 与 webapp lint，`--max-warnings=0` |
 | CMD-UNIT | unit/contract | `corepack pnpm run verify:web` | `scripts/verify-webapp.mjs` | 通过；editor history、auto-shot、scene calibration、video boundary、workflow 等现有单测/契约测试通过 |
 | CMD-INTEGRATION | workflow integration | `corepack pnpm run verify:web` | `scripts/verify-webapp.mjs` | 通过；其中 `test:workflow` 11 tests passed |
-| CMD-E2E-UI | workflow browser E2E | `corepack pnpm run test:workflow-browser` | 根 `package.json`、`tests/features/workflow/workflow-end-to-end.browser.test.js` | 失败，退出码 1；harness 的 `apps/web` 路径已失效，且触发 Node native assertion |
+| CMD-E2E-UI | workflow browser E2E | `corepack pnpm run test:workflow-browser` | 根 `package.json`、`tests/features/workflow/workflow-end-to-end.browser.test.js` | Phase 02 已通过，退出码 0；旧 `apps/web` harness 路径已修为 `apps/webapp`；Phase 01 的失败记录保留在 §4/§6 |
 | CMD-E2E-WASM | browser/worker smoke | `$env:AISENLENS_ONLY_WASM_SMOKE='1'; corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline` | `apps/webapp/package.json`、`apps/webapp/test/auto-shot-baseline.browser.test.js` | 通过，退出码 0；Chrome 152，WASM baseline `READY` |
 | CMD-DOCS | docs structural check | `git diff --check` | Git | 通过；仓库没有独立 docs lint/link script 或 CI 可供核对 |
 
@@ -41,17 +41,17 @@
 
 | Architecture area | 当前真实文件/目录 | 主要入口/调用链 | 当前状态 | 后续落点 |
 |---|---|---|---|---|
-| Project repository / IndexedDB | `apps/webapp/src/features/project/services/projectRepository.ts`; `features/project/types.ts` | `openDatabase` → `readProjectEditorState` / `saveProjectEditorState` / `applyCalibrationDraft` | 部分实现 | DB v18、项目事务、fault injector 已存在；typed runtime error、migration、quota、跨 tab 协作待 Phase 02/10 |
+| Project repository / IndexedDB | `apps/webapp/src/features/project/services/projectRepository.ts`; `projectDatabaseMigration.ts`; `features/project/types.ts` | `openDatabase` → migration plan → typed request/transaction → compare-and-write canonical writes | 部分实现 | Phase 02 已完成 typed runtime error、forward-only migration、project/group/editor/calibration/research revision gate；真实 quota/private-mode、corruption quarantine 与跨 tab UX 协调留 Phase 10 |
 | Media/import | `features/project/services/mediaService.ts`; `features/project/components/ProjectMediaGate.tsx`; `features/media/` | picker → fingerprint/metadata → handle/blob → project update | 部分实现 | FSA/input picker、relink、missing/permission 状态存在；当前依赖扩展/MIME/native/Mediabunny，无 magic 校验 |
-| Auto-shot/Worker | `features/auto-shot/autoShotTaskService.ts`; `hooks/useAutoShotTask.ts`; `workers/scene-engine.worker.ts`; `packages/scene-engine/` | Worker/WASM → task service → `auto-shot-runs` candidates | 部分实现 | pause/resume/cancel/interrupted 与进程内 late guard 存在；缺 queued/succeeded 统一模型、dependency revision、跨 tab |
+| Auto-shot/Worker | `features/auto-shot/autoShotTaskService.ts`; `taskState.ts`; `hooks/useAutoShotTask.ts`; `workers/scene-engine.worker.ts`; `packages/scene-engine/` | Worker/WASM → task service → persisted auto-shot state → shared runtime lifecycle adapter | 部分实现 | Phase 02 已冻结 queued/running/succeeded/failed/cancelled + dependency revision/late-result contract；Auto-shot 保留现有 persisted 状态并适配，具体 producer 持久化 dependency revision 按所属后续 Phase 接入 |
 | Shot/Calibration | `features/shot/`; `features/shot-calibration/`; `EditorWorkspace.tsx` | draft command/revision → explicit apply → shots store | 部分实现 | CalibrationDraft v3 与原子 apply 存在；普通 move/split/merge 仍在 EditorWorkspace 本地直接改数组，正式 Shot command authority 待 Phase 05 |
 | Analysis | `features/analysis/`; `features/editor/hooks/useEditorPersistence.ts`; `features/shot/types.ts` | inspector command → `shotDims` → `ShotRecord.analysisFields` → save/reload | 与目标冲突 | research range/context/evidence 有 revision；AnalysisRecord 独立持久化尚未落地，待 Phase 03 |
 | Template/Profile | `features/template/` | `templateService` → `resolveAnalysisProfile` → UI/overlay/export | 部分实现 | profile v2、field validation、surface settings 存在；Layout/Renderer/Prompt/Context/ExportMapping 子契约尚未拆出 |
 | Timeline | `features/timeline/`; `EditorWorkspace.tsx` | local viewport/track preference + selection/playback | 部分实现 | viewport 与 preference 已有；domain/application/view 分层和 command 写入未形成，待 Phase 07 |
 | Results/Export | `features/export/`; `features/group/services/groupExportService.ts` | Editor local state → report/video export worker | 部分实现 | CSV/HTML/XLSX/PDF、video worker/cancel 存在；无独立 Results derived query/registry，待 Phase 08 |
 | AI/provider | `features/analysis/ai/` | `AICandidate` evaluation/accept pure functions | 未实现 | 只有候选类型与校验；未发现 provider adapter、Context Builder、网络调用或 feature-flag boundary，待 Phase 09/10 |
-| Backup/Restore | `features/project/services/projectBackupService.ts`; `projectRecoveryService.ts` | ZIP v3 parse/validate → remap → atomic save；snapshot restore | 部分实现 | CRC、大小/路径限制、项目快照存在；无旧版本迁移、完整 manifest digest、quota/corruption quarantine |
-| Tests/Fixtures | `apps/webapp/test/`; `tests/features/`; `packages/scene-engine/test/` | Node tests、CDP browser harness、WASM/media fixtures | 部分实现 | fault/pressure/lifecycle fixture 较多；browser harness 路径失效，quota/old-schema/provider malformed fixture 缺失 |
+| Backup/Restore | `features/project/services/projectBackupService.ts`; `projectRecoveryService.ts` | file/manifest size+version → ZIP/CRC/path/ref validate → remap → atomic save；snapshot restore | 部分实现 | Phase 02 已验证 corrupt/future backup 在 canonical create 前 reject 且 no-pollution；旧 backup semantic migration、manifest-wide digest、quota/corruption quarantine 留 Phase 10 |
+| Tests/Fixtures | `apps/webapp/test/`; `tests/features/`; `packages/scene-engine/test/` | Node contracts、真实 IndexedDB/CDP browser harness、WASM/media fixtures | 部分实现 | Phase 02 已修 browser harness 并新增 runtime/migration/rollback/backup trust/stale-result fixtures；真实 quota/private-mode/provider malformed 与 `synthetic.webm` timing issue 仍开放 |
 
 ## 2. 阶段状态总表
 
@@ -60,7 +60,7 @@
 | Phase | 名称 | 状态 | 已完成 | 剩余/依赖 | 代码 commit | Push/远程链接 |
 |---|---|---|---|---|---|---|
 | 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
-| 02 | Contract & Runtime Baseline | 未开始 | 无 | Phase 01；先处理 browser harness 基线问题并冻结 typed contract/runtime gap | 未产生 | 未推送 |
+| 02 | Contract & Runtime Baseline | 验收通过待推送 | browser harness、typed runtime contract、DB migration baseline、revision CAS、task/trust/diagnostic contract、V1–V4 fixtures 已完成 | 完整 gate、diff 审查、commit/push 与远程 SHA 回填 | 未产生 | 未推送 |
 | 03 | Analysis Data/Evidence/Template | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
 | 04 | Global Shell & Design System | 未开始 | 无 | 01/02/03 | 未产生 | 未推送 |
 | 05 | Preparation & Shot Authority | 未开始 | 无 | 02/03/04 | 未产生 | 未推送 |
@@ -150,6 +150,26 @@
 | Design tokens/surface hierarchy | `index.css`; `SurfaceCard`; `Button`/`Dialog`/`Tooltip` | 部分实现且有漂移 | 04 | §5 UI baseline |
 | R-01 repository verification | 本记录 §1–§6 | 已关闭 | 01 | command/path/call-chain/fixture evidence |
 
+## 3.3 Phase 02 — Contract & Runtime Baseline
+
+- 开始日期：2026-09-18
+- 基线 SHA：`71e0491d0bd03f5e256be4b6778c9be282af17d7`（`main == origin/main`，工作区干净）
+- 工作分支：`codex/phase-02-contract-runtime-baseline`
+- 新增依赖：无；未部署、未修改生产或第三方系统。
+- Contract 落点：`apps/webapp/src/types/runtime.ts`，统一 machine-readable error/recovery、privacy-safe diagnostics、task lifecycle/dependency revision/stale-result gate、external input policy 和 provider Candidate-only/secret boundary。
+- Repository correctness：project/editor/calibration/research/group 的关键 canonical write 使用 compare-and-write；revision mismatch 返回 typed `REVISION_CONFLICT`；project timestamp 单调递增。
+- **V1 Scene/Sequence/Section**：唯一模型仍为 `ShotGroupRecord(kind + stable id + ordered shotIds)`；范围由正式 Shot 顺序派生，不创建第二棵父子树。当前结构 revision 由 project `updatedAt` 门控；Shot 变化后 `reconcileShotGroups` 保留失效结构并标 `needs-review`。真实 IndexedDB fixture 已验证三层 round-trip、reconcile 和独立 group stale write conflict。
+- **V2 IndexedDB migration**：schema/migration version 冻结为 18；`projectDatabaseMigration.ts` 仅接受 fresh-create/additive forward upgrade，拒绝 downgrade/未知 target。浏览器 fixture 故意 abort upgrade 后确认旧 version、旧 canonical record 保留且新 store 不残留。
+- **V3 multi-tab / late result**：expected revision 是最终 correctness gate；BroadcastChannel/Web Locks 仅允许作协调，不是正确性前提。`RuntimeTaskEnvelope` 以 dependency revision + cancel gate 拒绝 late/cancelled result；Auto-shot 现有 persisted 状态通过 adapter 映射，不做破坏性重命名。
+- **V4 backup/restore integrity**：file size、manifest size/version、ZIP/CRC/path/reference validation 均在 canonical project 创建前。浏览器 fixture 构造 corrupt ZIP 与 future-version manifest，均 reject 且项目数量不变。
+- **V5 export safety**：复用现有受控 export adapter、filename/text escaping、video worker cancel；完整 Results/Export hardening 留 Phase 08/10。
+- **V6 feature rollout**：仓库没有正式 feature-flag framework，本阶段不新建一套；未来高风险 flag 必须有 owner/default/removal criteria，且不能形成双 schema/domain semantics。
+- Capacity 方法：用真实浏览器/机器/构建模式 + 显式 fixture 记录；现有 pressure matrix 覆盖至 3,000 boundaries，不把单机数字写成跨设备 SLA。
+- R-02：结构持久化单一模型决议已形成；Phase 05 如引入正式 Shot Structure revision，必须从当前 project revision 单一路径演进，不能并存第二 Source of Truth。
+- R-03：Prompt/Context/ExportMapping 本阶段只冻结 runtime/trust 边界；具体 Analysis/Template/Results/AI 模型仍由 Phase 03/08/09 实施。
+- 明确未提前实施：`ShotRecord.analysisFields` 解耦、Official Shot command authority、三 Workspace UI、Results derived query、AI provider/network。
+- 注：§4.2/§4.3 保留 Phase 01 handoff baseline 作为历史证据；与本节冲突处以本节的 Phase 02 已验证事实为当前状态。
+
 ## 4. 验证记录
 
 | 日期 | Phase | 被验证代码 SHA | 环境/fixture | 实际命令或浏览器操作 | Exit code | 结果摘要 | 失败/修复/复测 | 日志/截图位置 |
@@ -159,6 +179,15 @@
 | 2026-09-18 | 01 | `7fa9a0b4d3604284c0278bce6490afc88294835c` | Chrome/Edge CDP harness；empty project intended | `corepack pnpm run test:workflow-browser` | 1 | Workflow E2E 未执行到应用断言；测试引用不存在的 `apps/web` | 未修复，Phase 01 只记录；Phase 02/10 需修 harness 后复测 | 终端输出；`tests/features/workflow/workflow-end-to-end.browser.test.js` |
 | 2026-09-18 | 01 | `7fa9a0b4d3604284c0278bce6490afc88294835c` | repository files; no mutation | `git status --short --branch`; `git remote -v`; branch/SHA/log; `git diff --check` | 0 | 起始树干净、remote/branch/SHA 已冻结；diff check 通过 | 无 | 终端输出 |
 | 2026-09-18 | 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | docs-only 收尾；产品代码排除 | 精确旧阶段引用扫描；`git diff --cached --check`；`PLAN_MANIFEST.json` 解析/文件存在检查；`git diff --cached --name-only -- apps packages tests scripts`；`git ls-remote --heads origin codex/phase-01-repository-verification` | 0 | 新执行顺序引用一致；Manifest 18 文件完整；产品代码无变更；远程分支精确指向 `dd8e069...` | 初次宽泛扫描把正确的“待 Phase 05”当成命中，改为精确旧映射扫描后通过 | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Node 24.19.0 | `corepack pnpm --filter @aisenlens/webapp run test:runtime-contract` | 0 | runtime + migration contract 7 tests pass；含 typed errors、task stale gate、provider boundary、input validation、forward-only migration | 初次 migration test 因 Node ESM import 缺 `.ts` 扩展失败；修正后复测通过 | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge isolated CDP；真实 IndexedDB | `node --test tests/features/shot-calibration/calibration-verification.browser.test.js` | 0 | 1 pass；transaction rollback、revision conflict、三层结构 round-trip/direct group CAS、upgrade abort rollback、corrupt/future backup no-pollution、late/cancel discard、pressure matrix 均通过 | 无 contract fixture 失败 | `test-results/shot-calibration-verification.json`（ignored） |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge isolated profile | `corepack pnpm run test:workflow-browser` | 0 | Workflow browser E2E 1 pass；Phase 01 的 `apps/web` 路径阻塞关闭 | harness 改为 `apps/webapp` 后通过 | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge；`synthetic.webm` | full calibration browser suite + real-media isolated rerun | 1 | full suite 2 pass / 1 fail；real-media 同点复现 CFR/VFR 精确帧验证超时 | 不弱化测试；作为独立媒体 timing issue 保留 | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Windows / Node / pnpm | `corepack pnpm run verify:web` | 0 | webhome/webapp typecheck、lint、unit/contract/integration、production build、web boundaries 全部通过；新增 runtime/migration 7 tests 纳入正式 gate | 保留 Node module/deprecation 与 Vite WASM externalize 非阻断 warning | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge Worker/WASM | `corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline`；精确旧 `apps/web` 扫描；`git diff --check` | 0 | WASM browser smoke 1 pass；旧路径 0 命中；diff check 通过；Phase 03 Analysis 路径无 diff | 无 | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Windows / Node / pnpm | `corepack pnpm run verify:web` | 0 | webhome/webapp typecheck、lint、unit/contract/integration、production build、web boundaries 全部通过；新增 runtime/migration 7 tests 纳入正式 gate | 保留 Node module/deprecation 与 Vite WASM externalize 非阻断 warning | 终端输出 |
+| 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge Worker/WASM | `corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline`；精确旧 `apps/web` 扫描；`git diff --check` | 0 | WASM browser smoke 1 pass；旧路径 0 命中；diff check 通过；Phase 03 Analysis 路径无 diff | 无 | 终端输出 |
+
 
 ### 4.1 UI baseline
 
@@ -169,7 +198,7 @@
 - Tooltip/keyboard：全局 `TooltipProvider` 默认 delay 0，许多控件仍用 native `title`；`useEditorShortcuts` 已覆盖播放/帧步进/保存等快捷键，命令体系尚未统一到目标 Command。
 - Preference/responsive：theme 与 timeline track preference 写 localStorage；editor CSS 有 ≤1100/≤640 断点和 panel collapse；未形成统一 view preference/panel state contract。
 - Visual drift：`index.css` 当前 dark 背景近黑、accent `#3b82f6`、大量 `rounded-2xl` `SurfaceCard`；目标设计要求 cool gray/purple、surface hierarchy、减少 card/border/heavy shadow。
-- Screenshot/E2E capability：已有 CDP harness 与 ignored JSON test-results；现有 browser tests 未调用 `Page.captureScreenshot`，本阶段没有伪造截图或新增截图机制。UI workflow E2E 因旧路径失败；WASM smoke 不是 UI 流程证据。
+- Screenshot/E2E capability：已有 CDP harness 与 ignored JSON test-results；现有 browser tests 未调用 `Page.captureScreenshot`，本阶段没有伪造截图或新增截图机制。Phase 01 的 UI workflow E2E 旧路径失败已在 Phase 02 修复并复测通过；WASM smoke 仍只作为 worker/engine 证据。
 
 ### 4.2 Runtime / trust / delivery baseline
 
@@ -207,15 +236,16 @@
 
 | 时间 | Phase | 问题 | 证据 | 影响范围 | 推荐/实际处理 | 状态 |
 |---|---|---|---|---|---|---|
-| 2026-09-18 | 01 | Workflow browser E2E harness 使用不存在的 `apps/web` | `tests/features/workflow/workflow-end-to-end.browser.test.js` 与 `tests/features/shot-calibration/calibration-browser-harness.js`；`Test-Path apps/web` 为 false，`Test-Path apps/webapp` 为 true；命令 exit 1 | Workflow/overview/analysis/calibration 共用该 harness 的 browser 验证 | 本阶段不改测试/产品代码；Phase 02/10 将 harness 入口改为现行 `apps/webapp` 后重新运行完整 UI 基线 | 已记录，未修复 |
+| 2026-09-18 | 01→02 | Workflow browser E2E harness 使用不存在的 `apps/web` | Phase 01 exit 1；Phase 02 改为 `apps/webapp` 后 `test:workflow-browser` 1 pass | Workflow browser 基线 | Phase 02 已修复已定位的旧路径并复测 | 已关闭 |
 | 2026-09-18 | 01 | 当前正式 baseline 文档旧 SHA | `audit/CURRENT_REPOSITORY_BASELINE.md` 原记录 `e08e0cc…`，实际起始 SHA 为 `7fa9a0b4…` | 可能误导后续 agent | 本阶段同步 baseline 文档并在本记录保留起始/最终 SHA 区分 | 已处理 |
 | 2026-09-18 | 01 | 无独立 docs lint/link gate、无 CI workflow | 未发现 `.github`；根 package scripts 无 docs lint/link | 文档链接/格式不能获得自动 gate 证据 | 使用 `git diff --check`，并由 Phase 11 governance 补正式 gate | 开放风险 |
+| 2026-09-18 | 02 | 真实 `synthetic.webm` 校准 browser case 等待 CFR/VFR 精确帧验证超时 | full suite 2 pass / 1 fail；隔离 real-media 同点复现 | 精确帧媒体校准专项；不影响 runtime/revision/migration fixture 与 Workflow E2E | 不删除/放宽断言；留 Phase 05/10 继续定位 timing/decoder 路径 | 开放风险（非 Phase 02 contract blocker） |
 
 ## 7. 阶段交接与用户决定
 
-- 下一阶段从哪里开始：Phase 02 `Contract & Runtime Baseline`；先把本记录的真实边界转成 typed contract/runtime baseline，再决定最小迁移顺序。
-- Phase 02 必须先解决：修复/验证 browser harness 的 `apps/web` 旧路径；保留 `apps/webapp` 为唯一产品入口，不创建重复 `apps/web` 目录。
-- 可直接复用：`projectRepository.readProjectEditorState/saveProjectEditorState/applyCalibrationDraft`；CalibrationDraft v3 与 `applyCalibrationCommand`；auto-shot task lifecycle/repository；template validation/profile resolver；CDP harness 的隔离 profile/fixture 机制（修正入口后）；现有 fault/pressure/lifecycle fixtures。
-- 不应重复实施：IndexedDB v18 store 创建、project editor 原子保存、recovery snapshot、auto-shot pause/cancel 基础状态、template v2 validation、report escaping。
-- 当前修改归属：Phase 01 主交付与新执行顺序收尾对齐均已提交并推送到专用分支；产品代码无修改；本记录仅回填已完成的 Git/验证证据。
-- 需要用户决定的事项：无。按阶段计划执行专用分支、提交和远程推送；不部署、不改生产/第三方设置。
+- 下一阶段从哪里开始：Phase 03 `Analysis Data / Evidence / Template 与无损持久化迁移`；直接消费本阶段 typed revision/error/task/trust/migration contract，不再定义第二套语义。
+- Phase 03 必须保持：`ShotRecord.analysisFields` 迁移 versioned/non-destructive；Analysis canonical write 使用 repository revision gate；AI 仍只能 Candidate-only。
+- 可直接复用：`src/types/runtime.ts`、`projectDatabaseMigration.ts`、repository typed CAS、backup input validation、`RuntimeTaskEnvelope`、现有 fault/pressure/CDP fixtures。
+- 不应重复实施：DB v18 store 基线、project editor 原子 transaction、Scene/Sequence/Section 第二模型、另一个 error/task enum、另一个 provider trust policy。
+- 当前修改归属：Phase 02 专用分支；完整 gate、commit/push 与远程 SHA 仍待回填。
+- 需要用户决定的事项：无。继续按计划提交/推送专用分支；不部署、不合并主分支、不改生产/第三方设置。

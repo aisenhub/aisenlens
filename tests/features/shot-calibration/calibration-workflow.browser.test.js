@@ -8,7 +8,7 @@ import { resolve } from "node:path"
 import test from "node:test"
 
 const root = resolve(import.meta.dirname, "..", "..", "..")
-const web = resolve(root, "apps", "web")
+const web = resolve(root, "apps", "webapp")
 const browserPath = [process.env.AISENLENS_CHROME_PATH, "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"].find((path) => path && existsSync(path))
 
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)) }

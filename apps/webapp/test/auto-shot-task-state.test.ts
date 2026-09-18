@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canPersistPausedAutoShotTask, canTransitionAutoShotTask, recoverAutoShotTaskStatus } from "../src/features/auto-shot/taskState.ts";
+import { canPersistPausedAutoShotTask, canTransitionAutoShotTask, recoverAutoShotTaskStatus, toRuntimeTaskLifecycleState } from "../src/features/auto-shot/taskState.ts";
 
 test("auto-shot task state allows only explicit lifecycle transitions", () => {
   assert.equal(canTransitionAutoShotTask("running", "paused"), true);
@@ -9,6 +9,13 @@ test("auto-shot task state allows only explicit lifecycle transitions", () => {
   assert.equal(canTransitionAutoShotTask("completed", "running"), false);
   assert.equal(canTransitionAutoShotTask("failed", "paused"), false);
   assert.equal(canTransitionAutoShotTask("cancelled", "cancelled"), true);
+});
+
+test("auto-shot task states adapt to the shared runtime lifecycle without changing persisted states", () => {
+  assert.deepEqual(toRuntimeTaskLifecycleState("running"), { status: "running", suspension: null });
+  assert.deepEqual(toRuntimeTaskLifecycleState("paused"), { status: "running", suspension: "paused" });
+  assert.deepEqual(toRuntimeTaskLifecycleState("completed"), { status: "succeeded", suspension: null });
+  assert.deepEqual(toRuntimeTaskLifecycleState("interrupted"), { status: "failed", suspension: "interrupted" });
 });
 
 test("paused is only valid with a complete checkpoint and stale running is interrupted", () => {

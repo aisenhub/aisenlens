@@ -3,6 +3,7 @@ import { createCalibrationDraft } from "../src/features/shot-calibration/service
 import type { AutoShotTaskRecord } from "../src/features/auto-shot/types"
 import type { AutoShotMediaIdentity } from "../src/features/auto-shot/mediaIdentity"
 import type { ProjectTemplateSnapshotRecord, StoredShotRecord } from "../src/features/project/types"
+import { RuntimeContractError } from "../src/types/runtime"
 
 const identity: AutoShotMediaIdentity = {
   identitySchema: "aisenlens-auto-shot-media-identity",
@@ -142,7 +143,18 @@ export async function runShotCalibrationApplyTransactionVerification() {
   const idempotent = Boolean(appliedState && storedAppliedDraft?.status === "applied" && reapplied.updatedAt === applied.updatedAt && appliedState.shots.length === 1 && appliedState.shots[0]?.id === "shot:seed")
   await projectRepository.deleteProject(idempotencyFixture.project.id)
 
-  const result = { failurePoints: failures, allFaultsRolledBack: failures.every((item) => item.rolledBack && item.message.startsWith("injected:")), idempotent }
-  if (!result.allFaultsRolledBack || !result.idempotent) throw new Error(`校准事务验证失败: ${JSON.stringify(result)}`)
+  const conflictFixture = await createFixture()
+  const current = conflictFixture.state.project
+  await projectRepository.updateProject({ ...current, title: "first writer" })
+  let typedRevisionConflict = false
+  try {
+    await projectRepository.updateProject({ ...current, title: "stale writer" })
+  } catch (error) {
+    typedRevisionConflict = error instanceof RuntimeContractError && error.code === "REVISION_CONFLICT" && error.context.operation === "update-project"
+  }
+  await projectRepository.deleteProject(conflictFixture.project.id)
+
+  const result = { failurePoints: failures, allFaultsRolledBack: failures.every((item) => item.rolledBack && item.message.startsWith("injected:")), idempotent, typedRevisionConflict }
+  if (!result.allFaultsRolledBack || !result.idempotent || !result.typedRevisionConflict) throw new Error(`校准事务验证失败: ${JSON.stringify(result)}`)
   return result
 }

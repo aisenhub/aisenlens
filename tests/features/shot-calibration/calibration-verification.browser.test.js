@@ -17,13 +17,25 @@ test("校准 VFR/PTS、事务故障注入与性能压力矩阵浏览器验证", 
   const transaction = await evaluate(client, sessionId, "import('/test/shot-calibration-apply-transaction.verification.ts').then((module) => module.runShotCalibrationApplyTransactionVerification())")
   assert.equal(transaction.allFaultsRolledBack, true)
   assert.equal(transaction.idempotent, true)
+  assert.equal(transaction.typedRevisionConflict, true)
+
+  const runtimeBaseline = await evaluate(client, sessionId, "import('/test/project-runtime-baseline.verification.ts').then((module) => module.runProjectRuntimeBaselineVerification())")
+  assert.equal(runtimeBaseline.migrationPlan.strategy, "additive-forward")
+  assert.equal(runtimeBaseline.atomicUpgradeRollback, true)
+  assert.equal(runtimeBaseline.backupTrustBoundary, true)
+  assert.equal(runtimeBaseline.structureRoundTrip, true)
+  assert.equal(runtimeBaseline.restructureNeedsReview, true)
+  assert.equal(runtimeBaseline.directGroupRevisionConflict, true)
+  assert.equal(runtimeBaseline.staleProjectConflict, true)
+  assert.equal(runtimeBaseline.lateResultDiscarded, true)
+  assert.equal(runtimeBaseline.cancelledResultDiscarded, true)
 
   const performance = await evaluate(client, sessionId, "import('/test/shot-calibration-performance.verification.ts').then((module) => module.runShotCalibrationPerformanceVerification())")
   assert.equal(performance.matrix.length, 3)
   assert.equal(performance.matrix.at(-1).boundaryCount, 3_000)
   assert.equal(performance.commandPressure.finalRevision, 20)
 
-  const report = { generatedAt: new Date().toISOString(), browser: performance.environment, mediaFrame, transaction, performance }
+  const report = { generatedAt: new Date().toISOString(), browser: performance.environment, mediaFrame, transaction, runtimeBaseline, performance }
   await mkdir(`${root}/test-results`, { recursive: true })
   await writeFile(`${root}/test-results/shot-calibration-verification.json`, JSON.stringify(report, null, 2), "utf8")
 })

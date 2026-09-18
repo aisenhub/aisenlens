@@ -11,11 +11,13 @@ import { fromCalibrationDraftRecord, toCalibrationDraftRecord, validateCalibrati
 import { hashSceneDetectionConfig } from "../../../../../../packages/scene-engine/src/api/configHash.ts";
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
+import { RuntimeContractError, createRevisionConflictError, toPersistenceRuntimeError } from "../../../types/runtime";
+import { PROJECT_DATABASE_SCHEMA_VERSION, planProjectDatabaseMigration } from "./projectDatabaseMigration";
 
 const DATABASE_NAME = "aisenlens-projects";
 // Keep the database at the highest version already used by the shipped app.
 // IndexedDB does not support opening an existing database at a lower version.
-const DATABASE_VERSION = 18;
+const DATABASE_VERSION = PROJECT_DATABASE_SCHEMA_VERSION;
 const PROJECTS_STORE = "projects";
 const MEDIA_ASSET_HANDLES_STORE = "media-asset-handles";
 const MEDIA_ASSET_BLOBS_STORE = "media-asset-blobs";
@@ -67,18 +69,18 @@ interface DerivedFrameThumbnailBlobRecord {
 
 let databasePromise: Promise<IDBDatabase> | null = null;
 
-function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+function requestResult<T>(request: IDBRequest<T>, operation = "indexeddb-request"): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("本地项目数据操作失败。"));
+    request.onerror = () => reject(toPersistenceRuntimeError(request.error, operation, { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
   });
 }
 
-function transactionResult(transaction: IDBTransaction): Promise<void> {
+function transactionResult(transaction: IDBTransaction, operation = "indexeddb-transaction"): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error("本地项目数据保存失败。"));
-    transaction.onabort = () => reject(transaction.error ?? new Error("本地项目数据保存已取消。"));
+    transaction.onerror = () => reject(toPersistenceRuntimeError(transaction.error, operation, { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
+    transaction.onabort = () => reject(toPersistenceRuntimeError(transaction.error, operation, { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }, "TRANSACTION_ABORTED"));
   });
 }
 
@@ -92,7 +94,7 @@ function nextProjectUpdatedAt(previous: string): string {
 function deleteProjectShotRecords(store: IDBObjectStore, projectId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
-    request.onerror = () => reject(request.error ?? new Error("无法清理项目分镜数据。"));
+    request.onerror = () => reject(toPersistenceRuntimeError(request.error, "delete-project-shot-records", { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) {
@@ -100,7 +102,7 @@ function deleteProjectShotRecords(store: IDBObjectStore, projectId: string): Pro
         return;
       }
       const deleteRequest = cursor.delete();
-      deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("无法清理项目分镜数据。"));
+      deleteRequest.onerror = () => reject(toPersistenceRuntimeError(deleteRequest.error, "delete-project-shot-record", { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
       deleteRequest.onsuccess = () => cursor.continue();
     };
   });
@@ -121,12 +123,18 @@ function openDatabase(): Promise<IDBDatabase> {
 
   databasePromise = new Promise((resolve, reject) => {
     const request = window.indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    const fail = (error: Error) => {
+    const fail = (error: unknown) => {
       databasePromise = null;
-      reject(error);
+      reject(toPersistenceRuntimeError(error, "open-project-database", { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
     };
-    request.onerror = () => fail(request.error ?? new Error("无法打开本地项目仓库。"));
-    request.onblocked = () => fail(new Error("本地项目仓库正在被其他标签页占用，请关闭其他 AisenLens 标签页后重试。"));
+    request.onerror = () => fail(request.error);
+    request.onblocked = () => fail(new RuntimeContractError({
+      code: "PERSISTENCE_UNAVAILABLE",
+      message: "本地项目仓库正在被其他标签页占用，请关闭其他 AisenLens 标签页后重试。",
+      context: { subsystem: "persistence", operation: "open-project-database", schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION },
+      retryable: true,
+      recoveryActions: ["retry", "reload"],
+    }));
     request.onsuccess = () => {
       const database = request.result;
       database.onversionchange = () => {
@@ -138,7 +146,8 @@ function openDatabase(): Promise<IDBDatabase> {
       };
       resolve(database);
     };
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
+      planProjectDatabaseMigration(event.oldVersion, event.newVersion ?? DATABASE_VERSION);
       const database = request.result;
       if (!database.objectStoreNames.contains(PROJECTS_STORE)) {
         const projects = database.createObjectStore(PROJECTS_STORE, { keyPath: "id" });
@@ -226,7 +235,7 @@ function normalizeProject(project: ProjectRecord): ProjectRecord {
 function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
-    request.onerror = () => reject(request.error ?? new Error("无法清理项目数据。"));
+    request.onerror = () => reject(toPersistenceRuntimeError(request.error, "delete-project-records", { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) {
@@ -234,7 +243,7 @@ function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): 
         return;
       }
       const deleteRequest = cursor.delete();
-      deleteRequest.onerror = () => reject(deleteRequest.error ?? new Error("无法清理项目数据。"));
+      deleteRequest.onerror = () => reject(toPersistenceRuntimeError(deleteRequest.error, "delete-project-record", { schemaVersion: PROJECT_DATABASE_SCHEMA_VERSION }));
       deleteRequest.onsuccess = () => cursor.continue();
     };
   });
@@ -356,11 +365,15 @@ export function createProjectRepository(): ProjectRepository {
     },
 
     async updateProject(project: ProjectRecord) {
-      const updatedProject: ProjectRecord = { ...normalizeProject(project), updatedAt: new Date().toISOString() };
       const database = await openDatabase();
       const transaction = database.transaction(PROJECTS_STORE, "readwrite");
-      transaction.objectStore(PROJECTS_STORE).put(updatedProject);
-      await transactionResult(transaction);
+      const store = transaction.objectStore(PROJECTS_STORE);
+      const current = await requestResult(store.get(project.id), "update-project:read-current") as ProjectRecord | undefined;
+      if (!current) throw new Error("项目不存在或已删除。");
+      if (current.updatedAt !== project.updatedAt) throw createRevisionConflictError("update-project", project.updatedAt, current.updatedAt, project.id);
+      const updatedProject: ProjectRecord = { ...normalizeProject(project), updatedAt: nextProjectUpdatedAt(current.updatedAt) };
+      store.put(updatedProject);
+      await transactionResult(transaction, "update-project");
       return updatedProject;
     },
 
@@ -370,7 +383,7 @@ export function createProjectRepository(): ProjectRepository {
       const store = transaction.objectStore(PROJECTS_STORE);
       const current = await requestResult(store.get(projectId)) as ProjectRecord | undefined;
       if (!current) throw new Error("项目不存在或已删除。");
-      const updatedProject: ProjectRecord = { ...normalizeProject(update(normalizeProject(current))), id: projectId, updatedAt: new Date().toISOString() };
+      const updatedProject: ProjectRecord = { ...normalizeProject(update(normalizeProject(current))), id: projectId, updatedAt: nextProjectUpdatedAt(current.updatedAt) };
       store.put(updatedProject);
       await transactionResult(transaction);
       return updatedProject;
@@ -410,7 +423,7 @@ export function createProjectRepository(): ProjectRepository {
       try {
         const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
         if (!current) throw new Error("项目不存在或已删除。");
-        if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开后再保存。");
+        if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("save-project-editor-state", expectedUpdatedAt, current.updatedAt, state.project.id);
         const now = nextProjectUpdatedAt(current.updatedAt);
         const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
         injectProjectRepositoryFault("project-write");
@@ -745,7 +758,7 @@ export function createProjectRepository(): ProjectRepository {
       const transaction = database.transaction(CALIBRATION_DRAFTS_STORE, "readwrite");
       const store = transaction.objectStore(CALIBRATION_DRAFTS_STORE);
       const existing = await requestResult(store.index("projectMediaKey").get([draft.projectId, draft.mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
-      if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw new Error("校准草稿已在其他标签页更新，请重新加载后再保存。");
+      if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw createRevisionConflictError("save-calibration-draft", expectedRevision, existing.revision, draft.id);
       store.put(toCalibrationDraftRecord(draft));
       await transactionResult(transaction);
     },
@@ -772,15 +785,15 @@ export function createProjectRepository(): ProjectRepository {
         const projectStore = transaction.objectStore(PROJECTS_STORE);
         const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
         if (!current) throw new Error("项目不存在或已删除，无法应用校准草稿。");
-        if (current.updatedAt !== expectedUpdatedAt) throw new Error("项目已在其他标签页更新，请重新打开校准页后再应用。");
+        if (current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("apply-calibration-draft:project", expectedUpdatedAt, current.updatedAt, state.project.id);
         const draftStore = transaction.objectStore(CALIBRATION_DRAFTS_STORE);
         const storedDraft = await requestResult(draftStore.index("projectMediaKey").get([draft.projectId, draft.mediaIdentity.mediaIdentityDigest])) as CalibrationDraftRecord | undefined;
-        if (storedDraft && storedDraft.revision !== draft.revision) throw new Error("校准草稿已在其他标签页更新，请重新加载后再应用。");
+        if (storedDraft && storedDraft.revision !== draft.revision) throw createRevisionConflictError("apply-calibration-draft:draft", draft.revision, storedDraft.revision, draft.id);
         if (storedDraft?.status === "applied" && storedDraft.applyReceipt?.draftId === draft.id && storedDraft.applyReceipt.appliedDraftRevision === draft.revision) {
           await completion;
           return current;
         }
-        const now = new Date().toISOString();
+        const now = nextProjectUpdatedAt(current.updatedAt);
         const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
         injectProjectRepositoryFault("project-write");
         projectStore.put(updatedProject);
@@ -831,19 +844,21 @@ export function createProjectRepository(): ProjectRepository {
       return groups.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
     },
 
-    async replaceProjectShotGroups(projectId: string, groups: ShotGroupRecord[]) {
+    async replaceProjectShotGroups(projectId: string, groups: ShotGroupRecord[], expectedUpdatedAt: string) {
       const database = await openDatabase();
-      const transaction = database.transaction(SHOT_GROUPS_STORE, "readwrite");
-      const store = transaction.objectStore(SHOT_GROUPS_STORE);
-      const request = store.index("projectId").openCursor(IDBKeyRange.only(projectId));
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (!cursor) return;
-        cursor.delete();
-        cursor.continue();
-      };
-      groups.forEach((group) => store.put({ ...group, projectId, updatedAt: new Date().toISOString() }));
-      await transactionResult(transaction);
+      const transaction = database.transaction([PROJECTS_STORE, SHOT_GROUPS_STORE], "readwrite");
+      const projectStore = transaction.objectStore(PROJECTS_STORE);
+      const groupStore = transaction.objectStore(SHOT_GROUPS_STORE);
+      const current = await requestResult(projectStore.get(projectId), "replace-project-shot-groups:read-current") as ProjectRecord | undefined;
+      if (!current) throw new Error("项目不存在或已删除。");
+      if (current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("replace-project-shot-groups", expectedUpdatedAt, current.updatedAt, projectId);
+      await deleteProjectRecordsAndWait(groupStore, projectId);
+      const now = nextProjectUpdatedAt(current.updatedAt);
+      groups.forEach((group) => groupStore.put({ ...group, projectId, updatedAt: now }));
+      const updatedProject = { ...normalizeProject(current), updatedAt: now };
+      projectStore.put(updatedProject);
+      await transactionResult(transaction, "replace-project-shot-groups");
+      return updatedProject;
     },
 
     async listProjectResearchRanges(projectId: string) {
@@ -859,7 +874,7 @@ export function createProjectRepository(): ProjectRepository {
       const transaction = database.transaction(RESEARCH_RANGES_STORE, "readwrite");
       const store = transaction.objectStore(RESEARCH_RANGES_STORE);
       const existing = await requestResult(store.get(range.id)) as ResearchRange | undefined;
-      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究范围已在其他标签页更新，请重新加载后再保存。");
+      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw createRevisionConflictError("save-research-range", expectedRevision, existing.revision, range.id);
       injectProjectRepositoryFault("research-range-write");
       store.put(structuredClone(range));
       await transactionResult(transaction);
@@ -887,7 +902,7 @@ export function createProjectRepository(): ProjectRepository {
       const store = transaction.objectStore(RESEARCH_CONTEXTS_STORE);
       const key = [context.projectId, context.target.kind, context.target.id];
       const existing = await requestResult(store.index("projectTarget").get(key)) as ResearchContext | undefined;
-      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw new Error("研究上下文已在其他标签页更新，请重新加载后再保存。");
+      if (expectedRevision !== undefined && existing && existing.revision !== expectedRevision) throw createRevisionConflictError("save-research-context", expectedRevision, existing.revision, context.id);
       if (existing && existing.id !== context.id) store.delete(existing.id);
       injectProjectRepositoryFault("research-context-write");
       store.put(structuredClone(context));

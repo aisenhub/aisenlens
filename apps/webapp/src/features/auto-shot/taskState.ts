@@ -1,5 +1,6 @@
 import type { SceneEngineCheckpoint } from "@aisenlens/scene-engine";
 import type { AutoShotTaskStatus } from "./types";
+import type { RuntimeTaskLifecycleState } from "../../types/runtime";
 
 const transitions: Record<AutoShotTaskStatus, readonly AutoShotTaskStatus[]> = {
   running: ["paused", "completed", "failed", "cancelled", "interrupted"],
@@ -12,6 +13,15 @@ const transitions: Record<AutoShotTaskStatus, readonly AutoShotTaskStatus[]> = {
 
 export function canTransitionAutoShotTask(from: AutoShotTaskStatus, to: AutoShotTaskStatus): boolean {
   return from === to || transitions[from].includes(to);
+}
+
+export function toRuntimeTaskLifecycleState(status: AutoShotTaskStatus): RuntimeTaskLifecycleState {
+  if (status === "completed") return { status: "succeeded", suspension: null };
+  if (status === "failed") return { status: "failed", suspension: null };
+  if (status === "cancelled") return { status: "cancelled", suspension: null };
+  if (status === "paused") return { status: "running", suspension: "paused" };
+  if (status === "interrupted") return { status: "failed", suspension: "interrupted" };
+  return { status: "running", suspension: null };
 }
 
 export function canPersistPausedAutoShotTask(checkpoint: SceneEngineCheckpoint | null): checkpoint is SceneEngineCheckpoint {

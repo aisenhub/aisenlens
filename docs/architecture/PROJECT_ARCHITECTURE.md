@@ -50,9 +50,9 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 18，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。回滚后的旧版标注 UI 通过仓储适配器读取 v17 与 v18 标注记录，并统一以 v18 结构写回，避免 IndexedDB 降级；这只覆盖当前回滚恢复所需的标注边界，不重新引入旧项目整体兼容层。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 18，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Phase 02 起由 `projectDatabaseMigration.ts` 显式冻结 schema/migration version 18，只允许 additive forward upgrade；IndexedDB upgrade transaction abort 是当前 rollback 边界，不做 destructive downgrade。回滚后的旧版标注 UI 通过仓储适配器读取 v17 与 v18 标注记录，并统一以 v18 结构写回，避免 IndexedDB 降级；这只覆盖当前回滚恢复所需的标注边界，不重新引入旧项目整体兼容层。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
 
-正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。备份服务导出经校验的项目包；恢复快照保存项目、镜头、镜头组、标注和模板，恢复时通过仓库服务写回。未来新增持久化结构必须通过 `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB；不得借此重新引入旧项目兼容迁移。
+正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。`src/types/runtime.ts` 定义统一 revision/error/task/trust/diagnostic contract；项目与结构写入以 repository compare-and-write 为正确性门，当前项目级 edit revision 使用单调递增的 `ProjectRecord.updatedAt`。Scene/Sequence/Section 继续复用唯一 `ShotGroupRecord(kind + stable id + ordered shotIds)` 模型，不建立第二棵父子结构；独立 group replace 也必须提供 expected project revision。备份服务在 canonical write 前校验包大小、manifest version、ZIP/CRC/路径与引用；恢复快照通过仓库服务写回。未来新增持久化结构必须通过 `projectDatabaseMigration.ts` + `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB。
 
 时间轴和镜头领域以整数帧与半开区间 `[startFrame, endFrame)` 表达时间范围；跨功能传递或持久化时应保持这一语义。
 
@@ -75,6 +75,8 @@ React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”
 `running` 记录必须进入 `interrupted` 并重扫。任务记录按项目唯一且可被新扫描覆盖，因此
 正式镜头需保存独立、不可变的最小 provenance 快照，不能仅引用当前 task。
 
+跨 Worker/AI/Export 的新长任务统一消费 `RuntimeTaskEnvelope`：稳定 taskId、统一 lifecycle、dependency revision、cancel 与 stale-result gate。Auto-shot 现有持久状态继续保持兼容，由 adapter 映射到统一 lifecycle；Phase 02 不为迁移状态名改写已有 task 数据。Provider contract 明确前端不得持有 server-owned secret，provider 结果只能进入 Candidate，不能直接写正式事实。
+
 ## 5. AisenShot Scene Engine 边界
 
 `packages/scene-engine/` 是独立于 React 与项目领域模型的 C++/WASM 包。其输入是经过已验证策略规范化的解码帧，输出是带证据的镜头边界；Web Worker 负责 WebCodecs/Mediabunny 解码、像素预处理、WASM 调度、checkpoint envelope 和结果回传，TypeScript 适配器只将结果转换为可审阅的候选分镜。生产像素路径以 Phase 0 的 Web 端到端基准为依据，不预设浏览器能够请求 I420，也不把 Desktop/Mobile 当作当前实施门槛。
@@ -92,5 +94,5 @@ React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”
 
 - 新功能进入所属 feature，跨域能力先建立清晰服务接口。
 - 不复制桌面或移动端业务实现，不为了推测的复用提前拆包。
-- 数据模型或浏览器存储变更必须同时更新相应版本化升级、类型和本文件。
+- 数据模型或浏览器存储变更必须同时更新 `projectDatabaseMigration.ts` 的版本化升级契约、相关类型和本文件；禁止 destructive downgrade。
 - 对参考项目的调研结论只记录在 `reference-projects/REFERENCE_PROJECT_INDEX.md`，不得直接迁移其实现。

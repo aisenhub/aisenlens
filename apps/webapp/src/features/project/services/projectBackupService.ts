@@ -4,6 +4,7 @@ import type { ShotRecord } from "../../shot/types";
 import projectRepository from "./projectRepository";
 import type { ProjectRecord, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
 import type { ResearchContext, ResearchRange } from "../../analysis/types";
+import { validateExternalInput } from "../../../types/runtime";
 
 const FORMAT = "aisenlens-project-backup";
 const VERSION = 3;
@@ -119,12 +120,14 @@ export async function downloadProjectBackup(projectId: string, onProgress?: (pro
 }
 
 export async function importProjectBackup(file: File) {
+  validateExternalInput({ byteLength: file.size }, { maxBytes: MAX_BACKUP_BYTES }, "import-project-backup");
   const entries = parseZip(new Uint8Array(await file.arrayBuffer()));
   const manifest = entries.get("manifest.json");
   if (!manifest) throw new Error("备份缺少 manifest.json。");
-  if (manifest.byteLength > MAX_MANIFEST_BYTES) throw new Error("备份清单超过安全上限。");
   let value: unknown;
   try { value = JSON.parse(decoder.decode(manifest)); } catch { throw new Error("备份清单无法读取。"); }
+  const manifestVersion = value && typeof value === "object" && "version" in value && typeof value.version === "number" ? value.version : null;
+  validateExternalInput({ byteLength: manifest.byteLength, schemaVersion: manifestVersion }, { maxBytes: MAX_MANIFEST_BYTES, allowedSchemaVersions: [VERSION] }, "import-project-backup:manifest");
   validate(value);
   const backup = value;
   const expectedResourcePaths = new Set(backup.screenshots.map(({ path }) => path));

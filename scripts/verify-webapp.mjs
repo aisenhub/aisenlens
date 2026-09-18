@@ -7,6 +7,7 @@ const commands = [
   ["test:editor-history"],
   ["test:retain-shot-map"],
   ["test:auto-shot-task-state"],
+  ["test:runtime-contract"],
   ["test:auto-shot-media-fingerprint"],
   ["test:auto-shot-adapter"],
   ["test:auto-shot-task-service"],

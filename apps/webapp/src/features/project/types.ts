@@ -215,7 +215,7 @@ export interface ProjectRepository {
   deleteCalibrationDraft: (projectId: string, mediaIdentity?: import("../auto-shot/mediaIdentity").AutoShotMediaIdentity) => Promise<void>;
   applyCalibrationDraft: (input: { state: ProjectEditorState; draft: CalibrationDraft; expectedUpdatedAt: string; recoverySnapshotId: string; task: AutoShotTaskRecord | null }) => Promise<ProjectRecord>;
   listProjectShotGroups: (projectId: string) => Promise<ShotGroupRecord[]>;
-  replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[]) => Promise<void>;
+  replaceProjectShotGroups: (projectId: string, groups: ShotGroupRecord[], expectedUpdatedAt: string) => Promise<ProjectRecord>;
   listProjectResearchRanges: (projectId: string) => Promise<ResearchRange[]>;
   saveProjectResearchRange: (range: ResearchRange, expectedRevision?: number) => Promise<void>;
   deleteProjectResearchRange: (projectId: string, rangeId: string) => Promise<void>;
