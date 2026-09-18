@@ -382,156 +382,73 @@ ANALYSIS DATASET
 
 ---
 
-# 33. 全局 UI 层级原则
+# 33. Native Studio 全局窗口层级
 
-建议全产品统一：
+全局 UI 层级由 `WORKSPACE_DESIGN_SYSTEM.md` V2 Native Studio 统一定义。Global Architecture 只冻结职责与边界：
 
-### Workspace
+### App Window / Global Chrome
 
-用于：
+持续存在于三个 Workspace 之上，承载 Project identity、保存/同步状态、全局命令与 Workspace 切换。切换 Workspace 时 App Window 不重建。
 
-> 长时间完成核心任务。
+### Workspace Panels
 
-例如：
+Navigation / Primary / Inspector / Timeline 是同一窗口中的可调工作区域。Panel 可以 resize / collapse / restore，并按 Workspace 记忆布局；它们不是独立网页。
 
-- 素材准备
-- 逐镜分析
-- 数据表
-- Export Studio
-- 创作转化
+### Floating Chrome
 
----
-
-### Drawer / Sheet
-
-用于：
-
-> 调整当前 Workspace 的持续配置。
-
-例如：
-
-- 分析模板
-- AI 辅助
-- 切分设置
-- 显示字段
-
----
-
-### Inspector
-
-用于：
-
-> 编辑当前对象。
-
-例如：
-
-- 当前 Shot 分析
-- 当前 Boundary
-- 当前导出样式
-
----
+Popover / Context Menu / Command Palette / Floating Toolbar / Drawer 从触发源附近出现，用于局部动作和短时配置。必须保持 source anchoring、shared overlay ownership 与 focus restore。
 
 ### Modal
 
-用于：
-
-> 短暂且明确的重要决策。
-
-例如：
-
-- 新建模板
-- 删除模板
-- 完成复核
-- 确认覆盖
-- 导出前确认
+只用于必须阻塞当前上下文的重要决策。Detector、AI、Export、decode、scan 等后台工作不得用 Modal 锁住整个工作台。
 
 ---
 
-### Dropdown / Popover
+# 34. Native Studio 全局交互契约
 
-用于：
+## 34.1 Single-window continuity
 
-> 高频快速切换。
+Workspace / View 切换保持项目上下文、Selection 与可恢复的 Panel geometry。复杂功能默认在同一个工作窗口内展开，不做网页式整页跳转。
 
-例如：
+## 34.2 Direct manipulation
 
-- 切换模板
-- 切换 Scene
-- 选择字段
-- 设置单个字段值
+能直接 drag / scrub / resize / reorder / inline edit 的任务，不优先转换成参数表单。操作中必须有 live preview、invalid-target feedback 与 safe cancel。
 
----
+## 34.3 Source-anchored actions
 
-# 34. 交互语言原则
+Context Menu、Popover、Quick Action、Inline Editor 与触发对象保持空间关系；局部动作不无理由跳到窗口中央。
 
-## 34.1 Workspace 是“工作的地方”
+## 34.4 Background work stays nonblocking
 
-不要每有一个复杂功能就新建页面。
+Detection、decode、save、export、AI 等任务使用局部 progress/task UI。已有内容继续可操作；只有真正互斥的 transaction 才锁定相关控件，而不是整个 Workspace。
 
----
+## 34.5 Desktop input parity
 
-## 34.2 Settings 是“改变工作方式的地方”
+Mouse / trackpad / keyboard 都是正式输入。Context Menu、Command Palette、focus-visible、shortcut discovery、Undo/Redo 属核心能力，不是附加增强。
 
-分析模板与 AI 都属于工作台设置。
+## 34.6 User-facing language
 
----
-
-## 34.3 正常状态安静，异常状态突出
-
-例如：
-
-正常：
-
-```text
-✓ 已保存
-```
-
-异常：
-
-```text
-⚠ 保存失败    重试
-```
+产品 UI 使用用户任务语言；工程标识、revision、task snapshot、detector parameter 等只在诊断或专家设置中出现。
 
 ---
 
-## 34.4 用户语言优先于工程语言
+# 35. Native Studio 信息密度与布局
 
-优先：
+信息密度由可操作的桌面布局系统控制，而不是单纯“隐藏次要信息”。
 
-```text
-AI 建议
-切分策略
-分析模板
-镜头复核
-完成素材准备
-```
+主要手段：
 
-避免主 UI 中大量出现：
+- resizable / collapsible Panel；
+- Comfort / Standard / Compact Density；
+- Workspace-specific layout memory；
+- contextual reveal；
+- Data Grid / Timeline semantic zoom；
+- Inspector section；
+- View Preference。
 
-```text
-Preset ID
-Detector
-Threshold
-Task Snapshot
-Media Identity
-Apply Calibration Draft
-```
+用户可以根据当前任务主动决定屏幕上同时存在多少信息。系统负责保证最小可操作尺寸、层级、键盘/指针可达性和高密度下的可读性。
 
----
-
-# 35. 视觉信息密度原则
-
-判断一个信息是否常驻，可以问：
-
-> **用户当前做决策是否需要这个信息？**
-
-如果不需要，应：
-
-- 隐藏
-- 折叠
-- 移入 Drawer
-- 移入 Inspector
-- 移入专家设置
+具体颜色、材质、token、motion、Panel geometry、responsive matrix 与 performance experience 全部以 `WORKSPACE_DESIGN_SYSTEM.md` V2 为唯一 Source of Truth。
 
 ---
 

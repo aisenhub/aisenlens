@@ -20,7 +20,7 @@ test("校准 VFR/PTS、事务故障注入与性能压力矩阵浏览器验证", 
   assert.equal(transaction.typedRevisionConflict, true)
 
   const runtimeBaseline = await evaluate(client, sessionId, "import('/test/project-runtime-baseline.verification.ts').then((module) => module.runProjectRuntimeBaselineVerification())")
-  assert.equal(runtimeBaseline.migrationPlan.strategy, "additive-forward")
+  assert.equal(runtimeBaseline.migrationPlan.strategy, "development-reset")
   assert.equal(runtimeBaseline.atomicUpgradeRollback, true)
   assert.equal(runtimeBaseline.backupTrustBoundary, true)
   assert.equal(runtimeBaseline.structureRoundTrip, true)

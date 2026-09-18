@@ -9,7 +9,7 @@
 
 ## 必读
 
-Analysis Data、Evidence、Template Prompt/Context、Timeline AI suggestion、Runtime provider/privacy gate、Design System AI UI rule。
+`04-domain/ai/AI_ANALYSIS_CONTRACT.md`（首要 AI Source of Truth）、Analysis Data、Evidence、Template Prompt/Context、Timeline AI suggestion、Runtime provider/privacy gate、Design System AI UI rule。
 
 ## 实施步骤
 
@@ -18,7 +18,7 @@ Analysis Data、Evidence、Template Prompt/Context、Timeline AI suggestion、Ru
 3. Provider secret 边界：server-owned secret 不进前端 bundle；BYOK 与项目 canonical data 分离，并遵循项目现有安全存储能力。
 4. Response 作为不可信输入解析：schema/type/size/enum/range 校验，失败只生成 provider/validation error。
 5. 只创建 Candidate/structure suggestion；禁止 provider 直接调 formal repository mutation。
-6. Candidate lifecycle：pending/accepted/rejected/superseded/expired 等与 Record 独立；dependency revision 改变后 accept 前必须失效/复核。
+6. Candidate lifecycle：pending/accepted/rejected/stale/superseded/expired 等与 Record 独立；dependency revision 改变后 accept 前必须 stale/失效/复核。
 7. Review：已有人工/正式值时并排呈现冲突；不默认全量接受；observation 与 interpretation 区分。
 8. Accept 使用 Analysis command 并写 provenance；Reject 不污染 formal value。
 9. AI Ask 结果不是正式 Analysis；需要进入正式值仍走 Candidate/Accept。
@@ -44,11 +44,11 @@ malformed/oversize response、timeout/rate limit、cancel/late result、dependen
 - Provider response 的文本/Markdown 同样走安全渲染/转义，不把模型输出当可信 HTML/renderer/config。
 
 ### Candidate / review
-- Analysis Candidate 与 structure suggestion 保持各自合法 target/command；共同遵守独立 lifecycle 与 dependency stale gate，不共享 formal record status。
+- Analysis Candidate 与 structure suggestion 保持各自合法 target/command；共同遵守独立 lifecycle 与 dependency stale gate，不共享 formal record status。UI 只使用 Native Studio 的低频 Intelligence Signal（icon/thin edge/generating indicator）识别 AI 来源，不建立独立 AI theme。
 - stale Data Review 与 AI Review 在 UI/计数/流程上分开；AI 多字段建议逐项 review，不默认 bulk accept。
 - Observation 与 Interpretation 分开；不展示或持久化长推理链作为产品要求。
 - Accept 前再次核对 target/dependency revision；Accept 通过正式 Analysis/Shot-structure command 并写完整 provenance；Reject/timeout/rate-limit/cancel/validation failure 均不改 canonical facts。
-- AI Ask/解释结果默认是临时/派生输出；只有显式转为 Candidate 并 Accept 后才进入正式 Analysis。
+- AI Ask/解释结果默认是临时/派生输出；只有显式转为 Candidate 并 Accept 后才进入正式 Analysis。Generating / cancel / retry 使用局部 background-task UI，不能用全屏 loading 或长动画冻结工作台。
 
 ### Provider / secret / rollout readiness
 - server-owned secret 不进入前端 bundle；BYOK 与项目 canonical data 分离并记录风险/清除方式（以真实平台能力为准）。
@@ -58,6 +58,22 @@ malformed/oversize response、timeout/rate limit、cancel/late result、dependen
 ## 完整性验收
 
 除原测试外，覆盖：发送范围提示、最小 context、context/prompt version provenance、multi-field per-item review、Data Review 与 AI Review 并存、unsafe rich-text response、accept 前 revision 二次校验、BYOK/secret bundle scan、Ask→Candidate→Accept 的正式化路径。Template Prompt/Context、Timeline structure suggestion、Analysis Candidate 三方 traceability 均有证据。
+
+## Phase 03 继承的冻结前置条件
+
+- AI 正式数据入口已经冻结为 AnalysisCandidate + AnalysisContextManifest；provider/Context Builder 不得直接写 AnalysisRecord 或 Shot。
+- Context Manifest 必须绑定 subject、structureRevision + analysisRevision dependency、PromptDefinition/ContextDefinition version、evidence refs、included field ids 与 media ranges；Candidate 通过 contextManifestId 关联发送上下文。
+- Candidate accept 必须走 Phase 03 revision-gated Analysis Authority；依赖 revision 变化后按 stale/expired/review 处理，不能以 provider 成功响应替代正式 accept。
+- Backup/Recovery v4 已覆盖 Candidate/ContextManifest 及其交叉引用，Phase 09 provider 接入不得引入第二套 AI history/context persistence。
+
+## Frozen AI Contract 实施约束
+
+- Phase 09 **实现** Phase 03 已冻结的 AI contract，不重新设计 Candidate/ContextManifest/Accept 数据模型；若 provider 需要额外字段，先证明其属于 adapter/runtime metadata，而不是创建 AI-private canonical truth。
+- `AnalysisContextManifest` 是一次真实发送上下文的不可变 trace snapshot；Context Builder 每次运行创建新 manifest，不覆盖旧 manifest 来“更新历史”。
+- Analysis suggestion 与 structure suggestion 必须分别走合法 Authority：Analysis Candidate accept → Analysis Authority；Structure Candidate accept → Phase 05 Shot command。Provider adapter 永远不能直接调用两类 formal write。
+- PromptDefinition/ContextDefinition 是版本化规则，ContextManifest 是本次执行快照；两者必须同时可追溯，不能只存最终 prompt 文本或 provider payload。
+- Candidate 在 provider 返回后和 accept 前均检查 `structureRevision + analysisRevision` dependency；旧结果只能 stale/expired/review，不得以“请求成功”覆盖当前事实。
+- Backup/Recovery 已定义 Candidate/ContextManifest canonical boundary；Phase 09 若增加 provider run/task metadata，必须明确哪些属于可重建 runtime log、哪些真正需要持久化，禁止顺手引入第二套 AI history store。
 
 ## Git / 验证硬门
 

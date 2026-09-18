@@ -42,12 +42,12 @@ empty results、filter 无结果、部分 stale、export blocked、export queued
 
 ### Results Workspace / Data Table
 - Results 内部明确为 **数据表 / 导出与分享 / 创作转化** 三个二级工作区（可按现有路由实现），不把全部复杂功能塞进一个大 Modal。
-- Data Table 是 Analysis 的数据库视图：核心列（镜号/截图/时长等）+ stable fieldId 驱动的动态列；支持 search/filter/group/show-fields/sort/aggregate，并可按 Scene/标签/模板字段等真实维度分组。
+- Data Table 是 Analysis 的 desktop data-grid 视图：核心列（镜号/截图/时长等）+ stable fieldId 驱动的动态列；支持 search/filter/group/show-fields/sort/aggregate、sticky header、row selection、column resize/reorder、keyboard navigation、horizontal scroll 与大数据 virtualize，并可按 Scene/标签/模板字段等真实维度分组。
 - 默认“查看优先”；需要编辑正式数据时必须进入明确编辑态并走 Phase 03 Analysis command/Authority，不复制“导出数据”或 Results 私有 Analysis 副本。
 - stale 可以展示但必须显式标记/可筛选；pending Candidate/unsaved draft 不作为正式列；Evidence/Provenance 可追溯。
 
 ### Export Studio / Preset
-- Export Studio 使用独立页面/工作区式布局（type / preview / settings），避免大型配置 Modal；设置变化有 Preview/Live Preview（按导出类型可行性）。
+- Export Studio 使用 Results 内持续存在的 desktop work-surface（type / preview / settings panels），不跳大型配置页/Modal；panel 可 resize/collapse，设置变化有 Preview/Live Preview（按导出类型可行性），后台 export task 不冻结其他 Results 操作。
 - 核心类型按真实支持范围落地：分析表格（CSV/XLSX/JSON；PDF/报告若仍属未来则明确 deferred）、视频+分析表联动输出、分析水印视频。
 - 联动视频随播放 Shot 更新分析面板；水印视频支持位置、字段内容、透明度、字号、背景/主题等正式架构要求，若某项本期延期必须写明。
 - 三类导出共用字段选择与版本化 Export Preset；Preset 可保存“如何消费/呈现”，不能复制 AnalysisRecord。
@@ -65,7 +65,21 @@ empty results、filter 无结果、部分 stale、export blocked、export queued
 
 ## 完整性验收
 
-同一 fixture 验证 Data Table / Export / Creative 对 confirmed/stale/candidate 的处理一致；验证分组/显示字段、view→edit authority、Export Studio preview、三类核心导出（按本期真实范围）、preset 保存/重开、cancel/late result、filename/rich-text safety、Creative 范围/方法迁移/派生产物不反写。Traceability 中 Results 文档全部章节须有 evidence/deferred/non-goal。
+同一 fixture 验证 Data Table / Export / Creative 对 confirmed/stale/candidate 的处理一致；验证分组/显示字段、row/column desktop interactions、keyboard、panel resize/layout restore、edit authority、Export Studio preview、三类核心导出（按本期真实范围）、preset 保存/重开、cancel/late result、filename/rich-text safety、Creative 范围/方法迁移/派生产物不反写。Traceability 中 Results + Native Studio Design System 相关章节须有 evidence/deferred/non-goal。
+
+## Phase 03 继承的冻结前置条件
+
+- buildResultsDataset 已冻结最小 derived-query contract：输入 Project/Shot/AnalysisRecord/Evidence/Profile，输出携带 structure/analysis/profile revision 的 read model，不写回 canonical facts。
+- 默认 dataset 只包含符合 Phase 03 eligibility 的正式记录；stale 仅在显式 includeStale 时进入，并继续携带 stale/provenance/evidence 信息。Candidate 不直接进入正式 Results。
+- Export/Creative 后续必须基于该 authority 方向演进；现有 overlay/report DTO 中的 analysisFields 只允许是派生展示结构，不得重新成为 persistence owner。
+- Template 的 TemplateExportMapping typed boundary 已冻结；Phase 08 负责持久化/preset/UI/任务复现能力，不重新定义 field semantics。
+
+## Phase 04 导航迁移继承
+
+- 旧 `create` 一级 stage 正式落到 **Results / creative**；Phase 08 不得重新建立独立 Create Workspace。
+- 旧 `learn` 中只读的成果浏览、聚合、回看/消费能力可迁入 Results/Data Table 或其他 Results 二级 view；一旦涉及修改 Notes/Evidence/AnalysisRecord，必须导航回 Analysis Authority，不在 Results 内建立第二编辑源。
+- 盘点旧 `overview` 聚合逻辑时必须区分语义：影片结构/节奏/Scene 时间结构属于 Analysis Timeline，不因为旧代码名叫 overview 就迁入 Results；只有真正“消费已确认分析成果”的聚合才进入 ResultsDataset。
+- Results canonical navigation 只使用 Results + `data/export/creative` 等二级 view/mode；不得继续产生 `stage=create` / `stage=learn`。
 
 ## Git / 验证硬门
 

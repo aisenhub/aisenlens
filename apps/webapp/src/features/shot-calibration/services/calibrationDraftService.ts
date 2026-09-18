@@ -18,23 +18,13 @@ function assertInteger(value: number, label: string, min = 0) {
 }
 
 export function formalShotsSignature(shots: readonly StoredShotRecord[]): string {
-  // The editor creates a transient full-length placeholder before the first
-  // formal save. It has no stable identity and must not invalidate a draft
-  // merely because the page was refreshed.
   const meaningfulShots = shots.length === 1 && shots[0]?.startFrame === 0 ? [] : shots
-  return JSON.stringify(meaningfulShots.map((shot) => [shot.order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.primaryScreenshotId, shot.screenshotIds, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId, shot.analysisFields, shot.description, shot.notes]))
+  return JSON.stringify(meaningfulShots.map((shot) => [shot.id, shot.order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.revision, shot.structureRevision, shot.lineage, shot.primaryScreenshotId, shot.screenshotIds, shot.firstFrameScreenshotId, shot.lastFrameScreenshotId]))
 }
 
 export function isTransientFullFilmPlaceholder(shots: readonly StoredShotRecord[]): boolean {
   const [shot] = shots
-  const hasMeaningfulAnalysisValue = (value: StoredShotRecord["analysisFields"][string]) => {
-    if (!value) return false
-    if (value.state !== "set") return true
-    if (typeof value.value === "string") return value.value.trim().length > 0
-    if (Array.isArray(value.value)) return value.value.length > 0
-    return true
-  }
-  return shots.length === 1 && shot?.startFrame === 0 && shot.endFrame > 0 && shot.status === "draft" && (shot.detection === null || shot.detection.source === "manual") && shot.primaryScreenshotId === null && shot.screenshotIds.length === 0 && shot.firstFrameScreenshotId === null && shot.lastFrameScreenshotId === null && Object.values(shot.analysisFields).every((value) => !hasMeaningfulAnalysisValue(value)) && shot.description.trim() === "" && shot.notes.trim() === ""
+  return shots.length === 1 && shot?.startFrame === 0 && shot.endFrame > 0 && shot.status === "draft" && (shot.detection === null || shot.detection.source === "manual") && shot.primaryScreenshotId === null && shot.screenshotIds.length === 0 && shot.firstFrameScreenshotId === null && shot.lastFrameScreenshotId === null
 }
 
 export function shouldSeedCalibrationFromDetection(task: AutoShotTaskRecord | null, shots: readonly StoredShotRecord[]): boolean {

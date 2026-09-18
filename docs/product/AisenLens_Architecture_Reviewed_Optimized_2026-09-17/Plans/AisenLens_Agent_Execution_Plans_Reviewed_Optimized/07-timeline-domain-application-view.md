@@ -66,18 +66,27 @@ Phase 07 必须覆盖 `TIMELINE_ARCHITECTURE.md` 的 Domain + Application + View
 
 ### View Adapter / resource / performance
 - View Adapter 只接 query/read model，不直接读写 IndexedDB canonical；viewport/zoom math、semantic zoom、信息密度、可视范围查询、播放高频更新分层。
+- Timeline 必须按 Native Studio direct-manipulation contract 实现：boundary/clip hit-zone 大于可见线、hover 即时 affordance、pointer capture、drag live preview、invalid target、snap feedback、safe cancel、commit-on-release；禁止 drag 中频繁 persistence。
 - 缩略图/波形是可重建缓存；有 cache upper bound、解码队列/并发/内存预算和取消；late cache result 同样做 task/revision 校验。
-- 避免 playback position 造成无关树重渲染；大 fixture 验证 pan/zoom/drag/playback/track density/thumbnail/waveform。
+- 避免 playback position 造成无关树重渲染；zoom 改信息密度而不是缩放整个 DOM；大 fixture 验证 pan/zoom/drag/playback/track density/thumbnail/waveform 和持续交互流畅度。
 
 ### Context / AI / module / storage evolution
 - Context Builder 从正式 read model 选择输入并带 dependency revision；输出先校验。
 - AI structure suggestion 使用独立 candidate 状态机，accept 前不得发正式结构 mutation；Phase 09 接真实 provider。
 - 模块边界遵守 Domain→Application→Workspace→View 方向；共享时间/range/structure 逻辑不可藏在 React/Zustand UI。
-- 存储演进保留旧数据兼容与迁移路径；不得通过清库或长期双 schema 解决 Timeline 重构。
+- Phase 07 的存储起点是 **v19 frozen baseline**，不恢复 v1–v18 legacy compatibility。若 Timeline 需要新增 v20+ 持久结构，必须使用 versioned non-destructive migration、backup/recovery 与 rollback/abort 验证；不得通过清库或长期双 schema 解决 Timeline 重构。
 
 ## 验收矩阵硬门
 
-除原测试外，必须把 Timeline 文档的验收矩阵逐项映射到测试/浏览器证据：range/VFR、层级不变量、identity/reference preservation、promote/demote、非法数据恢复、Marker/Beat/Event、Track preference persistence、contextual inspector、semantic zoom/LOD、cache budget、AI candidate、旧数据迁移。任何未覆盖项必须明确 deferred/non-goal 与理由。
+除原测试外，必须把 Timeline 文档的验收矩阵逐项映射到测试/浏览器证据：range/VFR、层级不变量、identity/reference preservation、promote/demote、非法数据恢复、Marker/Beat/Event、Track preference persistence、contextual inspector、semantic zoom/LOD、cache budget、AI candidate、v19+ schema migration（仅在本阶段确有 schema evolution 时）。任何未覆盖项必须明确 deferred/non-goal 与理由。
+
+## Phase 03 继承的冻结前置条件
+
+- Timeline 的数据读取基线已冻结为派生 read model：buildTimelineReadModel 从 ProjectRecord.structureRevision、canonical Shot 与 AnalysisRecord 构造 track/item；不得创建 Timeline 私有 Shot/Analysis persistence。
+- Analysis track item 保留 record status/revision；stale 只能作为显式状态展示，不能被 Timeline 重新写成 confirmed。
+- Phase 07 可扩展 Domain/Application/View、Track/Preference、commands 与 LOD，但结构 mutation 仍必须回到 Phase 05 Shot Authority，Analysis mutation 仍回到 Phase 03 Analysis Authority。
+- v19 是 Phase 07 的存储起点；Timeline viewport/hover/zoom 等 view state 不得借 schema 演进进入 canonical domain store。
+- 所谓“旧数据迁移”在本阶段仅指 **v19 之后已经冻结/可能包含用户数据的 schema 演进**；验收矩阵不得要求重新支持 pre-v19 开发数据。
 
 ## Git / 验证硬门
 

@@ -76,95 +76,139 @@
 | 301 | 6.3 成果应用 | 未开始 |
 | 325 | 7. 下沉后的详细设计边界 | 未开始 |
 | 338 | 32. 全局数据流 | 未开始 |
-| 385 | 33. 全局 UI 层级原则 | 未开始 |
-| 389 | ↳ ↳ Workspace | 未开始 |
-| 405 | ↳ ↳ Drawer / Sheet | 未开始 |
-| 420 | ↳ ↳ Inspector | 未开始 |
-| 434 | ↳ ↳ Modal | 未开始 |
-| 450 | ↳ ↳ Dropdown / Popover | 未开始 |
-| 465 | 34. 交互语言原则 | 未开始 |
-| 467 | ↳ 34.1 Workspace 是“工作的地方” | 未开始 |
-| 473 | ↳ 34.2 Settings 是“改变工作方式的地方” | 未开始 |
-| 479 | ↳ 34.3 正常状态安静，异常状态突出 | 未开始 |
-| 497 | ↳ 34.4 用户语言优先于工程语言 | 未开始 |
-| 522 | 35. 视觉信息密度原则 | 未开始 |
-| 538 | 36. 页面关系总结 | 未开始 |
-| 568 | 37. 推荐的产品定位表达 | 未开始 |
+| 385 | 33. Native Studio 全局窗口层级 | 未开始 |
+| 389 | ↳ ↳ App Window / Global Chrome | 未开始 |
+| 393 | ↳ ↳ Workspace Panels | 未开始 |
+| 397 | ↳ ↳ Floating Chrome | 未开始 |
+| 401 | ↳ ↳ Modal | 未开始 |
+| 407 | 34. Native Studio 全局交互契约 | 未开始 |
+| 409 | ↳ 34.1 Single-window continuity | 未开始 |
+| 413 | ↳ 34.2 Direct manipulation | 未开始 |
+| 417 | ↳ 34.3 Source-anchored actions | 未开始 |
+| 421 | ↳ 34.4 Background work stays nonblocking | 未开始 |
+| 425 | ↳ 34.5 Desktop input parity | 未开始 |
+| 429 | ↳ 34.6 User-facing language | 未开始 |
+| 435 | 35. Native Studio 信息密度与布局 | 未开始 |
+| 455 | 36. 页面关系总结 | 未开始 |
+| 485 | 37. 推荐的产品定位表达 | 未开始 |
 
 ### `00-global/WORKSPACE_DESIGN_SYSTEM.md` → Phase 04
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 26 | AisenLens Workspace Design System | 未开始 |
-| 34 | ↳ 1. Design Philosophy | 未开始 |
-| 51 | ↳ ↳ 1.1 核心原则 | 未开始 |
-| 53 | ↳ ↳ ↳ Content First | 未开始 |
-| 75 | ↳ ↳ ↳ Surface over Border | 未开始 |
-| 95 | ↳ ↳ ↳ Progressive Disclosure | 未开始 |
-| 114 | ↳ ↳ ↳ Selection Driven Workspace | 未开始 |
-| 138 | ↳ ↳ ↳ Contextual Tools | 未开始 |
-| 166 | 2. Workspace Architecture | 未开始 |
-| 203 | 3. Recommended Layout | 未开始 |
-| 234 | 4. Surface System | 未开始 |
-| 267 | 5. Dark Theme | 未开始 |
-| 329 | 6. Light Theme | 未开始 |
-| 399 | 7. Viewer Rule | 未开始 |
-| 425 | 8. Accent Color | 未开始 |
-| 458 | 9. Semantic Colors | 未开始 |
-| 482 | 10. Typography | 未开始 |
-| 547 | 11. Spacing System | 未开始 |
-| 595 | 12. Radius System | 未开始 |
-| 631 | 13. Border Rules | 未开始 |
-| 665 | 14. Shadow Rules | 未开始 |
-| 699 | 15. Button System | 未开始 |
-| 752 | 16. Icon Button | 未开始 |
-| 795 | 17. Input System | 未开始 |
-| 828 | 18. Focus Ring | 未开始 |
-| 852 | 19. Shot Card | 未开始 |
-| 886 | 20. Shot Card States | 未开始 |
-| 944 | 21. Shot Card Hover Preview | 未开始 |
-| 973 | 22. Shot Strip | 未开始 |
-| 1013 | 23. Navigation Panel | 未开始 |
-| 1058 | 24. Inspector | 未开始 |
-| 1098 | 25. Inspector Section | 未开始 |
-| 1132 | 26. Inspector Density | 未开始 |
-| 1157 | 27. Toolbar | 未开始 |
-| 1173 | ↳ Context Toolbar | 未开始 |
-| 1205 | 28. Toolbar Density | 未开始 |
-| 1229 | 29. Popover | 未开始 |
-| 1264 | 30. Context Menu | 未开始 |
-| 1297 | 31. Command Palette | 未开始 |
-| 1322 | 32. Interaction State Model | 未开始 |
-| 1341 | 33. Hover Rule | 未开始 |
-| 1362 | 34. Selected Rule | 未开始 |
-| 1383 | 35. Motion | 未开始 |
-| 1431 | 36. Easing | 未开始 |
-| 1448 | 37. Media First Rule | 未开始 |
-| 1475 | 38. Density Modes | 未开始 |
-| 1479 | ↳ ↳ Visual Mode | 未开始 |
-| 1490 | ↳ ↳ Analysis Mode | 未开始 |
-| 1498 | ↳ ↳ Data Mode | 未开始 |
-| 1508 | 39. Workspace Modes | 未开始 |
-| 1554 | 40. View Preference | 未开始 |
-| 1580 | 41. Empty States | 未开始 |
-| 1607 | 42. Loading | 未开始 |
-| 1638 | 43. AI UI Rule | 未开始 |
-| 1674 | 44. AI Analysis Component | 未开始 |
-| 1708 | 45. Editing Philosophy | 未开始 |
-| 1731 | 46. Accessibility | 未开始 |
-| 1765 | 47. Keyboard First | 未开始 |
-| 1801 | 48. Tooltip | 未开始 |
-| 1819 | 49. Design Anti-Patterns | 未开始 |
-| 1823 | ↳ ↳ Dashboardization | 未开始 |
-| 1834 | ↳ ↳ Card Everything | 未开始 |
-| 1848 | ↳ ↳ Rainbow UI | 未开始 |
-| 1864 | ↳ ↳ Huge Radius | 未开始 |
-| 1876 | ↳ ↳ Heavy Shadow | 未开始 |
-| 1882 | ↳ ↳ Permanent Controls | 未开始 |
-| 1888 | ↳ ↳ Deep Page Navigation | 未开始 |
-| 1894 | 50. Final Visual Rule | 未开始 |
-| 1912 | 51. Final Design Formula | 未开始 |
-| 1954 | 52. One Sentence Design Principle | 未开始 |
+| 32 | AisenLens Native Studio Design System | 未开始 |
+| 39 | ↳ 0. Supersession | 未开始 |
+| 51 | 1. Product Experience Target | 未开始 |
+| 74 | 2. Native Studio Principles | 未开始 |
+| 76 | ↳ 2.1 Single-Window Continuity | 未开始 |
+| 100 | ↳ 2.2 Spatial UI | 未开始 |
+| 114 | ↳ 2.3 Direct Manipulation First | 未开始 |
+| 132 | ↳ 2.4 Source-Anchored Interaction | 未开始 |
+| 154 | ↳ 2.5 Immediate Feedback | 未开始 |
+| 168 | ↳ 2.6 Performance Is Part of Design | 未开始 |
+| 185 | ↳ 2.7 Keyboard + Pointer Parity | 未开始 |
+| 196 | ↳ 2.8 Personal Workspace | 未开始 |
+| 213 | 3. Experience Character | 未开始 |
+| 245 | 4. Layer Architecture | 未开始 |
+| 256 | ↳ Layer 0 — Window Background | 未开始 |
+| 267 | ↳ Layer 1 — Work Surface | 未开始 |
+| 280 | ↳ Layer 2 — Fixed Chrome | 未开始 |
+| 293 | ↳ Layer 3 — Floating Chrome | 未开始 |
+| 310 | 5. Material System | 未开始 |
+| 312 | ↳ 5.1 Solid Work Surface | 未开始 |
+| 323 | ↳ 5.2 Studio Glass | 未开始 |
+| 357 | ↳ 5.3 Depth | 未开始 |
+| 373 | 6. Color System | 未开始 |
+| 383 | ↳ 6.1 Dark Theme | 未开始 |
+| 429 | ↳ 6.2 Light Theme | 未开始 |
+| 474 | ↳ 6.3 Intelligence Signal | 未开始 |
+| 500 | ↳ 6.4 Status Mapping | 未开始 |
+| 519 | 7. Token Architecture | 未开始 |
+| 533 | ↳ 7.1 Primitive | 未开始 |
+| 549 | ↳ 7.2 Semantic | 未开始 |
+| 569 | ↳ 7.3 Component | 未开始 |
+| 585 | ↳ 7.4 Framework Adapter | 未开始 |
+| 606 | 8. Typography | 未开始 |
+| 651 | 9. Spacing & Geometry | 未开始 |
+| 682 | 10. Radius & Concentric Geometry | 未开始 |
+| 706 | 11. Hairlines & Separators | 未开始 |
+| 729 | 12. Shadow & Elevation | 未开始 |
+| 750 | 13. Window & Panel Geometry | 未开始 |
+| 752 | ↳ 13.1 Global Window Bar | 未开始 |
+| 771 | ↳ 13.2 Workspace Rail | 未开始 |
+| 789 | ↳ 13.3 Navigation / Structure Panel | 未开始 |
+| 801 | ↳ 13.4 Inspector | 未开始 |
+| 813 | ↳ 13.5 Timeline / Context Panel | 未开始 |
+| 830 | 14. Resize Behavior | 未开始 |
+| 855 | 15. Interaction State Model | 未开始 |
+| 884 | ↳ Hover | 未开始 |
+| 891 | ↳ Pressed | 未开始 |
+| 898 | ↳ Selected | 未开始 |
+| 909 | ↳ Focus | 未开始 |
+| 921 | 16. Motion System | 未开始 |
+| 927 | ↳ 16.1 Motion Tokens | 未开始 |
+| 942 | ↳ 16.2 Rules | 未开始 |
+| 954 | ↳ 16.3 Reduced Motion | 未开始 |
+| 965 | 17. Direct Manipulation Contract | 未开始 |
+| 982 | 18. Cursor Language | 未开始 |
+| 1002 | 19. Button & Control System | 未开始 |
+| 1004 | ↳ 19.1 Heights | 未开始 |
+| 1015 | ↳ 19.2 Button Types | 未开始 |
+| 1029 | ↳ 19.3 Icon Button | 未开始 |
+| 1041 | ↳ 19.4 Inputs | 未开始 |
+| 1053 | 20. Toolbar | 未开始 |
+| 1069 | 21. Context Menu | 未开始 |
+| 1085 | 22. Command Palette | 未开始 |
+| 1104 | 23. Sidebars / Panels | 未开始 |
+| 1126 | 24. Viewer | 未开始 |
+| 1144 | 25. Timeline | 未开始 |
+| 1169 | 26. Inspector | 未开始 |
+| 1187 | 27. Data Table | 未开始 |
+| 1206 | 28. Shot Grid / Media Grid | 未开始 |
+| 1224 | 29. AI Interaction Material | 未开始 |
+| 1247 | 30. Loading & Background Work | 未开始 |
+| 1271 | 31. Save & Sync Feedback | 未开始 |
+| 1290 | 32. Empty State | 未开始 |
+| 1301 | 33. Notifications | 未开始 |
+| 1315 | 34. View Preference Ownership | 未开始 |
+| 1341 | 35. Workspace Layout Memory | 未开始 |
+| 1363 | 36. Density | 未开始 |
+| 1373 | ↳ ↳ Comfort | 未开始 |
+| 1378 | ↳ ↳ Standard | 未开始 |
+| 1382 | ↳ ↳ Compact | 未开始 |
+| 1390 | 37. Workspace View / Mode | 未开始 |
+| 1406 | 38. Responsive Desktop Matrix | 未开始 |
+| 1410 | ↳ ≥ 1440 — Pro Layout | 未开始 |
+| 1420 | ↳ 1180–1439 — Compact Desktop | 未开始 |
+| 1427 | ↳ 960–1179 — Focus Desktop | 未开始 |
+| 1434 | ↳ < 960 — Review / Survival Layout | 未开始 |
+| 1449 | 39. Scroll Behavior | 未开始 |
+| 1461 | 40. Keyboard System | 未开始 |
+| 1489 | 41. Accessibility | 未开始 |
+| 1507 | 42. Performance Experience Budget | 未开始 |
+| 1511 | ↳ Pointer / Hover | 未开始 |
+| 1517 | ↳ Drag / Resize / Scrub | 未开始 |
+| 1524 | ↳ Large Lists | 未开始 |
+| 1529 | ↳ Blur / Glass | 未开始 |
+| 1535 | ↳ Motion | 未开始 |
+| 1543 | 43. Overlay Layer Tokens | 未开始 |
+| 1564 | 44. Current Repository Migration | 未开始 |
+| 1582 | ↳ 44.1 Migration Mapping | 未开始 |
+| 1608 | 45. CSS / Component Enforcement | 未开始 |
+| 1633 | 46. Visual Regression Matrix | 未开始 |
+| 1637 | ↳ Phase 04 | 未开始 |
+| 1652 | ↳ Phase 05 | 未开始 |
+| 1660 | ↳ Phase 06 | 未开始 |
+| 1671 | ↳ Phase 07 | 未开始 |
+| 1680 | ↳ Phase 08 | 未开始 |
+| 1692 | 47. Phase Responsibility | 未开始 |
+| 1694 | ↳ Phase 04 | 未开始 |
+| 1710 | ↳ Phase 05–08 | 未开始 |
+| 1720 | ↳ Phase 09 | 未开始 |
+| 1724 | ↳ Phase 10 | 未开始 |
+| 1728 | ↳ Phase 11 | 未开始 |
+| 1734 | 48. Native Studio Acceptance | 未开始 |
+| 1751 | 49. One Sentence Design Principle | 未开始 |
 
 ### `01-preparation/PREPARATION_WORKSPACE.md` → Phase 05
 
@@ -234,19 +278,17 @@
 | 1514 | 39. Modal / Drawer / Inspector 使用规范 | 未开始 |
 | 1540 | 40. 信息密度判断原则 | 未开始 |
 | 1572 | 41. 页面视觉层级 | 未开始 |
-| 1611 | 42. 视觉风格建议 | 未开始 |
-| 1613 | ↳ 42.1 减少 Border Card | 未开始 |
-| 1635 | ↳ 42.2 正常状态弱化，异常状态强化 | 未开始 |
-| 1661 | 43. 移动端设计 | 未开始 |
-| 1699 | 44. 推荐组件架构 | 未开始 |
-| 1739 | 45. 现有组件迁移建议 | 未开始 |
-| 1762 | 46. 重构优先级 | 未开始 |
-| 1764 | ↳ V1：必须完成 | 未开始 |
-| 1777 | ↳ V1.5：高价值增强 | 未开始 |
-| 1786 | ↳ V2：智能复核 | 未开始 |
-| 1796 | 47. 与全局工作台方案的最终对齐 | 未开始 |
-| 1839 | 48. 最终理想体验 | 未开始 |
-| 1889 | 49. 一句话设计原则总结 | 未开始 |
+| 1611 | 42. Native Studio 视觉与交互继承 | 未开始 |
+| 1627 | 43. 移动端设计 | 未开始 |
+| 1665 | 44. 推荐组件架构 | 未开始 |
+| 1705 | 45. 现有组件迁移建议 | 未开始 |
+| 1728 | 46. 重构优先级 | 未开始 |
+| 1730 | ↳ V1：必须完成 | 未开始 |
+| 1743 | ↳ V1.5：高价值增强 | 未开始 |
+| 1752 | ↳ V2：智能复核 | 未开始 |
+| 1762 | 47. 与全局工作台方案的最终对齐 | 未开始 |
+| 1805 | 48. 最终理想体验 | 未开始 |
+| 1855 | 49. 一句话设计原则总结 | 未开始 |
 
 ### `01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md` → Phase 05 (仅已批准/现有需求；其余 deferred)
 
@@ -478,52 +520,52 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 29 | AisenLens Analysis Data Model | 未开始 |
-| 35 | 19. Template 与数据库 Schema 必须分离 | 未开始 |
-| 49 | 20. Field Definition | 未开始 |
-| 97 | 21. Field ID 必须稳定 | 未开始 |
-| 123 | 22. Template Field Configuration | 未开始 |
-| 153 | 23. Template 的正确定位 | 未开始 |
-| 174 | 24. Template 切换不会删除数据 | 未开始 |
-| 204 | 25. Analysis Record | 未开始 |
-| 240 | 26. AI Candidate 不属于 Analysis Record | 未开始 |
-| 250 | 27. Analysis Candidate | 未开始 |
-| 288 | 28. AI Candidate 状态机 | 未开始 |
-| 322 | 29. 分析数据来源必须区分 | 未开始 |
-| 338 | 30. 不用一个 Confidence 混合所有来源 | 未开始 |
-| 358 | 70. Inspector 与成果应用的数据契约 | 未开始 |
-| 378 | 71. 数据表动态列 | 未开始 |
-| 400 | 72. Template 对成果应用的作用 | 未开始 |
-| 422 | 73. Output Capability | 未开始 |
-| 446 | 74. 成果应用默认只消费 Confirmed Data | 未开始 |
-| 464 | 75. stale 在成果数据表中的表现 | 未开始 |
-| 492 | 76. AI Candidate 不作为成果正式列 | 未开始 |
-| 514 | 77. 创作转化的数据来源 | 未开始 |
-| 538 | 78. Shot 修改后的 stale | 未开始 |
-| 564 | 79. Inspector 的 Data Review 提示 | 未开始 |
-| 578 | 80. Data Review Mode | 未开始 |
-| 602 | 81. stale Review 与 AI Candidate 可以同时存在 | 未开始 |
-| 624 | 82. Data Review 与 AI Review 必须分开 | 未开始 |
-| 643 | 100. Inspector 与 Timeline 不建立重复数据 | 未开始 |
-| 673 | 101. 数据变化传播 | 未开始 |
-| 700 | 102. 数据失效传播 | 未开始 |
-| 729 | 103. Inspector 的最终数据流 | 未开始 |
-| 762 | 104. 冻结数据原则 | 未开始 |
+| 29 | AisenLens Analysis Data Model | 已实现（Phase 03） |
+| 35 | 19. Template 与数据库 Schema 必须分离 | 已实现（Phase 03） |
+| 49 | 20. Field Definition | 已实现（Phase 03） |
+| 97 | 21. Field ID 必须稳定 | 已实现（Phase 03） |
+| 123 | 22. Template Field Configuration | 已实现（Phase 03） |
+| 153 | 23. Template 的正确定位 | 已实现（Phase 03） |
+| 174 | 24. Template 切换不会删除数据 | 已实现（Phase 03） |
+| 204 | 25. Analysis Record | 已实现（Phase 03） |
+| 240 | 26. AI Candidate 不属于 Analysis Record | 已实现（Phase 03） |
+| 250 | 27. Analysis Candidate | 已实现（Phase 03） |
+| 288 | 28. AI Candidate 状态机 | 已实现（Phase 03） |
+| 322 | 29. 分析数据来源必须区分 | 已实现（Phase 03） |
+| 338 | 30. 不用一个 Confidence 混合所有来源 | 已实现（Phase 03） |
+| 358 | 70. Inspector 与成果应用的数据契约 | 已实现（Phase 03 read contract；完整 UI 延期 Phase 06/08） |
+| 378 | 71. 数据表动态列 | 已实现（Phase 03 read contract；Results UI 延期 Phase 08） |
+| 400 | 72. Template 对成果应用的作用 | 已实现（Phase 03 contract；完整 Results UI 延期 Phase 08） |
+| 422 | 73. Output Capability | 已实现（Phase 03 contract；完整 Export UI 延期 Phase 08） |
+| 446 | 74. 成果应用默认只消费 Confirmed Data | 已实现（Phase 03 contract；Results consumer 延期 Phase 08） |
+| 464 | 75. stale 在成果数据表中的表现 | 已实现（Phase 03 read contract；Results UI 延期 Phase 08） |
+| 492 | 76. AI Candidate 不作为成果正式列 | 已实现（Phase 03） |
+| 514 | 77. 创作转化的数据来源 | 已实现（Phase 03 contract；Creative UI 延期 Phase 08） |
+| 538 | 78. Shot 修改后的 stale | 已实现（Phase 03） |
+| 564 | 79. Inspector 的 Data Review 提示 | 已实现（Phase 03 contract；Inspector UI 延期 Phase 06） |
+| 578 | 80. Data Review Mode | 已实现（Phase 03 contract；Inspector UI 延期 Phase 06） |
+| 602 | 81. stale Review 与 AI Candidate 可以同时存在 | 已实现（Phase 03） |
+| 624 | 82. Data Review 与 AI Review 必须分开 | 已实现（Phase 03 contract；完整 UI 延期 Phase 06/09） |
+| 643 | 100. Inspector 与 Timeline 不建立重复数据 | 已实现（Phase 03 read contract；Timeline UI 延期 Phase 07） |
+| 673 | 101. 数据变化传播 | 已实现（Phase 03） |
+| 700 | 102. 数据失效传播 | 已实现（Phase 03） |
+| 729 | 103. Inspector 的最终数据流 | 已实现（Phase 03 read contract；完整 UI 延期 Phase 06/07/08） |
+| 762 | 104. 冻结数据原则 | 已实现（Phase 03） |
 
 ### `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` → Phase 03/06
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 24 | AisenLens Evidence / Provenance 契约 | 未开始 |
-| 28 | 37. Provenance | 未开始 |
-| 76 | 39. Evidence 是一等数据 | 未开始 |
-| 94 | 40. Evidence 类型 | 未开始 |
-| 118 | 41. EvidenceRef | 未开始 |
-| 147 | 42. Evidence 核心原则 | 未开始 |
-| 159 | 47. Evidence Policy | 未开始 |
-| 172 | 48. Evidence Policy 示例 | 未开始 |
-| 195 | 49. Evidence Required 不应阻止早期记录 | 未开始 |
-| 220 | 50. 冻结原则 | 未开始 |
+| 24 | AisenLens Evidence / Provenance 契约 | 已实现（Phase 03；完整选择器 UI 延期 Phase 06） |
+| 28 | 37. Provenance | 已实现（Phase 03） |
+| 76 | 39. Evidence 是一等数据 | 已实现（Phase 03） |
+| 94 | 40. Evidence 类型 | 已实现（Phase 03；完整选择器 UI 延期 Phase 06） |
+| 118 | 41. EvidenceRef | 已实现（Phase 03） |
+| 147 | 42. Evidence 核心原则 | 已实现（Phase 03） |
+| 159 | 47. Evidence Policy | 已实现（Phase 03；UI policy 消费延期 Phase 06/08） |
+| 172 | 48. Evidence Policy 示例 | 已实现（Phase 03） |
+| 195 | 49. Evidence Required 不应阻止早期记录 | 已实现（Phase 03） |
+| 220 | 50. 冻结原则 | 已实现（Phase 03） |
 
 ### `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` → Phase 05
 
@@ -544,23 +586,23 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 32 | AisenLens Template Contract | 未开始 |
-| 34 | ↳ Purpose | 未开始 |
-| 38 | ↳ Core separation | 未开始 |
-| 51 | ↳ Canonical concepts | 未开始 |
-| 53 | ↳ ↳ TemplateDefinition / AnalysisProfile | 未开始 |
-| 57 | ↳ ↳ AnalysisSchema | 未开始 |
-| 61 | ↳ ↳ UILayoutDefinition | 未开始 |
-| 65 | ↳ ↳ RendererDefinition | 未开始 |
-| 69 | ↳ ↳ PromptDefinition | 未开始 |
-| 73 | ↳ ↳ ContextDefinition | 未开始 |
-| 77 | ↳ ↳ ExportMapping | 未开始 |
-| 81 | ↳ Persistence | 未开始 |
-| 89 | ↳ Invariants | 未开始 |
-| 99 | ↳ Current vs Target | 未开始 |
-| 101 | ↳ ↳ CURRENT（仓库 2026-09-17 核对） | 未开始 |
-| 105 | ↳ ↳ TARGET | 未开始 |
-| 109 | ↳ Consumers | 未开始 |
+| 32 | AisenLens Template Contract | 已实现（Phase 03 typed boundary；完整 UI/provider wiring 延期） |
+| 34 | ↳ Purpose | 已实现（Phase 03） |
+| 38 | ↳ Core separation | 已实现（Phase 03） |
+| 51 | ↳ Canonical concepts | 已实现（Phase 03） |
+| 53 | ↳ ↳ TemplateDefinition / AnalysisProfile | 已实现（Phase 03） |
+| 57 | ↳ ↳ AnalysisSchema | 已实现（Phase 03） |
+| 61 | ↳ ↳ UILayoutDefinition | 已实现（Phase 03 typed boundary；UI 实施延期 Phase 06） |
+| 65 | ↳ ↳ RendererDefinition | 已实现（Phase 03 typed boundary；UI 实施延期 Phase 06） |
+| 69 | ↳ ↳ PromptDefinition | 已实现（Phase 03 typed boundary；provider 延期 Phase 09） |
+| 73 | ↳ ↳ ContextDefinition | 已实现（Phase 03 typed boundary；provider 延期 Phase 09） |
+| 77 | ↳ ↳ ExportMapping | 已实现（Phase 03 typed boundary；Export UI 延期 Phase 08） |
+| 81 | ↳ Persistence | 已实现（Phase 03 baseline） |
+| 89 | ↳ Invariants | 已实现（Phase 03） |
+| 99 | ↳ Current vs Target | 已核对（Phase 03；目标 UI/provider 仍延期） |
+| 101 | ↳ ↳ CURRENT（仓库 2026-09-17 核对） | 已核对（Phase 03） |
+| 105 | ↳ ↳ TARGET | 已批准延期（Phase 06/08/09） |
+| 109 | ↳ Consumers | 已实现（Phase 03 contract；完整消费者延期 Phase 06/08/09） |
 
 ### `04-domain/timeline/TIMELINE_ARCHITECTURE.md` → Phase 07
 
@@ -650,7 +692,7 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 1 | MIGRATION PLAN | 未开始 |
+| 1 | MIGRATION PLAN | 已实现（Phase 03 v19 freeze；后续 migration items 延期） |
 
 ### `implementation/AI_DEVELOPMENT_GUIDE.md` → Phase 01/11
 

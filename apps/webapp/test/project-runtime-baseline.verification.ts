@@ -20,9 +20,9 @@ function makeShot(projectId: string, id: string, order: number): StoredShotRecor
     screenshotIds: [],
     firstFrameScreenshotId: null,
     lastFrameScreenshotId: null,
-    analysisFields: {},
-    description: "",
-    notes: "",
+    revision: 1,
+    structureRevision: 0,
+    lineage: { origin: "manual", parentShotIds: [] },
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -136,7 +136,7 @@ async function verifyAtomicUpgradeRollback(): Promise<boolean> {
 }
 
 export async function runProjectRuntimeBaselineVerification() {
-  const migrationPlan = planProjectDatabaseMigration(17, 18);
+  const migrationPlan = planProjectDatabaseMigration(18, 19);
   const atomicUpgradeRollback = await verifyAtomicUpgradeRollback();
   const projectCountBeforeInvalidImport = (await projectRepository.listProjects()).length;
   let malformedBackupRejected = false;
@@ -147,7 +147,7 @@ export async function runProjectRuntimeBaselineVerification() {
     malformedBackupRejected = true;
   }
   try {
-    const bytes = manifestZip({ format: "aisenlens-project-backup", version: 4 });
+    const bytes = manifestZip({ format: "aisenlens-project-backup", version: 5 });
     await importProjectBackup(new File([bytes], "future.aisenlens-backup.zip", { type: "application/zip" }));
   } catch (error) {
     tooNewBackupRejected = error instanceof RuntimeContractError && error.code === "VALIDATION_ERROR";

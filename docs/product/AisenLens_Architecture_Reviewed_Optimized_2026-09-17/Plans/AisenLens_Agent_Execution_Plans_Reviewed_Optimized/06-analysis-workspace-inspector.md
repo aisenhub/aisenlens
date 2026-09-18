@@ -9,7 +9,7 @@
 
 ## 必读
 
-`ANALYSIS_WORKSPACE.md`、`ANALYSIS_INSPECTOR.md`、Analysis Data、Evidence、Template、Global Design System、Shot correction contract。
+`ANALYSIS_WORKSPACE.md`、`ANALYSIS_INSPECTOR.md`、Analysis Data、Evidence、Template、`04-domain/ai/AI_ANALYSIS_CONTRACT.md`、Global Design System、Phase 04 Return Context contract、Shot correction contract。
 
 ## 四类状态必须独立
 
@@ -58,7 +58,7 @@
 - 完整桌面结构包括 Toolbar、Research Breadcrumb、Structure Navigator、Player Stage、Selection Context Bar、Analysis Inspector、关联 Timeline；不是只拼三栏。
 - Research navigation 明确单击/双击/Enter/Esc/Breadcrumb 行为；selected、playing、research scope、viewport 四种状态分别可视、可测试。
 - Structure Row 针对 Scene/Shot/Sequence/Section 展示各自必要信息、needs-review、fold、selected/playing，不用一个通用 row 抹平层级语义。
-- Player overlay 只显示上下文/分析辅助，不修改原媒体；Playback controls 与 timeline keyboard priority 一致。
+- Player overlay 只显示上下文/分析辅助，不修改原媒体；Playback controls 与 timeline keyboard priority 一致，并使用 Native Studio floating transport/source-anchored chrome。
 
 ### Template / settings / Marker / AI placement
 - 实现 Template Selector 与 Analysis Settings Drawer；Template 与 Shot/Scene/Story 三种分析尺度关系清晰；Template 不直接生成 Timeline Track，Track Preference 独立。
@@ -76,7 +76,7 @@
 ### Shell / entity renderer / header
 - 一个 Inspector Shell，Shot/Scene/Sequence/Section/Film/Story/Marker 使用差异化 renderer；Scene 有 Statistics 与 Interpretation 分区，Story/Sequence/Section/Film 不能只是 Shot 字段列表放大。
 - Header 按 entity 展示身份/上下文/状态；状态不能做成“评分”；More Menu 放低频操作。
-- Body 不用一级 Tabs 堆砌；遵循 view-first/edit-second，Field 是核心单元，技术元数据渐进披露。
+- Body 不用一级 Tabs 堆砌；Field/Section 在同一 Inspector 空间内完成 read↔edit 的原位转换，保持 selection 与 scroll continuity，技术元数据按当前任务按需 reveal。
 
 ### Field / source / review
 - Algorithm/Derived、AI Proposal、Human/Confirmed、Imported 等视觉语义可辨；人工输入默认成为正式工作值并显示 autosave/saved/error。
@@ -99,7 +99,16 @@
 
 ## 完整性验收
 
-真实浏览器至少完成：Toolbar/Breadcrumb 导航、四状态独立、Template/Settings、Marker、各 entity Inspector、view→edit、source visuals、Evidence 全链路、Data Review+AI Review 并存、Field↔Timeline 双向、Correction Split/Merge/Move 返回、selection fallback、panel modes、keyboard/focus、reload/autosave failure。Traceability 中 Analysis Workspace + Inspector 全部章节须有 evidence/deferred/non-goal。
+真实浏览器至少完成：Toolbar/Breadcrumb 导航、四状态独立、Template/Settings、Marker、各 entity Inspector、read↔edit 原位转换、source visuals、Evidence 全链路、Data Review+AI Review 并存、Field↔Timeline 双向、Correction Split/Merge/Move 返回、selection fallback、Navigation/Inspector/Timeline resize + layout memory、Context Menu/Command Palette、keyboard/focus、reload/autosave failure。Traceability 中 Analysis Workspace + Inspector + Native Studio Design System 相关章节须有 evidence/deferred/non-goal。
+
+## Phase 04 / AI Contract 继承
+
+- Phase 06 只实现 **Analysis Workspace** 内部结构，不重新出现 `overview / analyze / learn` 三个一级 stage。旧 Overview 的结构信息进入 Timeline/Structure；旧 Analyze 的 Scenes/Shots/Sound/Research 进入 Analysis view/mode。
+- 旧 Learn 能力必须按 ownership 拆分：仍会编辑/复核 Notes、Evidence、AnalysisRecord 的能力留在 Analysis；纯成果浏览/消费能力进入 Results。不得因为迁移方便保留 Learn 一级入口或私有数据副本。
+- ResearchScope/target/range 的 URL/session 恢复必须沿用 Phase 04 navigation contract；Phase 06 不重新定义第二套 workflow location schema。
+- Correction Return Context 直接消费 Phase 04 类型/语义；split/merge/move 后只把 Shot Authority + Analysis stale/remap 的真实结果填入返回提示，不由 UI 自行推断。
+- AI UI 必须服从 `AI_ANALYSIS_CONTRACT.md`：Candidate ≠ Record，ContextDefinition ≠ ContextManifest，Ask/Proposal 不是正式值；Phase 09 前不得为没有 provider 的路径制造成功态。
+- 即使 UI 提供 Accept/Reject 控件，Accept 也只能调用 revision-gated Analysis Authority；React/local store 不得通过改 status 或直接写 record 模拟采用。
 
 ## Git / 验证硬门
 

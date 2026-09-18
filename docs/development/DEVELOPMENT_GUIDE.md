@@ -58,6 +58,7 @@ corepack pnpm dev:webapp
 corepack pnpm dev:webhome
 corepack pnpm build:web
 corepack pnpm verify:web
+corepack pnpm verify:phase-03
 corepack pnpm scene-engine:verify:core
 corepack pnpm scene-engine:verify:web-preview
 ```
@@ -75,6 +76,16 @@ corepack pnpm scene-engine:verify:web-preview
 6. 修改或新增 UI 组件后运行 `corepack pnpm build`。
 
 保持现有视觉设计和响应式行为；不因为一次功能任务引入新的 UI 框架或无必要的 CSS 文件。
+
+### UI 先行与未接入功能
+
+可以先做 UI 外壳来验证导航、布局和信息架构，但必须让界面诚实反映能力边界：
+
+- Workspace、路由、导航、空态、loading、error、保存状态和禁用状态可以先于完整功能实现。
+- 操作按钮、表单提交和进度反馈必须连接真实的 domain/application/service 与持久化结果；不得使用 no-op handler、假数据或假进度。
+- 暂未接入的功能使用明确的“未接入/即将支持”状态；操作不可用时优先使用原生 `disabled`，并提供可理解的原因。
+- 数据契约尚未冻结时只实现外壳和状态，不提前实现会固定错误模型的详细编辑 UI。
+- 阶段验收时必须区分 `shell/placeholder` 与 `implemented`；只有真实数据、保存、失败和可访问路径都验证通过，才能标记功能已实现。
 
 ## 数据、服务与依赖边界
 

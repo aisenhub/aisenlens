@@ -85,8 +85,9 @@ Phase 01 必须已定位并在实施记录中写出真实路径：Import → Med
 - Undo/Redo、dirty/saving/saved/error、全部完成与“仍有待确认项”都有明确界面；完成后可再次进入复核而不丢状态。
 
 ### Layout / visual / responsive / migration
-- 遵守 Modal/Drawer/Inspector 使用规范、信息密度、视觉层级和“减少 Border Card / 正常弱化异常突出”的设计原则。
-- 桌面为核心；窄屏/移动端按架构的查看/受限编辑边界处理，不为移动端强行复制全量高密度校准体验。
+- 完整继承 Native Studio：Boundary Queue / Frame Pair / Viewer / Inspector / Timeline 位于同一可调工作台；微调、Move、Split、Delete 等优先 source-anchored/direct manipulation，不切换到网页式配置页。
+- Boundary drag / frame-step / resize 在交互中提供 live preview，commit 后再走 Shot Authority；hover/pressed/selected/focus/cursor 使用共享状态，不创建 Calibration 私有视觉语言。
+- 桌面为核心；≥1440 / Compact / Focus Desktop 按 V2 panel matrix 适配，窄屏只保证可恢复 review，不为移动端强行复制全量高密度校准体验。
 - 复用/迁移现有 auto-shot、shot-calibration、scene-calibration、shot 组件；按 V1/V1.5/V2 分级，不把 V2 智能复核误当本期完成条件。
 
 ## Shot 结构影响补强
@@ -96,7 +97,21 @@ Phase 01 必须已定位并在实施记录中写出真实路径：Import → Med
 
 ## 完整性验收
 
-浏览器验收至少覆盖：参数 Drawer/专家设置、真实/不确定进度、运行设置锁定、Boundary Queue 优先级、Frame Pair+视频、Preview、Confirm、微调/当前帧移动/删除/补切、稍后处理、Auto Next、修改后重新确认、Undo/Redo、保存失败、全部完成、重开恢复、媒体丢失/重新关联。Traceability 中 `PREPARATION_WORKSPACE.md` 与 Shot Contract 的所有章节均须有 evidence/deferred/non-goal。
+浏览器验收至少覆盖：参数 Drawer/专家设置、真实/不确定进度、运行设置锁定、Boundary Queue 优先级、Frame Pair+视频、Preview、Confirm、微调/当前帧移动/删除/补切、drag live preview、Context Menu、keyboard confirm、panel resize/layout restore、稍后处理、Auto Next、修改后重新确认、Undo/Redo、保存失败、全部完成、重开恢复、媒体丢失/重新关联。Traceability 中 `PREPARATION_WORKSPACE.md`、Native Studio Design System 与 Shot Contract 的相关章节均须有 evidence/deferred/non-goal。
+
+## Phase 03 继承的冻结前置条件
+
+- Phase 05 不得重新把 Analysis 字段放回 Shot aggregate；Official Shot 的 canonical persistence 仅包含结构、revision 与 lineage。
+- 正式 Shot/Group 结构 transaction 必须推进 structureRevision，并触发 Phase 03 已冻结的 Analysis stale/reconcile 机制；Preparation command 只能提交结构 impact，不能“顺手修正” Analysis semantic value。
+- Phase 03 已为现有 repository 写入口建立结构 revision/stale propagation，这是 Phase 05 收敛成唯一 Shot command authority 的迁移基线，不代表普通 Editor move/split/merge command 收敛已经完成。
+- Backup/Recovery v4 已能保存新的结构+Analysis 分离模型；Phase 05 新增的正式结构字段必须继续进入同一 backup/recovery contract。
+
+## Phase 04 导航契约继承
+
+- 旧 `calibrate` 不再是一级 Workspace；Boundary Review 是 **Preparation 内部 view/mode**。Phase 05 不得为了复用旧组件重新暴露 Calibration 一级入口。
+- Analysis→Preparation correction 必须使用 Phase 04 的 Return Context，并把稳定 Shot/Boundary target 交给 Preparation；结构修改完成后返回上下文只携带 navigation hint，真正的 remap/stale 结果来自 Shot/Analysis authority。
+- 所有旧 `onWorkflowNavigate("calibrate", ...)`、旧 `stage=calibrate` 测试或内部链接在 Phase 05 完成前必须迁到 Preparation/boundary-review 语义；若 Phase 04 留下临时读 adapter，本阶段不得扩大其使用面。
+- Preparation 的 import / detection / boundary-review / completed 是同一 Workspace 的任务状态或 view，不得再次拆成平级一级页面。
 
 ## Git / 验证硬门
 

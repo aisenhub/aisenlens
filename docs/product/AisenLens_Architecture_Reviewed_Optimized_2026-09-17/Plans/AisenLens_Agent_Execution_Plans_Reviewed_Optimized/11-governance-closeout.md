@@ -55,13 +55,17 @@
 - **R-03**：Prompt/Context/ExportMapping 已按 Template Contract 分离到真实模块/配置；未实现部分必须是明确 deferred，不得回退到万能 Template JSON。
 
 ### AI Coding Agent 治理
-- 将 `AI_DEVELOPMENT_GUIDE.md` 的读取规则落实到仓库实际 agent 指南/贡献规则（若仓库已有对应机制），至少保证：Shot/Boundary 修改前读 Shot Contract + Command/Event + 当前 shot code；Timeline 读 Shot Contract + Timeline + State Ownership；Analysis 读 Analysis Data + Evidence；Inspector 读 Analysis Data + Evidence + Inspector；Template 读 Analysis Data + Template Contract + 当前 template code；Results/Export 读 Analysis eligibility + Results + ExportMapping；AI 读 Candidate lifecycle + Evidence + Prompt/Context boundaries。
+- 将 `AI_DEVELOPMENT_GUIDE.md` 的读取规则落实到仓库实际 agent 指南/贡献规则（若仓库已有对应机制），至少保证：Shot/Boundary 修改前读 Shot Contract + Command/Event + 当前 shot code；Timeline 读 Shot Contract + Timeline + State Ownership；Analysis 读 Analysis Data + Evidence；Inspector 读 Analysis Data + Evidence + Inspector + AI Analysis Contract；Template 读 Analysis Data + Template Contract + 当前 template code；Results/Export 读 Analysis eligibility + Results + ExportMapping；AI 必须先读 `04-domain/ai/AI_ANALYSIS_CONTRACT.md`，再读 Candidate/Evidence/Prompt/Context/provider runtime boundaries。
 - 核对没有 feature 内重新定义共享 field/shot/timeline/task/error/revision 语义；没有 Domain→React/Workspace/Zustand 反向依赖。
 
 ### 文档质量与交付
 - dead link、duplicate authority、manifest/source mapping、CURRENT/TARGET、CHANGELOG 状态按真实工具或静态检查核对。
 - 最终 13 个用户级场景外，再确认 Phase 10 的 runtime/security/capacity/diagnostics/feature-rollout gates 均有证据。
 - 未验证/失败/延期保留历史；不得为了“全绿”删除失败记录或改写为从未发生。
+- 最终静态治理扫描必须确认旧六阶段 `prepare/calibrate/overview/analyze/learn/create` 不再作为产品一级 IA；允许历史文档/迁移测试提及，但 canonical navigation writer 与现行 UI 只能产生 Preparation/Analysis/Results + 二级 view/mode。
+- 最终 migration 文档不得重新声称需要 pre-v19 legacy project compatibility 或 `project editRevision`；v19 是 frozen baseline，后续 schema 只按 versioned migration/recovery 纪律演进。
+- 最终 UI 治理扫描必须确认旧 Calm/Cinematic/Primary Violet/legacy blue、旧 `--app-*`、`--ai` 私色、`Arial Narrow` display、feature 私有 palette/radius/shadow/z-index/motion、`transition-all` 不再作为现行设计语言；允许中央短期 alias 仅在有 owner + deletion criterion 时存在。
+- `WORKSPACE_DESIGN_SYSTEM.md` V2 Native Studio 是唯一 UI/UX Source of Truth；Phase 05–09 不得各自形成新的视觉主题、Panel 体系或 interaction grammar。
 
 ## Git / 验证硬门
 

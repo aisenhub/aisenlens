@@ -1,5 +1,3 @@
-import type { AnalysisFieldEntry } from "../template/types";
-
 export type ShotStatus = "draft" | "confirmed";
 
 export type ShotDetectionMeta =
@@ -28,13 +26,22 @@ export interface ShotRecord {
   screenshotIds: string[];
   firstFrameScreenshotId: string | null;
   lastFrameScreenshotId: string | null;
-  analysisFields: Record<string, AnalysisFieldEntry>;
-  description: string;
-  notes: string;
+  revision: number;
+  structureRevision: number;
+  lineage: {
+    origin: "manual" | "detected" | "split" | "merge" | "remapped";
+    parentShotIds: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }
 
+
+export interface ShotAnalysisView extends ShotRecord {
+  analysisFields: Record<string, import("../template/types.ts").AnalysisFieldEntry>;
+  description: string;
+  notes: string;
+}
 export interface ShotFrameRange {
   id: string;
   startFrame: number;

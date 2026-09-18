@@ -2,8 +2,8 @@
 title: "AisenLens Evidence & Provenance Contract"
 doc_type: domain-contract
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - analysis
   - results
@@ -24,6 +24,35 @@ implementation_areas:
 # AisenLens Evidence / Provenance 契约
 
 本文定义分析结论“来自哪里、由什么证据支持”的共享契约。UI 呈现方式由 Analysis Inspector 文档拥有；本文件只拥有数据语义。原章节编号保留用于追溯。
+
+## Phase 03 Frozen Evidence Baseline — 2026-09-18
+
+Evidence 从 Phase 03 起不是 `AnalysisRecord.evidenceRefs` 的附属字符串，而是独立、可版本化、可失效的 canonical record。
+
+```ts
+interface AnalysisEvidenceRecord {
+  id: string
+  projectId: string
+  ref: EvidenceRef
+  status: "valid" | "stale"
+  staleReason: string | null
+  recordId: string | null
+  candidateId: string | null
+  boundRevision: number | null
+  createdAt: string
+  updatedAt: string
+  revision: number
+}
+```
+
+约束：
+
+1. `EvidenceRef` 必须可重新定位到原始媒体/数据身份；截图只是表示层，不是唯一事实来源。
+2. Evidence 可以先绑定 Candidate，Candidate 被接受后可继续绑定正式 Record；两种绑定都必须通过稳定 ID。
+3. 当 Shot identity/range 或绑定 Record/Candidate 的依赖 revision 失效时，Evidence 进入 `stale`，不能静默保留 `valid`。
+4. `required` Evidence 不阻止早期 AnalysisRecord 写入，但会让该记录在 Results/Export 的严格 eligibility 中不合格，直到存在有效 Evidence。
+5. Backup/Restore 必须同时重映射 Evidence 自身 ID、`recordId`、`candidateId`，以及 Record/Candidate 内的 `evidenceRefs`，并验证引用完整性。
+6. Provenance 描述“值如何产生与被确认”；Evidence 描述“结论由哪些可定位材料支持”。二者不能互相替代。
 
 # 37. Provenance
 

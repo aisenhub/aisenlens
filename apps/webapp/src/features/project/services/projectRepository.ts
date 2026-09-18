@@ -1,5 +1,6 @@
 import type { CreateProjectInput, DerivedFrameThumbnail, DerivedWaveform, MediaSourceFingerprint, ProjectEditorState, ProjectRecord, ProjectRecoverySnapshot, ProjectRepository, ProjectTemplateSnapshotRecord, ScreenshotRecord, StoredShotRecord } from "../types";
-import type { ResearchContext, ResearchRange } from "../../analysis/types";
+import type { AnalysisCandidate, AnalysisContextManifest, AnalysisEvidenceRecord, AnalysisRecord, ResearchContext, ResearchRange } from "../../analysis/types";
+import { reconcileAnalysisAfterStructureChange } from "../../analysis/services/analysisRecordService.ts";
 import type { AnnotationMarker } from "../../annotation/types";
 import { normalizeStoredAnnotationMarker, toStoredAnnotationMarker } from "../../annotation/services/annotationStorageCompatibility";
 import type { ShotGroupRecord } from "../../group/types";
@@ -12,7 +13,7 @@ import { hashSceneDetectionConfig } from "../../../../../../packages/scene-engin
 import { DEFAULT_COMPOSITION_OVERLAY_SETTINGS, normalizeCompositionOverlaySettings } from "../../composition-overlay/types";
 import { DEFAULT_CONTENT_OVERLAY_SETTINGS, normalizeContentOverlaySettings } from "../../content-overlay/types";
 import { RuntimeContractError, createRevisionConflictError, toPersistenceRuntimeError } from "../../../types/runtime";
-import { PROJECT_DATABASE_SCHEMA_VERSION, planProjectDatabaseMigration } from "./projectDatabaseMigration";
+import { PROJECT_DATABASE_SCHEMA_VERSION, planProjectDatabaseMigration, resetDevelopmentDatabaseStores } from "./projectDatabaseMigration";
 
 const DATABASE_NAME = "aisenlens-projects";
 // Keep the database at the highest version already used by the shipped app.
@@ -35,8 +36,12 @@ const RECOVERY_SNAPSHOTS_STORE = "recovery-snapshots";
 const CALIBRATION_DRAFTS_STORE = "shot-calibration-drafts";
 const RESEARCH_RANGES_STORE = "research-ranges";
 const RESEARCH_CONTEXTS_STORE = "research-contexts";
+const ANALYSIS_RECORDS_STORE = "analysis-records";
+const ANALYSIS_CANDIDATES_STORE = "analysis-candidates";
+const ANALYSIS_EVIDENCE_STORE = "analysis-evidence";
+const ANALYSIS_CONTEXT_MANIFESTS_STORE = "analysis-context-manifests";
 
-export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write" | "research-range-write" | "research-context-write";
+export type ProjectRepositoryFaultPoint = "project-write" | "shots-write" | "groups-write" | "markers-write" | "template-write" | "task-write" | "draft-receipt-write" | "research-range-write" | "research-context-write" | "analysis-record-write" | "analysis-candidate-write" | "analysis-evidence-write";
 let projectRepositoryFaultInjector: ((point: ProjectRepositoryFaultPoint) => void) | null = null;
 
 export function setProjectRepositoryFaultInjector(injector: ((point: ProjectRepositoryFaultPoint) => void) | null): void {
@@ -147,8 +152,9 @@ function openDatabase(): Promise<IDBDatabase> {
       resolve(database);
     };
     request.onupgradeneeded = (event) => {
-      planProjectDatabaseMigration(event.oldVersion, event.newVersion ?? DATABASE_VERSION);
+      const migration = planProjectDatabaseMigration(event.oldVersion, event.newVersion ?? DATABASE_VERSION);
       const database = request.result;
+      if (migration.resetDevelopmentData && request.transaction) resetDevelopmentDatabaseStores(request.transaction, database);
       if (!database.objectStoreNames.contains(PROJECTS_STORE)) {
         const projects = database.createObjectStore(PROJECTS_STORE, { keyPath: "id" });
         projects.createIndex("updatedAt", "updatedAt", { unique: false });
@@ -222,14 +228,50 @@ function openDatabase(): Promise<IDBDatabase> {
         contexts.createIndex("projectId", "projectId", { unique: false });
         contexts.createIndex("projectTarget", ["projectId", "target.kind", "target.id"], { unique: true });
       }
+      if (!database.objectStoreNames.contains(ANALYSIS_RECORDS_STORE)) {
+        const records = database.createObjectStore(ANALYSIS_RECORDS_STORE, { keyPath: "id" });
+        records.createIndex("projectId", "projectId", { unique: false });
+        records.createIndex("projectSubjectField", ["projectId", "subject.kind", "subject.id", "fieldId"], { unique: true });
+      }
+      if (!database.objectStoreNames.contains(ANALYSIS_CANDIDATES_STORE)) {
+        const candidates = database.createObjectStore(ANALYSIS_CANDIDATES_STORE, { keyPath: "id" });
+        candidates.createIndex("projectId", "projectId", { unique: false });
+        candidates.createIndex("projectStatus", ["projectId", "status"], { unique: false });
+      }
+      if (!database.objectStoreNames.contains(ANALYSIS_EVIDENCE_STORE)) {
+        const evidence = database.createObjectStore(ANALYSIS_EVIDENCE_STORE, { keyPath: "id" });
+        evidence.createIndex("projectId", "projectId", { unique: false });
+        evidence.createIndex("recordId", "recordId", { unique: false });
+        evidence.createIndex("candidateId", "candidateId", { unique: false });
+      }
+      if (!database.objectStoreNames.contains(ANALYSIS_CONTEXT_MANIFESTS_STORE)) {
+        const manifests = database.createObjectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE, { keyPath: "id" });
+        manifests.createIndex("projectId", "projectId", { unique: false });
+        manifests.createIndex("projectTaskKind", ["projectId", "taskKind"], { unique: false });
+      }
     };
   });
 
   return databasePromise;
 }
 
+
+function structureSignature(shots: readonly StoredShotRecord[], groups: readonly ShotGroupRecord[]): string {
+  return JSON.stringify({
+    shots: [...shots].sort((a, b) => a.order - b.order).map((shot) => [shot.id, shot.order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.lineage]),
+    groups: [...groups].sort((a, b) => a.id.localeCompare(b.id)).map((group) => [group.id, group.kind, group.shotIds]),
+  });
+}
+
+function analysisStateSignature(records: readonly AnalysisRecord[], candidates: readonly AnalysisCandidate[], evidence: readonly AnalysisEvidenceRecord[]): string {
+  return JSON.stringify({
+    records: [...records].sort((a, b) => a.id.localeCompare(b.id)),
+    candidates: [...candidates].sort((a, b) => a.id.localeCompare(b.id)),
+    evidence: [...evidence].sort((a, b) => a.id.localeCompare(b.id)),
+  });
+}
 function normalizeProject(project: ProjectRecord): ProjectRecord {
-  return { ...project, compositionOverlay: normalizeCompositionOverlaySettings(project.compositionOverlay), contentOverlay: normalizeContentOverlaySettings(project.contentOverlay) };
+  return { ...project, structureRevision: project.structureRevision ?? 0, analysisRevision: project.analysisRevision ?? 0, compositionOverlay: normalizeCompositionOverlaySettings(project.compositionOverlay), contentOverlay: normalizeContentOverlaySettings(project.contentOverlay) };
 }
 
 function deleteProjectRecordsAndWait(store: IDBObjectStore, projectId: string): Promise<void> {
@@ -354,6 +396,8 @@ export function createProjectRepository(): ProjectRepository {
         audioTracks: [],
         compositionOverlay: DEFAULT_COMPOSITION_OVERLAY_SETTINGS,
         contentOverlay: DEFAULT_CONTENT_OVERLAY_SETTINGS,
+        structureRevision: 0,
+        analysisRevision: 0,
         createdAt: now,
         updatedAt: now,
       };
@@ -391,8 +435,8 @@ export function createProjectRepository(): ProjectRepository {
 
     async readProjectEditorState(projectId) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readonly");
-      const [project, shots, groups, markers, template, researchRanges, researchContexts] = await Promise.all([
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE, ANALYSIS_CONTEXT_MANIFESTS_STORE], "readonly");
+      const [project, shots, groups, markers, template, researchRanges, researchContexts, analysisRecords, analysisCandidates, analysisEvidence, analysisContextManifests] = await Promise.all([
         requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as Promise<ProjectRecord | undefined>,
         requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
         requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
@@ -400,6 +444,10 @@ export function createProjectRepository(): ProjectRepository {
         requestResult(transaction.objectStore(PROJECT_TEMPLATES_STORE).index("projectId").get(projectId)) as Promise<ProjectTemplateSnapshotRecord | undefined>,
         requestResult(transaction.objectStore(RESEARCH_RANGES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchRange[]>,
         requestResult(transaction.objectStore(RESEARCH_CONTEXTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ResearchContext[]>,
+        requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisRecord[]>,
+        requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisCandidate[]>,
+        requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisEvidenceRecord[]>,
+        requestResult(transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisContextManifest[]>,
       ]);
       await transactionResult(transaction);
       if (!project) return null;
@@ -412,36 +460,98 @@ export function createProjectRepository(): ProjectRepository {
         template: template ?? null,
         researchRanges: researchRanges.sort((left, right) => left.startUs - right.startUs),
         researchContexts: researchContexts.sort((left, right) => left.updatedAt.localeCompare(right.updatedAt)),
+        analysisRecords: analysisRecords.sort((left, right) => left.id.localeCompare(right.id)),
+        analysisCandidates: analysisCandidates.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+        analysisEvidence: analysisEvidence.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+        analysisContextManifests: analysisContextManifests.sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
       } satisfies ProjectEditorState;
     },
 
     async saveProjectEditorState(state, expectedUpdatedAt) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE, ANALYSIS_CONTEXT_MANIFESTS_STORE], "readwrite");
       const completion = transactionResult(transaction);
       const projectStore = transaction.objectStore(PROJECTS_STORE);
       try {
         const current = await requestResult(projectStore.get(state.project.id)) as ProjectRecord | undefined;
         if (!current) throw new Error("项目不存在或已删除。");
         if (expectedUpdatedAt && current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("save-project-editor-state", expectedUpdatedAt, current.updatedAt, state.project.id);
+
+        const [existingShots, existingGroups, existingRecords, existingCandidates, existingEvidence] = await Promise.all([
+          requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<StoredShotRecord[]>,
+          requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<ShotGroupRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisCandidate[]>,
+          requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisEvidenceRecord[]>,
+        ]);
+
+        const structureChanged = structureSignature(existingShots, existingGroups) !== structureSignature(state.shots, state.groups);
+        const structureRevision = normalizeProject(current).structureRevision + (structureChanged ? 1 : 0);
+        let analysisRecords = structuredClone(state.analysisRecords ?? existingRecords);
+        let analysisCandidates = structuredClone(state.analysisCandidates ?? existingCandidates);
+        let analysisEvidence = structuredClone(state.analysisEvidence ?? existingEvidence);
+
+        if (structureChanged) {
+          const reconciled = reconcileAnalysisAfterStructureChange({
+            records: analysisRecords,
+            candidates: analysisCandidates,
+            evidence: analysisEvidence,
+            previousShots: existingShots,
+            nextShots: state.shots,
+            previousGroups: existingGroups,
+            nextGroups: state.groups,
+            invalidatedByRevision: structureRevision,
+          });
+          analysisRecords = reconciled.records;
+          analysisCandidates = reconciled.candidates;
+          analysisEvidence = reconciled.evidence;
+        }
+
+        const analysisChanged = analysisStateSignature(existingRecords, existingCandidates, existingEvidence) !== analysisStateSignature(analysisRecords, analysisCandidates, analysisEvidence);
         const now = nextProjectUpdatedAt(current.updatedAt);
-        const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
+        const updatedProject: ProjectRecord = {
+          ...normalizeProject(state.project),
+          id: state.project.id,
+          shots: state.shots.length,
+          structureRevision,
+          analysisRevision: normalizeProject(current).analysisRevision + (analysisChanged ? 1 : 0),
+          updatedAt: now,
+        };
+
         injectProjectRepositoryFault("project-write");
         projectStore.put(updatedProject);
-        await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
+
+        const shotStore = transaction.objectStore(SHOTS_STORE);
+        await deleteProjectShotRecords(shotStore, state.project.id);
+        const existingShotMap = new Map(existingShots.map((shot) => [shot.id, shot]));
+        injectProjectRepositoryFault("shots-write");
+        state.shots.forEach((shot, order) => {
+          const previous = existingShotMap.get(shot.id);
+          const changed = !previous || JSON.stringify([previous.order, previous.startFrame, previous.endFrame, previous.status, previous.detection, previous.lineage]) !== JSON.stringify([order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.lineage]);
+          shotStore.put({
+            ...shot,
+            projectId: state.project.id,
+            order,
+            structureRevision,
+            revision: previous ? previous.revision + (changed ? 1 : 0) : Math.max(1, shot.revision),
+            updatedAt: now,
+          });
+        });
+
         await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
+        injectProjectRepositoryFault("groups-write");
+        state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
+
         await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
+        injectProjectRepositoryFault("markers-write");
+        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, state.project.id, now)));
+
         const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
         const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
         if (existingTemplate) templateStore.delete(existingTemplate.id);
-        injectProjectRepositoryFault("shots-write");
-        state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
-        injectProjectRepositoryFault("groups-write");
-        state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
-        injectProjectRepositoryFault("markers-write");
-        state.markers.forEach((marker) => transaction.objectStore(ANNOTATION_MARKERS_STORE).put(toStoredAnnotationMarker(marker, state.project.id, now)));
         injectProjectRepositoryFault("template-write");
         if (state.template) templateStore.put({ ...state.template, projectId: state.project.id, updatedAt: now });
+
         if (state.researchRanges !== undefined) {
           await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_RANGES_STORE), state.project.id);
           injectProjectRepositoryFault("research-range-write");
@@ -452,6 +562,23 @@ export function createProjectRepository(): ProjectRepository {
           injectProjectRepositoryFault("research-context-write");
           state.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId: state.project.id, updatedAt: now }));
         }
+
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_RECORDS_STORE), state.project.id);
+        injectProjectRepositoryFault("analysis-record-write");
+        analysisRecords.forEach((record) => transaction.objectStore(ANALYSIS_RECORDS_STORE).put({ ...record, projectId: state.project.id }));
+
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), state.project.id);
+        injectProjectRepositoryFault("analysis-candidate-write");
+        analysisCandidates.forEach((candidate) => transaction.objectStore(ANALYSIS_CANDIDATES_STORE).put({ ...candidate, projectId: state.project.id }));
+
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), state.project.id);
+        injectProjectRepositoryFault("analysis-evidence-write");
+        analysisEvidence.forEach((evidence) => transaction.objectStore(ANALYSIS_EVIDENCE_STORE).put({ ...evidence, projectId: state.project.id }));
+        if (state.analysisContextManifests !== undefined) {
+          await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE), state.project.id);
+          state.analysisContextManifests.forEach((manifest) => transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE).put({ ...manifest, projectId: state.project.id }));
+        }
+
         await completion;
         return updatedProject;
       } catch (error) {
@@ -463,7 +590,7 @@ export function createProjectRepository(): ProjectRepository {
 
     async deleteProject(projectId: string) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, CALIBRATION_DRAFTS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, MEDIA_ASSET_HANDLES_STORE, MEDIA_ASSET_BLOBS_STORE, SCREENSHOTS_STORE, SCREENSHOT_BLOBS_STORE, SHOTS_STORE, PROJECT_TEMPLATES_STORE, ANNOTATION_MARKERS_STORE, DERIVED_FRAME_THUMBNAILS_STORE, DERIVED_WAVEFORMS_STORE, AUTO_SHOT_RUNS_STORE, CALIBRATION_ANNOTATIONS_STORE, CALIBRATION_DRAFTS_STORE, SHOT_GROUPS_STORE, RECOVERY_SNAPSHOTS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE, ANALYSIS_CONTEXT_MANIFESTS_STORE], "readwrite");
       const mediaAssets = await requestResult(transaction.objectStore(PROJECTS_STORE).get(projectId)) as ProjectRecord | undefined;
       mediaAssets?.mediaAssets.forEach((asset) => {
         transaction.objectStore(MEDIA_ASSET_HANDLES_STORE).delete(asset.id);
@@ -508,6 +635,10 @@ export function createProjectRepository(): ProjectRepository {
       deleteProjectRecords(transaction.objectStore(CALIBRATION_DRAFTS_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(RESEARCH_RANGES_STORE), projectId);
       deleteProjectRecords(transaction.objectStore(RESEARCH_CONTEXTS_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(ANALYSIS_RECORDS_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), projectId);
+      deleteProjectRecords(transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE), projectId);
       await transactionResult(transaction);
     },
 
@@ -779,7 +910,7 @@ export function createProjectRepository(): ProjectRepository {
     async applyCalibrationDraft({ state, draft, expectedUpdatedAt, recoverySnapshotId, task }) {
       validateCalibrationDraft(draft);
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, CALIBRATION_DRAFTS_STORE, AUTO_SHOT_RUNS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, CALIBRATION_DRAFTS_STORE, AUTO_SHOT_RUNS_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE], "readwrite");
       const completion = transactionResult(transaction);
       try {
         const projectStore = transaction.objectStore(PROJECTS_STORE);
@@ -793,18 +924,55 @@ export function createProjectRepository(): ProjectRepository {
           await completion;
           return current;
         }
+
+        const shotStore = transaction.objectStore(SHOTS_STORE);
+        const [existingShots, existingGroups, records, candidates, evidence] = await Promise.all([
+          requestResult(shotStore.index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<StoredShotRecord[]>,
+          requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<ShotGroupRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisCandidate[]>,
+          requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(state.project.id))) as Promise<AnalysisEvidenceRecord[]>,
+        ]);
+        const structureChanged = structureSignature(existingShots, existingGroups) !== structureSignature(state.shots, state.groups);
+        const structureRevision = normalizeProject(current).structureRevision + (structureChanged ? 1 : 0);
+        const reconciled = structureChanged
+          ? reconcileAnalysisAfterStructureChange({
+              records,
+              candidates,
+              evidence,
+              previousShots: existingShots,
+              nextShots: state.shots,
+              previousGroups: existingGroups,
+              nextGroups: state.groups,
+              invalidatedByRevision: structureRevision,
+            })
+          : { records, candidates, evidence };
+        const analysisChanged = analysisStateSignature(records, candidates, evidence) !== analysisStateSignature(reconciled.records, reconciled.candidates, reconciled.evidence);
         const now = nextProjectUpdatedAt(current.updatedAt);
-        const updatedProject: ProjectRecord = { ...normalizeProject(state.project), id: state.project.id, shots: state.shots.length, updatedAt: now };
+        const updatedProject: ProjectRecord = {
+          ...normalizeProject(state.project),
+          id: state.project.id,
+          shots: state.shots.length,
+          structureRevision,
+          analysisRevision: normalizeProject(current).analysisRevision + (analysisChanged ? 1 : 0),
+          updatedAt: now,
+        };
+
         injectProjectRepositoryFault("project-write");
         projectStore.put(updatedProject);
         injectProjectRepositoryFault("shots-write");
-        await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), state.project.id);
+        await deleteProjectShotRecords(shotStore, state.project.id);
+        const previousById = new Map(existingShots.map((shot) => [shot.id, shot]));
+        state.shots.forEach((shot, order) => {
+          const previous = previousById.get(shot.id);
+          const changed = !previous || JSON.stringify([previous.order, previous.startFrame, previous.endFrame, previous.status, previous.detection, previous.lineage]) !== JSON.stringify([order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.lineage]);
+          shotStore.put({ ...shot, projectId: state.project.id, order, structureRevision, revision: previous ? previous.revision + (changed ? 1 : 0) : Math.max(1, shot.revision), updatedAt: now });
+        });
         await deleteProjectRecordsAndWait(transaction.objectStore(SHOT_GROUPS_STORE), state.project.id);
         await deleteProjectRecordsAndWait(transaction.objectStore(ANNOTATION_MARKERS_STORE), state.project.id);
         const templateStore = transaction.objectStore(PROJECT_TEMPLATES_STORE);
         const existingTemplate = await requestResult(templateStore.index("projectId").get(state.project.id)) as ProjectTemplateSnapshotRecord | undefined;
         if (existingTemplate) templateStore.delete(existingTemplate.id);
-        state.shots.forEach((shot, order) => transaction.objectStore(SHOTS_STORE).put({ ...shot, projectId: state.project.id, order, updatedAt: now }));
         injectProjectRepositoryFault("groups-write");
         state.groups.forEach((group) => transaction.objectStore(SHOT_GROUPS_STORE).put({ ...group, projectId: state.project.id, updatedAt: now }));
         injectProjectRepositoryFault("markers-write");
@@ -828,6 +996,14 @@ export function createProjectRepository(): ProjectRepository {
         } else {
           await markStoredResearchContextsAfterStructureChange(transaction.objectStore(RESEARCH_CONTEXTS_STORE), state.project.id, state.shots.map((shot) => shot.id), state.groups.map((group) => group.id), now);
         }
+
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_RECORDS_STORE), state.project.id);
+        reconciled.records.forEach((record) => transaction.objectStore(ANALYSIS_RECORDS_STORE).put(record));
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), state.project.id);
+        reconciled.candidates.forEach((candidate) => transaction.objectStore(ANALYSIS_CANDIDATES_STORE).put(candidate));
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), state.project.id);
+        reconciled.evidence.forEach((item) => transaction.objectStore(ANALYSIS_EVIDENCE_STORE).put(item));
+
         await completion;
         return updatedProject;
       } catch (error) {
@@ -846,19 +1022,73 @@ export function createProjectRepository(): ProjectRepository {
 
     async replaceProjectShotGroups(projectId: string, groups: ShotGroupRecord[], expectedUpdatedAt: string) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOT_GROUPS_STORE], "readwrite");
-      const projectStore = transaction.objectStore(PROJECTS_STORE);
-      const groupStore = transaction.objectStore(SHOT_GROUPS_STORE);
-      const current = await requestResult(projectStore.get(projectId), "replace-project-shot-groups:read-current") as ProjectRecord | undefined;
-      if (!current) throw new Error("项目不存在或已删除。");
-      if (current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("replace-project-shot-groups", expectedUpdatedAt, current.updatedAt, projectId);
-      await deleteProjectRecordsAndWait(groupStore, projectId);
-      const now = nextProjectUpdatedAt(current.updatedAt);
-      groups.forEach((group) => groupStore.put({ ...group, projectId, updatedAt: now }));
-      const updatedProject = { ...normalizeProject(current), updatedAt: now };
-      projectStore.put(updatedProject);
-      await transactionResult(transaction, "replace-project-shot-groups");
-      return updatedProject;
+      const transaction = database.transaction([PROJECTS_STORE, SHOT_GROUPS_STORE, SHOTS_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE], "readwrite");
+      const completion = transactionResult(transaction, "replace-project-shot-groups");
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const groupStore = transaction.objectStore(SHOT_GROUPS_STORE);
+        const current = await requestResult(projectStore.get(projectId), "replace-project-shot-groups:read-current") as ProjectRecord | undefined;
+        if (!current) throw new Error("项目不存在或已删除。");
+        if (current.updatedAt !== expectedUpdatedAt) throw createRevisionConflictError("replace-project-shot-groups", expectedUpdatedAt, current.updatedAt, projectId);
+
+        const [shots, existingGroups, records, candidates, evidence] = await Promise.all([
+          requestResult(transaction.objectStore(SHOTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
+          requestResult(groupStore.index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisCandidate[]>,
+          requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisEvidenceRecord[]>,
+        ]);
+
+        const structureChanged = structureSignature(shots, existingGroups) !== structureSignature(shots, groups);
+        const structureRevision = normalizeProject(current).structureRevision + (structureChanged ? 1 : 0);
+        const reconciled = structureChanged
+          ? reconcileAnalysisAfterStructureChange({
+              records,
+              candidates,
+              evidence,
+              previousShots: shots,
+              nextShots: shots,
+              previousGroups: existingGroups,
+              nextGroups: groups,
+              invalidatedByRevision: structureRevision,
+            })
+          : { records, candidates, evidence };
+        const analysisChanged = analysisStateSignature(records, candidates, evidence) !== analysisStateSignature(reconciled.records, reconciled.candidates, reconciled.evidence);
+        const now = nextProjectUpdatedAt(current.updatedAt);
+
+        await deleteProjectRecordsAndWait(groupStore, projectId);
+        groups.forEach((group) => groupStore.put({ ...group, projectId, updatedAt: now }));
+
+        if (structureChanged) {
+          await markStoredResearchContextsAfterStructureChange(
+            transaction.objectStore(RESEARCH_CONTEXTS_STORE),
+            projectId,
+            shots.map((shot) => shot.id),
+            groups.map((group) => group.id),
+            now,
+          );
+          await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_RECORDS_STORE), projectId);
+          reconciled.records.forEach((record) => transaction.objectStore(ANALYSIS_RECORDS_STORE).put(record));
+          await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), projectId);
+          reconciled.candidates.forEach((candidate) => transaction.objectStore(ANALYSIS_CANDIDATES_STORE).put(candidate));
+          await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), projectId);
+          reconciled.evidence.forEach((item) => transaction.objectStore(ANALYSIS_EVIDENCE_STORE).put(item));
+        }
+
+        const updatedProject: ProjectRecord = {
+          ...normalizeProject(current),
+          structureRevision,
+          analysisRevision: normalizeProject(current).analysisRevision + (analysisChanged ? 1 : 0),
+          updatedAt: now,
+        };
+        projectStore.put(updatedProject);
+        await completion;
+        return updatedProject;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
     },
 
     async listProjectResearchRanges(projectId: string) {
@@ -918,6 +1148,150 @@ export function createProjectRepository(): ProjectRepository {
       await transactionResult(transaction);
     },
 
+
+    async listProjectAnalysisRecords(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_RECORDS_STORE, "readonly");
+      const records = await requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as AnalysisRecord[];
+      return records.sort((left, right) => left.id.localeCompare(right.id));
+    },
+
+    async saveProjectAnalysisRecord(record: AnalysisRecord, expectedRevision: number | undefined, expectedProjectRevision: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, ANALYSIS_RECORDS_STORE], "readwrite");
+      const completion = transactionResult(transaction, "save-analysis-record");
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const recordStore = transaction.objectStore(ANALYSIS_RECORDS_STORE);
+        const currentProject = await requestResult(projectStore.get(record.projectId)) as ProjectRecord | undefined;
+        if (!currentProject) throw new Error("项目不存在或已删除。");
+        if (currentProject.updatedAt !== expectedProjectRevision) throw createRevisionConflictError("save-analysis-record:project", expectedProjectRevision, currentProject.updatedAt, record.projectId);
+        const existing = await requestResult(recordStore.get(record.id)) as AnalysisRecord | undefined;
+        if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw createRevisionConflictError("save-analysis-record", expectedRevision, existing.revision, record.id);
+        const now = nextProjectUpdatedAt(currentProject.updatedAt);
+        const saved: AnalysisRecord = { ...structuredClone(record), revision: (existing?.revision ?? 0) + 1, updatedAt: now };
+        injectProjectRepositoryFault("analysis-record-write");
+        recordStore.put(saved);
+        projectStore.put({ ...normalizeProject(currentProject), analysisRevision: currentProject.analysisRevision + 1, updatedAt: now });
+        await completion;
+        return saved;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
+    },
+
+    async listProjectAnalysisCandidates(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_CANDIDATES_STORE, "readonly");
+      const candidates = await requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as AnalysisCandidate[];
+      return candidates.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    },
+
+    async saveProjectAnalysisCandidate(candidate: AnalysisCandidate, expectedRevision?: number) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_CANDIDATES_STORE, "readwrite");
+      const store = transaction.objectStore(ANALYSIS_CANDIDATES_STORE);
+      const existing = await requestResult(store.get(candidate.id)) as AnalysisCandidate | undefined;
+      if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw createRevisionConflictError("save-analysis-candidate", expectedRevision, existing.revision, candidate.id);
+      injectProjectRepositoryFault("analysis-candidate-write");
+      store.put({ ...structuredClone(candidate), revision: (existing?.revision ?? 0) + 1, updatedAt: new Date().toISOString() });
+      await transactionResult(transaction, "save-analysis-candidate");
+    },
+
+    async acceptProjectAnalysisCandidate(candidateId: string, expectedCandidateRevision: number, expectedProjectRevision: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE], "readwrite");
+      const completion = transactionResult(transaction, "accept-analysis-candidate");
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const candidateStore = transaction.objectStore(ANALYSIS_CANDIDATES_STORE);
+        const recordStore = transaction.objectStore(ANALYSIS_RECORDS_STORE);
+        const candidate = await requestResult(candidateStore.get(candidateId)) as AnalysisCandidate | undefined;
+        if (!candidate) throw new Error("分析候选不存在。");
+        if (candidate.revision !== expectedCandidateRevision) throw createRevisionConflictError("accept-analysis-candidate:candidate", expectedCandidateRevision, candidate.revision, candidateId);
+        if (candidate.status !== "pending") throw new Error("只有 pending Candidate 可以被接受。");
+        const currentProject = await requestResult(projectStore.get(candidate.projectId)) as ProjectRecord | undefined;
+        if (!currentProject) throw new Error("项目不存在或已删除。");
+        if (currentProject.updatedAt !== expectedProjectRevision) throw createRevisionConflictError("accept-analysis-candidate:project", expectedProjectRevision, currentProject.updatedAt, candidate.projectId);
+        if (candidate.dependencyRevision.structureRevision !== currentProject.structureRevision || candidate.dependencyRevision.analysisRevision !== currentProject.analysisRevision) throw createRevisionConflictError("accept-analysis-candidate:dependency", candidate.dependencyRevision.structureRevision + ":" + candidate.dependencyRevision.analysisRevision, currentProject.structureRevision + ":" + currentProject.analysisRevision, candidateId);
+        const recordId = [candidate.projectId, candidate.subject.kind, candidate.subject.id, candidate.fieldId].join(":");
+        const existing = await requestResult(recordStore.get(recordId)) as AnalysisRecord | undefined;
+        const now = nextProjectUpdatedAt(currentProject.updatedAt);
+        const record: AnalysisRecord = {
+          id: recordId,
+          projectId: candidate.projectId,
+          subject: structuredClone(candidate.subject),
+          fieldId: candidate.fieldId,
+          entry: structuredClone(candidate.proposedEntry),
+          status: "confirmed",
+          staleReason: null,
+          provenance: { kind: "ai-confirmed", provider: candidate.source.provider, model: candidate.source.model, promptVersion: candidate.source.promptVersion, contextDefinitionVersion: candidate.source.contextDefinitionVersion, confirmedAt: now },
+          evidenceRefs: [...candidate.evidenceRefs],
+          structureRevision: currentProject.structureRevision,
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+          revision: (existing?.revision ?? 0) + 1,
+        };
+        recordStore.put(record);
+        candidateStore.put({ ...candidate, status: "accepted", acceptedRecordId: record.id, updatedAt: now, revision: candidate.revision + 1 });
+        projectStore.put({ ...normalizeProject(currentProject), analysisRevision: currentProject.analysisRevision + 1, updatedAt: now });
+        await completion;
+        return record;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
+    },
+
+    async listProjectAnalysisEvidence(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_EVIDENCE_STORE, "readonly");
+      const evidence = await requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as AnalysisEvidenceRecord[];
+      return evidence.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    },
+
+    async saveProjectAnalysisEvidence(evidence: AnalysisEvidenceRecord, expectedRevision: number | undefined, expectedProjectRevision: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction([PROJECTS_STORE, ANALYSIS_EVIDENCE_STORE], "readwrite");
+      const completion = transactionResult(transaction, "save-analysis-evidence");
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const evidenceStore = transaction.objectStore(ANALYSIS_EVIDENCE_STORE);
+        const currentProject = await requestResult(projectStore.get(evidence.projectId)) as ProjectRecord | undefined;
+        if (!currentProject) throw new Error("项目不存在或已删除。");
+        if (currentProject.updatedAt !== expectedProjectRevision) throw createRevisionConflictError("save-analysis-evidence:project", expectedProjectRevision, currentProject.updatedAt, evidence.projectId);
+        const existing = await requestResult(evidenceStore.get(evidence.id)) as AnalysisEvidenceRecord | undefined;
+        if (existing && expectedRevision !== undefined && existing.revision !== expectedRevision) throw createRevisionConflictError("save-analysis-evidence", expectedRevision, existing.revision, evidence.id);
+        const now = nextProjectUpdatedAt(currentProject.updatedAt);
+        const saved: AnalysisEvidenceRecord = { ...structuredClone(evidence), revision: (existing?.revision ?? 0) + 1, updatedAt: now };
+        injectProjectRepositoryFault("analysis-evidence-write");
+        evidenceStore.put(saved);
+        projectStore.put({ ...normalizeProject(currentProject), analysisRevision: currentProject.analysisRevision + 1, updatedAt: now });
+        await completion;
+        return saved;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
+    },
+    async listProjectAnalysisContextManifests(projectId: string) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_CONTEXT_MANIFESTS_STORE, "readonly");
+      const manifests = await requestResult(transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as AnalysisContextManifest[];
+      return manifests.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+    },
+
+    async saveProjectAnalysisContextManifest(manifest: AnalysisContextManifest) {
+      const database = await openDatabase();
+      const transaction = database.transaction(ANALYSIS_CONTEXT_MANIFESTS_STORE, "readwrite");
+      transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE).put(structuredClone(manifest));
+      await transactionResult(transaction, "save-analysis-context-manifest");
+    },
+
     async listProjectAnnotationMarkers(projectId: string) {
       const database = await openDatabase();
       const transaction = database.transaction(ANNOTATION_MARKERS_STORE, "readonly");
@@ -967,18 +1341,64 @@ export function createProjectRepository(): ProjectRepository {
 
     async replaceProjectShots(projectId: string, shots: StoredShotRecord[]) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE], "readwrite");
-      const projectStore = transaction.objectStore(PROJECTS_STORE);
-      const shotStore = transaction.objectStore(SHOTS_STORE);
-      const existing = await requestResult(projectStore.get(projectId)) as ProjectRecord | undefined;
-      if (!existing) throw new Error("项目不存在或已删除。");
-      await deleteProjectShotRecords(shotStore, projectId);
-      const now = new Date().toISOString();
-      shots.forEach((shot, order) => shotStore.put({ ...shot, projectId, order, updatedAt: now }));
-      const updatedProject: ProjectRecord = { ...normalizeProject(existing), shots: shots.length, updatedAt: now };
-      projectStore.put(updatedProject);
-      await transactionResult(transaction);
-      return updatedProject;
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE], "readwrite");
+      const completion = transactionResult(transaction, "replace-project-shots");
+      try {
+        const projectStore = transaction.objectStore(PROJECTS_STORE);
+        const shotStore = transaction.objectStore(SHOTS_STORE);
+        const current = await requestResult(projectStore.get(projectId)) as ProjectRecord | undefined;
+        if (!current) throw new Error("项目不存在或已删除。");
+        const [existingShots, groups, records, candidates, evidence] = await Promise.all([
+          requestResult(shotStore.index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<StoredShotRecord[]>,
+          requestResult(transaction.objectStore(SHOT_GROUPS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<ShotGroupRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_RECORDS_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisRecord[]>,
+          requestResult(transaction.objectStore(ANALYSIS_CANDIDATES_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisCandidate[]>,
+          requestResult(transaction.objectStore(ANALYSIS_EVIDENCE_STORE).index("projectId").getAll(IDBKeyRange.only(projectId))) as Promise<AnalysisEvidenceRecord[]>,
+        ]);
+        const structureChanged = structureSignature(existingShots, groups) !== structureSignature(shots, groups);
+        const structureRevision = normalizeProject(current).structureRevision + (structureChanged ? 1 : 0);
+        const reconciled = structureChanged
+          ? reconcileAnalysisAfterStructureChange({
+              records,
+              candidates,
+              evidence,
+              previousShots: existingShots,
+              nextShots: shots,
+              previousGroups: groups,
+              nextGroups: groups,
+              invalidatedByRevision: structureRevision,
+            })
+          : { records, candidates, evidence };
+        const analysisChanged = analysisStateSignature(records, candidates, evidence) !== analysisStateSignature(reconciled.records, reconciled.candidates, reconciled.evidence);
+        const now = nextProjectUpdatedAt(current.updatedAt);
+        await deleteProjectShotRecords(shotStore, projectId);
+        const previousById = new Map(existingShots.map((shot) => [shot.id, shot]));
+        shots.forEach((shot, order) => {
+          const previous = previousById.get(shot.id);
+          const changed = !previous || JSON.stringify([previous.order, previous.startFrame, previous.endFrame, previous.status, previous.detection, previous.lineage]) !== JSON.stringify([order, shot.startFrame, shot.endFrame, shot.status, shot.detection, shot.lineage]);
+          shotStore.put({ ...shot, projectId, order, structureRevision, revision: previous ? previous.revision + (changed ? 1 : 0) : Math.max(1, shot.revision), updatedAt: now });
+        });
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_RECORDS_STORE), projectId);
+        reconciled.records.forEach((record) => transaction.objectStore(ANALYSIS_RECORDS_STORE).put(record));
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), projectId);
+        reconciled.candidates.forEach((candidate) => transaction.objectStore(ANALYSIS_CANDIDATES_STORE).put(candidate));
+        await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), projectId);
+        reconciled.evidence.forEach((item) => transaction.objectStore(ANALYSIS_EVIDENCE_STORE).put(item));
+        const updatedProject: ProjectRecord = {
+          ...normalizeProject(current),
+          shots: shots.length,
+          structureRevision,
+          analysisRevision: normalizeProject(current).analysisRevision + (analysisChanged ? 1 : 0),
+          updatedAt: now,
+        };
+        projectStore.put(updatedProject);
+        await completion;
+        return updatedProject;
+      } catch (error) {
+        try { transaction.abort(); } catch { /* already completed or aborted */ }
+        await completion.catch(() => undefined);
+        throw error;
+      }
     },
 
     async getProjectTemplate(projectId: string) {
@@ -1027,7 +1447,7 @@ export function createProjectRepository(): ProjectRepository {
 
     async restoreProjectRecoverySnapshot(snapshot: ProjectRecoverySnapshot) {
       const database = await openDatabase();
-      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE], "readwrite");
+      const transaction = database.transaction([PROJECTS_STORE, SHOTS_STORE, SHOT_GROUPS_STORE, ANNOTATION_MARKERS_STORE, PROJECT_TEMPLATES_STORE, RESEARCH_RANGES_STORE, RESEARCH_CONTEXTS_STORE, ANALYSIS_RECORDS_STORE, ANALYSIS_CANDIDATES_STORE, ANALYSIS_EVIDENCE_STORE, ANALYSIS_CONTEXT_MANIFESTS_STORE], "readwrite");
       const projectId = snapshot.projectId;
       transaction.objectStore(PROJECTS_STORE).put({ ...snapshot.project, id: projectId });
       await deleteProjectShotRecords(transaction.objectStore(SHOTS_STORE), projectId);
@@ -1048,6 +1468,14 @@ export function createProjectRepository(): ProjectRepository {
         await deleteProjectRecordsAndWait(transaction.objectStore(RESEARCH_CONTEXTS_STORE), projectId);
         snapshot.researchContexts.forEach((context) => transaction.objectStore(RESEARCH_CONTEXTS_STORE).put({ ...context, projectId }));
       }
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_RECORDS_STORE), projectId);
+      (snapshot.analysisRecords ?? []).forEach((record) => transaction.objectStore(ANALYSIS_RECORDS_STORE).put({ ...record, projectId }));
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CANDIDATES_STORE), projectId);
+      (snapshot.analysisCandidates ?? []).forEach((candidate) => transaction.objectStore(ANALYSIS_CANDIDATES_STORE).put({ ...candidate, projectId }));
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_EVIDENCE_STORE), projectId);
+      (snapshot.analysisEvidence ?? []).forEach((evidence) => transaction.objectStore(ANALYSIS_EVIDENCE_STORE).put({ ...evidence, projectId }));
+      await deleteProjectRecordsAndWait(transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE), projectId);
+      (snapshot.analysisContextManifests ?? []).forEach((manifest) => transaction.objectStore(ANALYSIS_CONTEXT_MANIFESTS_STORE).put({ ...manifest, projectId }));
       await transactionResult(transaction);
     },
 

@@ -2192,9 +2192,9 @@ export default function EditorWorkspace({
       screenshotIds: shotScreenshotIds[shot.id] ?? [],
       firstFrameScreenshotId: shotBoundaryScreenshotIds[shot.id]?.first ?? null,
       lastFrameScreenshotId: shotBoundaryScreenshotIds[shot.id]?.last ?? null,
-      analysisFields: shotDims[shot.id] ?? {},
-      description: shotNotes[shot.id]?.content ?? "",
-      notes: shotNotes[shot.id]?.analysis ?? "",
+      revision: 1,
+      structureRevision: project.structureRevision,
+      lineage: { origin: "manual" as const, parentShotIds: [] },
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
     }
@@ -2235,7 +2235,7 @@ export default function EditorWorkspace({
       const source = calibrationFormalShots.find((shot) => shot.id === segment.sourceShotId)
       const candidate = autoShotRun?.candidates.find((item) => item.id === segment.sourceCandidateId)
       const detection = candidate && autoShotRun?.controlSnapshot ? { source: "auto-shot" as const, taskId: autoShotRun.id, candidateId: candidate.id, kind: candidate.kind, mediaIdentityDigest: autoShotRun.mediaIdentity.mediaIdentityDigest, presetId: autoShotRun.controlSnapshot.preset.id, presetVersion: autoShotRun.controlSnapshot.preset.version, engineVersion: candidate.engineVersion, configHash: candidate.configHash } : source?.detection ?? { source: "manual" as const }
-      return { ...(source ?? { id: segment.id, projectId, order, status: "draft" as const, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: now, updatedAt: now }), id: segment.id, projectId, order, startFrame: segment.startFrame, endFrame: segment.endFrame, detection, updatedAt: now }
+      return { ...(source ?? { id: segment.id, projectId, order, status: "draft" as const, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, revision: 1, structureRevision: project.structureRevision, lineage: { origin: "detected" as const, parentShotIds: [] }, createdAt: now, updatedAt: now }), id: segment.id, projectId, order, startFrame: segment.startFrame, endFrame: segment.endFrame, detection, structureRevision: project.structureRevision + 1, revision: (source?.revision ?? 0) + 1, updatedAt: now }
     })
     const updatedProject = await projectRepository.applyCalibrationDraft({ state: { project: latestProject, shots: nextShotRecords, groups: nextGroups, markers: annotationMarkers, template: template as import("../../project/types").ProjectTemplateSnapshotRecord | null, researchRanges: researchWorkbench.ranges, researchContexts: researchWorkbench.contexts }, draft, expectedUpdatedAt: latestProject.updatedAt, recoverySnapshotId: recoverySnapshot.id, task: autoShotRun })
     editorHistory.commit()

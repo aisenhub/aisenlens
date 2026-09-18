@@ -1,4 +1,4 @@
-import type { AnalysisFieldEntry, ProjectAnalysisProfileSnapshot } from "../template/types";
+import type { ProjectAnalysisProfileSnapshot } from "../template/types";
 import type { ShotDetectionMeta } from "../shot/types";
 import type { AnnotationMarker } from "../annotation/types";
 import type { ShotGroupRecord } from "../group/types";
@@ -8,7 +8,7 @@ import type { ContentOverlaySettings } from "../content-overlay/types";
 import type { AutoShotTaskRecord } from "../auto-shot/types";
 import type { CalibrationAnnotationRecord } from "../scene-calibration/types";
 import type { CalibrationDraft } from "../shot-calibration/types";
-import type { ResearchContext, ResearchRange } from "../analysis/types";
+import type { AnalysisCandidate, AnalysisContextManifest, AnalysisEvidenceRecord, AnalysisRecord, ResearchContext, ResearchRange } from "../analysis/types";
 
 export type MediaAssetStatus = "unlinked" | "linked" | "missing" | "unsupported";
 export type MediaAssetKind = "video" | "audio";
@@ -117,9 +117,12 @@ export interface StoredShotRecord {
   screenshotIds: string[];
   firstFrameScreenshotId: string | null;
   lastFrameScreenshotId: string | null;
-  analysisFields: Record<string, AnalysisFieldEntry>;
-  description: string;
-  notes: string;
+  revision: number;
+  structureRevision: number;
+  lineage: {
+    origin: "manual" | "detected" | "split" | "merge" | "remapped";
+    parentShotIds: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -139,6 +142,8 @@ export interface ProjectRecord {
   audioTracks: AudioTrack[];
   compositionOverlay: CompositionOverlaySettings;
   contentOverlay: ContentOverlaySettings;
+  structureRevision: number;
+  analysisRevision: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +165,10 @@ export interface ProjectRecoverySnapshot {
   template: ProjectTemplateSnapshotRecord | null;
   researchRanges?: ResearchRange[];
   researchContexts?: ResearchContext[];
+  analysisRecords?: AnalysisRecord[];
+  analysisCandidates?: AnalysisCandidate[];
+  analysisEvidence?: AnalysisEvidenceRecord[];
+  analysisContextManifests?: AnalysisContextManifest[];
 }
 
 export interface ProjectEditorState {
@@ -170,6 +179,10 @@ export interface ProjectEditorState {
   template: ProjectTemplateSnapshotRecord | null;
   researchRanges?: ResearchRange[];
   researchContexts?: ResearchContext[];
+  analysisRecords?: AnalysisRecord[];
+  analysisCandidates?: AnalysisCandidate[];
+  analysisEvidence?: AnalysisEvidenceRecord[];
+  analysisContextManifests?: AnalysisContextManifest[];
 }
 
 export interface CreateProjectInput {
@@ -222,6 +235,15 @@ export interface ProjectRepository {
   listProjectResearchContexts: (projectId: string) => Promise<ResearchContext[]>;
   saveProjectResearchContext: (context: ResearchContext, expectedRevision?: number) => Promise<void>;
   deleteProjectResearchContext: (projectId: string, contextId: string) => Promise<void>;
+  listProjectAnalysisRecords: (projectId: string) => Promise<AnalysisRecord[]>;
+  saveProjectAnalysisRecord: (record: AnalysisRecord, expectedRevision: number | undefined, expectedProjectRevision: string) => Promise<AnalysisRecord>;
+  listProjectAnalysisCandidates: (projectId: string) => Promise<AnalysisCandidate[]>;
+  saveProjectAnalysisCandidate: (candidate: AnalysisCandidate, expectedRevision?: number) => Promise<void>;
+  acceptProjectAnalysisCandidate: (candidateId: string, expectedCandidateRevision: number, expectedProjectRevision: string) => Promise<AnalysisRecord>;
+  listProjectAnalysisEvidence: (projectId: string) => Promise<AnalysisEvidenceRecord[]>;
+  saveProjectAnalysisEvidence: (evidence: AnalysisEvidenceRecord, expectedRevision: number | undefined, expectedProjectRevision: string) => Promise<AnalysisEvidenceRecord>;
+  listProjectAnalysisContextManifests: (projectId: string) => Promise<AnalysisContextManifest[]>;
+  saveProjectAnalysisContextManifest: (manifest: AnalysisContextManifest) => Promise<void>;
   listProjectAnnotationMarkers: (projectId: string) => Promise<AnnotationMarker[]>;
   replaceProjectAnnotationMarkers: (projectId: string, markers: AnnotationMarker[]) => Promise<void>;
   saveProjectAnnotationMarker: (marker: AnnotationMarker) => Promise<void>;

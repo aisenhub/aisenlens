@@ -2,8 +2,8 @@
 title: "AisenLens Timeline Architecture"
 doc_type: domain-architecture
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - analysis
   - preparation
@@ -30,11 +30,42 @@ implementation_areas:
 # AisenLens 时间轴优化架构方案
 
 > 版本：2.0 · 评审整合版  
-> 更新日期：2026-09-16  
+> 更新日期：2026-09-18
 > 状态：目标设计与分阶段实施依据；本文修订不代表功能已实现或通过验收。  
 > 适用范围：Web 编辑器、拉片工作区、Timeline 及其结构/标注/分析交互。
 
 本版正文作为本设计包内的 Timeline 目标契约。原文提到的 `AisenLens_时间轴优化架构评审_2026-09-16.md` **未随本次输入提供**，因此没有在正式包中伪造该评审文件。存在冲突时，当前已实现事实仍应以源码和仓库 `docs/architecture/PROJECT_ARCHITECTURE.md` 为准；本文接口是目标契约，不表示现有代码已经采用对应名称。
+
+## Phase 03 Frozen Timeline Data Boundary — 2026-09-18
+
+Timeline 从 v19 起明确是 **derived read model + view preferences**，不是 Shot/Analysis 的第二 Authority。
+
+```ts
+interface TimelineReadModel {
+  projectId: string
+  structureRevision: number
+  analysisRevision: number
+  tracks: TimelineTrackDefinition[]
+  items: TimelineItemReadModel[]
+}
+```
+
+来源关系：
+
+```text
+ShotRecord / ShotGroupRecord ─┐
+AnalysisRecord / Candidate    ├─→ Timeline application adapter → TimelineReadModel
+Marker / media metadata       ┘
+```
+
+冻结规则：
+
+1. `TimelineTrackDefinition` 可以版本化代码默认值或用户偏好，但 Track 不持有正式 Shot/Analysis value。
+2. `TimelineItemReadModel` 只保存/传递 source revision，用于渲染与 stale 标记；不能成为 canonical persistence source。
+3. Viewport、hover、selection、expanded/collapsed、track height/order/visibility 属于 Workspace/View state。
+4. `structureRevision` 或 `analysisRevision` 变化时，Timeline adapter 重新派生；禁止局部修改旧 read model 后再回写领域。
+5. Timeline 中发起的结构手势必须调用 Shot/Structure command；分析编辑必须调用 Analysis command。轨道组件不能直接写 IndexedDB。
+6. Timeline 可以显示 Candidate/stale，但 Candidate 不能因“出现在时间轴上”而获得正式身份。
 
 ## 1. 产品目标
 
@@ -69,7 +100,7 @@ AisenLens 时间轴围绕“理解影片”组织：
 
 ## 3. 当前实现基线
 
-以下为 2026-09-16 工作树复核结果，不等同于已发布版本。实施前应重新核对，尤其是已有未提交修改。
+以下基线已结合 Phase 03（2026-09-18）数据架构冻结重新核对；Timeline 后续实现必须服从本文件顶部的 v19 Frozen Data Boundary。
 
 | 能力 | 当前事实 | 本版演进 |
 | --- | --- | --- |
@@ -77,7 +108,7 @@ AisenLens 时间轴围绕“理解影片”组织：
 | 结构 | ShotGroupRecord 保存 kind、shotIds、标题、摘要与 validity | 保留正式记录形态，边界和时间范围派生 |
 | 结构校验 | 支持单镜结构、同 kind 排斥及 Scene/Sequence 包含 | 补齐 Section 组合与所有修改入口的统一校验 |
 | 校准 | 已有共享 Shot 边界移动、校准草稿与 revision 检查 | 复用领域命令，不在新轨道内重写算法 |
-| Marker | UI 使用 category/label/note；当前仓储适配含 v18 frame/content/scope | 完成 UI 与当前存储边界对齐，验证信息保留 |
+| Marker | 独立正式观察数据；Timeline 只消费 frame/content/scope 等字段 | 保持独立 authority，不复制进 Track 数据 |
 | 缩放 | 最少 1px/秒，zoom 1–20 | 支持真正全片适配与逐帧尺度 |
 | 渲染 | Shot 全量 map、Group 成员逐项 findIndex；帧带已有可见范围加缓冲 | 为 Shot/结构补可见索引，保留媒体队列 |
 | 持久化 | IndexedDB 仓储已有跨 store 编辑状态事务 | 复用既有事务和历史入口，补齐新命令 |
@@ -336,7 +367,7 @@ Pointer/Keyboard
 - 事务失败不发布成功状态与历史条目；保留重试草稿并说明失败。
 - undo/redo 也经过验证与原子持久化，不只修改内存数组。
 
-目标采用持久化 project editRevision 作为编辑状态并发版本；命令在事务内比较并递增，撤销也递增，不回退 revision。这个字段是待实施设计，不是假定现有 updatedAt 已提供相同保证。新增字段的读取默认、已有记录升级及导入重置策略须在阶段 0 明确。
+Phase 03 已冻结并实现项目级 `structureRevision / analysisRevision`，不再引入另一个与之重叠的 project editRevision。Shot/Group 结构命令在事务内推进 structureRevision；Analysis 正式变更推进 analysisRevision；单实体仍使用自身 revision 做 CAS。`updatedAt` 可作为项目级 compare-and-write 辅助 revision，但不能替代结构/分析依赖版本。
 
 自动保存只作为命令提交链的调度，不允许旧快照的延迟保存覆盖新命令。持久化成功前不能显示“已保存”。刷新后的恢复依赖已有恢复快照，不要求 V1 将整个无限 undo 栈永久保存。
 
@@ -357,7 +388,7 @@ Pointer/Keyboard
 
 创建流程为 M → 当前画面帧 → 输入文本 → 保存。默认 scope=free，不要求选择分类。
 
-目标正式模型与当前 v18 存储方向对齐：
+Marker 的正式模型与 v19 canonical boundary 对齐：
 
 ```ts
 type MarkerScope = "free" | "film" | "section" | "sequence" | "scene" | "shot";
@@ -746,23 +777,21 @@ EditorTimeline 保留为组合入口，逐步提取职责；不再增加第二�
 
 新功能模块（字幕、语义事件、AI）实施前仍按仓库要求研究和记录决定，本版没有授权复制参考代码或改变技术栈。
 
-## 36. 存储演进与旧数据保留
+## 36. v19 存储基线与后续演进
 
-纯显示合并、registry 和偏好调整不要求迁移正式结构数据。需要新增 editRevision、冲突来源或新分析记录时，必须在 projectRepository 明确版本策略，覆盖读取、写入、恢复、备份和导出。
+Phase 03 已完成 Timeline 所依赖的数据架构冻结：v19 是当前 canonical baseline，Timeline 本身不新增 Shot/Analysis store，也不引入 project editRevision。正式 Shot/Group 结构由 `structureRevision` 保护，Analysis 由 `analysisRevision` 与单实体 revision 保护。
 
-当前工作树已存在 v17/v18 Marker 读取适配及 v18 写回方向。实施按实际仓储版本继续演进，不降级 IndexedDB，不删除数据库重建。
+Marker 继续是独立正式观察数据；Timeline 只按 frame/scope 派生位置与显示，不把 Marker 复制成 Track-owned truth。若后续调整 Marker schema，必须通过 v19 之后的 versioned migration、Backup/Restore 和引用完整性测试。
 
-Marker 对齐的原则：
+v18 及以前属于冻结前开发期数据，已由 Phase 03 的 development-reset 策略退出，不再维护 v17/v18 Marker 兼容写回路径作为长期架构要求。
 
-1. label/note 转 content 时保留两者；原分类如尚存在且有信息价值，必须在内容或可恢复元数据中保全，不能因隐藏分类控件而消失。
-2. shotId 不能仅转成 scope 后就宣称对象引用已保留；若仍有消费者依赖它，应在切换前迁移到明确对象分析引用或保留来源记录。
-3. 已只有 v18 content/scope 的记录不能反推不存在的旧分类和 shotId。
-4. 保留 id、projectId、frame、createdAt；只在真实修改时更新 updatedAt。
-5. 只覆盖实际存在的当前格式边界，不扩建所有历史项目的兼容层。
+从 v19 起：
 
-迁移前有可恢复快照，失败保持原数据；导入后进行同一结构校验。导出不得只保存视觉轨配置而漏掉正式领域数据与必要来源。
-
-本次文档修订不执行迁移。实施时同步更新当前架构文档中的已实现事实，不能提前把目标版本写成生产现状。
+1. 新增持久实体必须先明确 Source of Truth、repository port、backup/recovery 与 migration。
+2. Timeline registry、TrackDefinition、viewport/selection/preferences 等显示状态不得触发 canonical schema 复制。
+3. 结构或分析数据变更只通过各自领域命令提交，Timeline adapter 在 revision 变化后重新派生。
+4. migration 失败必须保持正式用户数据可恢复；不得以清库作为 v19 之后的正常升级策略。
+5. 导出必须携带/记录其输入的 structureRevision、analysisRevision 与必要 Profile/Mapping version。
 
 ## 37. 实施阶段与出口条件
 

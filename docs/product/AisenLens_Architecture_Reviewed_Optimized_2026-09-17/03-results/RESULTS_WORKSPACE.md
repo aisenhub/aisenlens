@@ -2,8 +2,8 @@
 title: "AisenLens Results Workspace"
 doc_type: workspace-design
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - results
 scope:
@@ -25,6 +25,38 @@ implementation_areas:
 # AisenLens 成果应用 Workspace 架构
 
 > 本文从原 Global 方案中抽取“成果应用”细节，成为数据表、导出分享和创作转化的唯一 Workspace Source of Truth。正式数据资格由 `../04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` 决定；本 Workspace 只消费，不重新定义分析事实。
+
+## Phase 03 Frozen Results Data Boundary — 2026-09-18
+
+成果应用从 v19 起只消费一个派生 `ResultsDataset`，不维护“导出专用 Analysis 副本”。
+
+```ts
+interface ResultsDataset {
+  projectId: string
+  structureRevision: number
+  analysisRevision: number
+  profileId: string | null
+  profileVersion: number | null
+  rows: ResultRow[]
+}
+```
+
+默认 query 规则：
+
+```text
+Official Shot/Group
++ confirmed AnalysisRecord
++ valid Evidence / eligibility
++ FieldDefinition/Profile metadata
+→ ResultsDataset
+```
+
+- 默认正式结果排除 `stale`、pending Candidate、unsaved draft。
+- 高级 review UI 可以显式显示 stale，但必须保留状态，不得把它伪装成 confirmed。
+- `required` Evidence 缺失时，Record 可以继续存在，但严格 Results/Export eligibility 不通过。
+- 表格、视频 overlay、CSV/XLSX/JSON/PDF、创作转化都必须消费相同 eligibility/query contract。
+- `ExportPreset / ExportMapping` 只保存“如何消费和呈现”，不保存正式值。
+- `DerivedArtifactRef` 记录导出物所基于的 `sourceStructureRevision/sourceAnalysisRevision`，用于追溯，不成为新的事实 Authority。
 
 # 19. 成果应用 Workspace
 
@@ -518,7 +550,7 @@ AI 视频的角色是：
 
 1. 默认消费 **Confirmed Analysis Data**。
 2. `AI Candidate` 未经显式采用不得进入正式成果列、正式导出或创作转化正式输入。
-3. `stale` 数据可以展示，但必须显式标记并允许筛选；导出策略应让用户知道其复核状态。
+3. `stale` 数据可以在 review/高级模式展示，但默认正式 Results/Export eligibility 排除 stale；任何显式包含 stale 的导出都必须让用户知道其复核状态。
 4. 表格列、导出字段和创作转化输入都来自稳定 Field ID / Output Capability，而不是从 Inspector UI 结构反推。
 5. 成果应用不成为 Canonical Analysis Data 的第二编辑源；需要修改正式分析时返回逐镜分析。
 6. 任何导出预设只保存“如何消费/呈现数据”，不复制正式 Analysis Record。

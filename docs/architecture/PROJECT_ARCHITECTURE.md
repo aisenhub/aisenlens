@@ -2,7 +2,7 @@
 
 > 状态：当前实现基线与已批准演进边界
 >
-> 最后核对：2026-09-14
+> 最后核对：2026-09-18
 
 本文档记录当前代码已经采用的长期架构边界。具体功能的历史计划、实施过程和已失效的数据模型不作为项目规范保留。
 
@@ -50,9 +50,11 @@ packages/    稳定共享能力，或具有独立构建/测试/跨语言 ABI 边
 
 ## 3. 本地项目数据边界
 
-项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。当前仓库版本为 18，分离存放项目、媒体句柄/Blob、截图及 Blob、镜头、项目模板、标注、缩略图缓存、波形缓存、自动分镜任务、镜头组和恢复快照。Phase 02 起由 `projectDatabaseMigration.ts` 显式冻结 schema/migration version 18，只允许 additive forward upgrade；IndexedDB upgrade transaction abort 是当前 rollback 边界，不做 destructive downgrade。回滚后的旧版标注 UI 通过仓储适配器读取 v17 与 v18 标注记录，并统一以 v18 结构写回，避免 IndexedDB 降级；这只覆盖当前回滚恢复所需的标注边界，不重新引入旧项目整体兼容层。Workflow 阶段、视图和 Session 选择是 UI 状态，不进入项目备份格式；Web split 不改变 schema。本项目不保留 LegacyProjectRecord、旧 store 转换或隐式 fallback。
+项目工作数据优先保存在浏览器 IndexedDB 的 `aisenlens-projects` 数据库中。**Phase 03 起当前 canonical schema 为 v19**。v19 首次冻结跨 Phase 04–09 的正式数据边界：Project 保存 `structureRevision / analysisRevision`；Shot 只保存结构、截图引用、单对象 revision、structureRevision 与 lineage，不再保存 `analysisFields / description / notes`；AnalysisRecord、AnalysisCandidate、AnalysisEvidenceRecord、AnalysisContextManifest 分别进入独立 store。Scene/Sequence/Section 继续复用唯一 `ShotGroupRecord(kind + stable id + ordered shotIds)` 模型。Timeline 和 Results 只构建 derived read model，不建立第二份 canonical Shot/Analysis 数据。
 
-正式项目数据不会被自动清理；缩略图、波形等派生数据与正式数据分开管理。`src/types/runtime.ts` 定义统一 revision/error/task/trust/diagnostic contract；项目与结构写入以 repository compare-and-write 为正确性门，当前项目级 edit revision 使用单调递增的 `ProjectRecord.updatedAt`。Scene/Sequence/Section 继续复用唯一 `ShotGroupRecord(kind + stable id + ordered shotIds)` 模型，不建立第二棵父子结构；独立 group replace 也必须提供 expected project revision。备份服务在 canonical write 前校验包大小、manifest version、ZIP/CRC/路径与引用；恢复快照通过仓库服务写回。未来新增持久化结构必须通过 `projectDatabaseMigration.ts` + `projectRepository.ts` 的明确版本设计和专项验收处理，不能由 UI 直接写 IndexedDB。
+由于当前项目尚未产生需要长期兼容的正式用户项目数据，v1–v18 被明确视为架构冻结前的开发期 schema；v18→v19 使用一次性的 `development-reset`。该例外只用于建立 v19 frozen baseline，不能推广到后续版本。从 v19 开始，任何 schema evolution 都必须通过 `projectDatabaseMigration.ts` 的 versioned migration、IndexedDB upgrade transaction rollback/abort、专项 migration tests 与 Backup/Restore round-trip 验证；不得再通过清库解决 schema 冲突。Backup v4 是 v19 的可移植边界，覆盖 Project、Shot/Group、Template/Profile、AnalysisRecord/Candidate/Evidence/ContextManifest 及其引用重映射。
+
+并发正确性不再只依赖 `ProjectRecord.updatedAt`。项目级 `structureRevision` 表示正式 Shot/Group 结构版本，`analysisRevision` 表示正式 Analysis 数据版本；单条 Shot/Analysis/Candidate/Evidence 同时具有各自 revision。结构写事务必须原子推进 structureRevision，并把无法证明仍成立的 Analysis/Candidate/Evidence 标记 stale；Candidate accept 必须校验 Candidate revision 与 structure/analysis dependency revision，在同一 repository transaction 内写正式 AnalysisRecord 并推进 analysisRevision。
 
 时间轴和镜头领域以整数帧与半开区间 `[startFrame, endFrame)` 表达时间范围；跨功能传递或持久化时应保持这一语义。
 
@@ -94,5 +96,5 @@ React 不直接拼装 WASM 参数，Scene Engine 也不理解“电影/剧集”
 
 - 新功能进入所属 feature，跨域能力先建立清晰服务接口。
 - 不复制桌面或移动端业务实现，不为了推测的复用提前拆包。
-- 数据模型或浏览器存储变更必须同时更新 `projectDatabaseMigration.ts` 的版本化升级契约、相关类型和本文件；禁止 destructive downgrade。
+- 数据模型或浏览器存储变更必须同时更新 `projectDatabaseMigration.ts` 的版本化升级契约、相关类型、Backup/Recovery 边界和本文件；v19 之后禁止以 reset/destructive downgrade 代替正式 migration。
 - 对参考项目的调研结论只记录在 `reference-projects/REFERENCE_PROJECT_INDEX.md`，不得直接迁移其实现。
