@@ -58,13 +58,13 @@
 
 ## 2. 阶段状态总表
 
-状态允许：`未开始 / 进行中 / 已阻塞 / 验证失败 / 验收通过待推送 / 已交付`。
+状态允许：`未开始 / 进行中 / 已阻塞 / 验证失败 / 验收通过待推送 / 已交付 / 已交付（组合门禁暂缓）`。
 
 | Phase | 名称 | 状态 | 已完成 | 剩余/依赖 | 代码 commit | Push/远程链接 |
 |---|---|---|---|---|---|---|
 | 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
 | 02 | Contract & Runtime Baseline | 已交付 | browser harness、typed runtime contract、DB migration baseline、revision CAS、task/trust/diagnostic contract、V1–V4 fixtures 与完整 gate 已完成 | 无；媒体 timing 已作为 Phase 05/10 独立开放风险记录 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | 已推送并核对远程 ref |
-| 03 | Analysis Data/Evidence/Template | 验收通过待推送（组合门禁暂缓） | v19 canonical Analysis stores、Shot/Analysis 解耦、revision/stale propagation、Context Manifest、Backup v4、下游 read contract 与定向 Phase 03 gate 已完成 | 按用户决定暂缓 `verify:phase-03` 的最终组合压力复跑；提交/推送待收口 | 待提交 | 待推送 |
+| 03 | Analysis Data/Evidence/Template | 已交付（组合门禁暂缓） | v19 canonical Analysis stores、Shot/Analysis 解耦、revision/stale propagation、Context Manifest、Backup v4、下游 read contract 与定向 Phase 03 gate 已完成 | 最终组合压力复跑按用户决定暂缓；后续在 Phase 10/发布门复核 | `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` | 已推送并已核对远程 SHA |
 | 04 | Global Shell & Design System | 未开始 | 无 | 01/02/03 | 未产生 | 未推送 |
 | 05 | Preparation & Shot Authority | 未开始 | 无 | 02/03/04 | 未产生 | 未推送 |
 | 06 | Analysis Workspace & Inspector | 未开始 | 无 | 03/04/05 | 未产生 | 未推送 |
@@ -196,8 +196,8 @@
 - 当前代码阻塞：无。Sound Research Range 已拆为独立浏览器进程并通过真实 IndexedDB 保存、URL 恢复与刷新读取；Overview pressure 单独运行时通过分批 IndexedDB 写入与有界 DOM 断言。
 - 组合门禁标记：`verify:phase-03` 在 `verify:web`、Analysis/响应式/consumer/Overview/Sound 后进入 pressure 场景；本次在前序浏览器序列后达到 120 秒超时，用户已要求停止测试。该项不改断言、不宣称组合门禁通过，后续可在 Phase 10/发布门统一复跑。
 - 对照证据：Analysis multi-tab revision conflict、结构 Move/Split/Merge/Group stale 矩阵、Context Manifest dependency stale、Backup v4 archive round-trip、Overview navigation/Sound/pressure 单独回归、Calibration workflow/verification 均已有通过记录。`synthetic.webm` real-media CFR/VFR 精确帧 timing 仍是已批准的 Phase 05/10 独立风险。
-- 交付门：Phase 03 的 Node contract、`verify:web` 与定向 browser gate 已完成；最终组合门禁、diff/hygiene、commit/push 按用户决定暂缓收口。
-- 当前状态：Phase 03 标记为“验收通过待推送（组合门禁暂缓）”；不得把未完成的组合 pressure 复跑记录为通过。
+- 交付门：Phase 03 的 Node contract、`verify:web`、定向 browser gate、`git diff --check` 已完成；实现已提交为 `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` 并推送到专用分支。最终组合压力复跑按用户决定暂缓。
+- 当前状态：Phase 03 标记为“已交付（组合门禁暂缓）”；不得把未完成的组合 pressure 复跑记录为通过。
 
 ## 4. 验证记录
 
@@ -267,6 +267,7 @@
 | 01 | `069913ae13de06d1f3024084c062e93d0b521e12` | `codex/phase-01-repository-verification` | `docs(phase-01): record delivery evidence` | 是 | 是 | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 回填主交付证据 |
 | 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | `codex/phase-01-repository-verification` | `docs(phase-01): align execution order for closeout` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 对齐 03 Analysis → 04 Shell → 05 Preparation 的最新执行顺序；仅文档/索引/阶段文件改名 |
 | 02 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | `codex/phase-02-contract-runtime-baseline` | `feat(phase-02): establish contract runtime baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-02-contract-runtime-baseline) | Phase 02 主实现；20 files，runtime/migration contracts、repository CAS、browser harness、回归 fixtures 与架构/验证记录 |
+| 03 | `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` | `codex/phase-03-analysis-data-evidence-template` | `feat(phase-03): freeze analysis data and evidence contracts` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-03-analysis-data-evidence-template) | Phase 03 实现与阶段状态标记；组合 pressure gate 按用户决定暂缓 |
 
 ## 6. 关键失败 / 阻塞日志
 
@@ -276,12 +277,14 @@
 | 2026-09-18 | 01 | 当前正式 baseline 文档旧 SHA | `audit/CURRENT_REPOSITORY_BASELINE.md` 原记录 `e08e0cc…`，实际起始 SHA 为 `7fa9a0b4…` | 可能误导后续 agent | 本阶段同步 baseline 文档并在本记录保留起始/最终 SHA 区分 | 已处理 |
 | 2026-09-18 | 01 | 无独立 docs lint/link gate、无 CI workflow | 未发现 `.github`；根 package scripts 无 docs lint/link | 文档链接/格式不能获得自动 gate 证据 | 使用 `git diff --check`，并由 Phase 11 governance 补正式 gate | 开放风险 |
 | 2026-09-18 | 02 | 真实 `synthetic.webm` 校准 browser case 等待 CFR/VFR 精确帧验证超时 | full suite 2 pass / 1 fail；隔离 real-media 同点复现 | 精确帧媒体校准专项；不影响 runtime/revision/migration fixture 与 Workflow E2E | 不删除/放宽断言；留 Phase 05/10 继续定位 timing/decoder 路径 | 开放风险（非 Phase 02 contract blocker） |
+| 2026-09-18 | 03 | Phase 03 composite pressure 在完整浏览器序列后达到 120s | `verify:phase-03` 已通过 verify:web、Analysis/响应式/consumer/Overview/Sound，进入 pressure 后超时；pressure 单独运行通过 | 组合门禁尾段；不影响已通过的 Node contract、verify:web 与定向 browser gate | 按用户要求停止测试并在本记录标记；不放宽断言，留 Phase 10/发布门复跑 | 暂缓（非代码阻塞） |
 
 ## 7. 阶段交接与用户决定
 
-- 下一阶段从哪里开始：Phase 03 `Analysis Data / Evidence / Template 与无损持久化迁移`；直接消费本阶段 typed revision/error/task/trust/migration contract，不再定义第二套语义。
-- Phase 03 必须保持：`ShotRecord.analysisFields` 迁移 versioned/non-destructive；Analysis canonical write 使用 repository revision gate；AI 仍只能 Candidate-only。
+- 历史交接起点：Phase 03 `Analysis Data / Evidence / Template 与无损持久化迁移`；其实现已完成并冻结 v19 canonical contract。
+- 当前下一阶段从哪里开始：Phase 04 `Global Shell + Design System`；直接消费本阶段 typed revision/error/task/trust/migration、Analysis/Evidence/Template 与下游 read contracts，不再定义第二套语义。
+- Phase 03 后续复核：最终组合 pressure gate 尚未完成，按用户决定暂缓；进入 Phase 10/发布门时必须复跑并更新本记录。
 - 可直接复用：`src/types/runtime.ts`、`projectDatabaseMigration.ts`、repository typed CAS、backup input validation、`RuntimeTaskEnvelope`、现有 fault/pressure/CDP fixtures。
 - 不应重复实施：DB v18 store 基线、project editor 原子 transaction、Scene/Sequence/Section 第二模型、另一个 error/task enum、另一个 provider trust policy。
-- 当前修改归属：Phase 02 主实现已提交并推送到专用分支；主提交 `3a1df374281da8a535bc9569de35ea45bc3c2f85` 已用 `git ls-remote` 核对远程包含；本次仅追加交付证据。
-- 需要用户决定的事项：无。继续按计划提交/推送专用分支；不部署、不合并主分支、不改生产/第三方设置。
+- 当前修改归属：Phase 03 主实现已提交并推送到 `codex/phase-03-analysis-data-evidence-template`，提交 `02089a8dcc8d578483674d1d50b3a7e5a4b4589d`；远程 SHA 已核对一致。
+- 用户决定：停止 Phase 03 组合压力测试，标记阶段完成，后续转入 Phase 04；不部署、不合并主分支、不改生产/第三方设置。
