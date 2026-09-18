@@ -60,7 +60,7 @@
 | Phase | 名称 | 状态 | 已完成 | 剩余/依赖 | 代码 commit | Push/远程链接 |
 |---|---|---|---|---|---|---|
 | 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
-| 02 | Contract & Runtime Baseline | 验收通过待推送 | browser harness、typed runtime contract、DB migration baseline、revision CAS、task/trust/diagnostic contract、V1–V4 fixtures 已完成 | 完整 gate、diff 审查、commit/push 与远程 SHA 回填 | 未产生 | 未推送 |
+| 02 | Contract & Runtime Baseline | 已交付 | browser harness、typed runtime contract、DB migration baseline、revision CAS、task/trust/diagnostic contract、V1–V4 fixtures 与完整 gate 已完成 | 无；媒体 timing 已作为 Phase 05/10 独立开放风险记录 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | 已推送并核对远程 ref |
 | 03 | Analysis Data/Evidence/Template | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
 | 04 | Global Shell & Design System | 未开始 | 无 | 01/02/03 | 未产生 | 未推送 |
 | 05 | Preparation & Shot Authority | 未开始 | 无 | 02/03/04 | 未产生 | 未推送 |
@@ -231,6 +231,7 @@
 | 01 | `2a7921cc34282b476090af6786298213fdd35a50` | `codex/phase-01-repository-verification` | `docs(phase-01): freeze repository verification baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | Phase 01 主基线提交；后续证据与顺序收尾均以新提交追加，不改写历史 |
 | 01 | `069913ae13de06d1f3024084c062e93d0b521e12` | `codex/phase-01-repository-verification` | `docs(phase-01): record delivery evidence` | 是 | 是 | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 回填主交付证据 |
 | 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | `codex/phase-01-repository-verification` | `docs(phase-01): align execution order for closeout` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 对齐 03 Analysis → 04 Shell → 05 Preparation 的最新执行顺序；仅文档/索引/阶段文件改名 |
+| 02 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | `codex/phase-02-contract-runtime-baseline` | `feat(phase-02): establish contract runtime baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-02-contract-runtime-baseline) | Phase 02 主实现；20 files，runtime/migration contracts、repository CAS、browser harness、回归 fixtures 与架构/验证记录 |
 
 ## 6. 关键失败 / 阻塞日志
 
@@ -247,5 +248,5 @@
 - Phase 03 必须保持：`ShotRecord.analysisFields` 迁移 versioned/non-destructive；Analysis canonical write 使用 repository revision gate；AI 仍只能 Candidate-only。
 - 可直接复用：`src/types/runtime.ts`、`projectDatabaseMigration.ts`、repository typed CAS、backup input validation、`RuntimeTaskEnvelope`、现有 fault/pressure/CDP fixtures。
 - 不应重复实施：DB v18 store 基线、project editor 原子 transaction、Scene/Sequence/Section 第二模型、另一个 error/task enum、另一个 provider trust policy。
-- 当前修改归属：Phase 02 专用分支；完整 gate、commit/push 与远程 SHA 仍待回填。
+- 当前修改归属：Phase 02 主实现已提交并推送到专用分支；主提交 `3a1df374281da8a535bc9569de35ea45bc3c2f85` 已用 `git ls-remote` 核对远程包含；本次仅追加交付证据。
 - 需要用户决定的事项：无。继续按计划提交/推送专用分支；不部署、不合并主分支、不改生产/第三方设置。
