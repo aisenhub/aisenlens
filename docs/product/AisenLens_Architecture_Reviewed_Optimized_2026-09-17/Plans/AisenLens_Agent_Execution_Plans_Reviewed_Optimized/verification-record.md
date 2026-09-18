@@ -59,7 +59,7 @@
 
 | Phase | 名称 | 状态 | 已完成 | 剩余/依赖 | 代码 commit | Push/远程链接 |
 |---|---|---|---|---|---|---|
-| 01 | Repository Verification | 验收通过待推送 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 推送本阶段记录；修复失效 browser harness 后复测 | 待提交 | 未推送 |
+| 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
 | 02 | Contract & Runtime Baseline | 未开始 | 无 | Phase 01；先处理 browser harness 基线问题并冻结 typed contract/runtime gap | 未产生 | 未推送 |
 | 03 | Global Shell & Design System | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
 | 04 | Preparation & Shot Authority | 未开始 | 无 | 02/03 | 未产生 | 未推送 |
@@ -198,7 +198,7 @@
 
 | Phase | Commit SHA | Branch | Commit 说明 | Push 是否成功 | 远程是否包含 | GitHub 链接 | 备注 |
 |---|---|---|---|---|---|---|---|
-| 01 | 待提交 | 待创建 | `docs(phase-01): freeze repository verification baseline` | 未推送 | 未验证 | - | 先提交本阶段记录，再补写最终 delivery SHA；不 amend |
+| 01 | `2a7921cc34282b476090af6786298213fdd35a50` | `codex/phase-01-repository-verification` | `docs(phase-01): freeze repository verification baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 本阶段记录已按计划提交并推送；本次后续提交仅补齐交付证据，不 amend |
 
 ## 6. 关键失败 / 阻塞日志
 
@@ -214,5 +214,5 @@
 - Phase 02 必须先解决：修复/验证 browser harness 的 `apps/web` 旧路径；保留 `apps/webapp` 为唯一产品入口，不创建重复 `apps/web` 目录。
 - 可直接复用：`projectRepository.readProjectEditorState/saveProjectEditorState/applyCalibrationDraft`；CalibrationDraft v3 与 `applyCalibrationCommand`；auto-shot task lifecycle/repository；template validation/profile resolver；CDP harness 的隔离 profile/fixture 机制（修正入口后）；现有 fault/pressure/lifecycle fixtures。
 - 不应重复实施：IndexedDB v18 store 创建、project editor 原子保存、recovery snapshot、auto-shot pause/cancel 基础状态、template v2 validation、report escaping。
-- 当前未提交修改及归属：本阶段记录文档改动属于本任务；产品代码无修改。另有未纳入本阶段的计划文件变更，提交前会按路径排除。
+- 当前未提交修改及归属：本阶段记录文档已交付；产品代码无修改。工作区仍有未纳入本阶段的计划文件变更，已按路径排除且保留。
 - 需要用户决定的事项：无。按阶段计划执行专用分支、提交和远程推送；不部署、不改生产/第三方设置。
