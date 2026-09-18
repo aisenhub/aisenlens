@@ -26,9 +26,9 @@ Archive 仅用于追溯，不作为新的需求权威。
 | 00 | 缺少“阶段摘要/traceability/正式原文”的完整覆盖协议；横切 runtime 要求分散 | 新增 Master→Execution 映射、完整覆盖协议、Persistence/Task/Trust/Diagnostics/Feature rollout/Capacity/Release 横切硬门 |
 | 01 | 代码路径核实较好，但 UI 基线、storage failure、trust/export、feature flag、diagnostics、capacity fixtures 不完整 | 新增 UI/UX、runtime/trust/delivery、fixture/capacity 基线与 R-01 收口 |
 | 02 | revision/task/error 已有，但缺 eviction/private mode、backup integrity、task resource/retry、export safety、diagnostics marks、feature rollout | 新增完整 Runtime Contract、V4–V6 Spike、R-02/R-03 下游冻结 |
-| 03 | Shell/tokens 已有，但 Design System 的 motion/media-first/workspace modes/view preference/loading/AI UI/editing philosophy/anti-patterns 过于隐式 | 补齐 Design System 行为与浏览器验收清单 |
-| 04 | Shot Authority 完整，但 Preparation 优化细节缺失较多 | 补 settings Drawer、专家设置、真实/不确定进度、AI/Template 移除、Boundary Queue/Frame Pair/Preview/Confirm/微调/补切/Auto Next/重新确认/完成态/重开等 |
-| 05 | 迁移主线正确，但 Field/Record/Candidate、来源、Results eligibility/传播、Evidence 类型、Template persistence 细节不够 | 补完整数据契约、Evidence/Provenance、Template invariants、传播/eligibility 与迁移 fixture |
+| 03 | 迁移主线正确，但 Field/Record/Candidate、来源、Results eligibility/传播、Evidence 类型、Template persistence 细节不够 | 补完整数据契约、Evidence/Provenance、Template invariants、传播/eligibility 与迁移 fixture |
+| 04 | Shell/tokens 已有，但 Design System 的 motion/media-first/workspace modes/view preference/loading/AI UI/editing philosophy/anti-patterns 过于隐式 | 补齐 Design System 行为与浏览器验收清单 |
+| 05 | Shot Authority 完整，但 Preparation 优化细节缺失较多 | 补 settings Drawer、专家设置、真实/不确定进度、AI/Template 移除、Boundary Queue/Frame Pair/Preview/Confirm/微调/补切/Auto Next/重新确认/完成态/重开等 |
 | 06 | 主闭环存在，但 Workspace Toolbar/Breadcrumb/Template settings/Correction impact 与 Inspector 细粒度 renderer/review/timeline/AI Ask 大量内容未显式 | 补 Workspace + Inspector 全量执行清单与浏览器验收 |
 | 07 | Timeline 核心已有，但 Marker/Beat/Event、workspace states、track preference scope、invalid recovery、module/storage evolution、验收矩阵不足 | 补齐 Domain/Application/View/Integration 各层与资源预算/AI/context/迁移 |
 | 08 | derived query 基础正确，但 Results 具体表格能力、Export Studio、Live Preview/Preset、Creative Transformation 输入/输出结构不足 | 补 Data Table、三类 Export、Preset、安全、Creative method-transfer/Derived Artifact/Previs |

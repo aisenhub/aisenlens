@@ -32,11 +32,11 @@ depends_on:
 ```text
 Phase 0  文档/类型契约冻结
    ↓
-Phase 1  Global Shell + Design Tokens
+Phase 1  Analysis Data Model + Evidence/Provenance
    ↓
-Phase 2  素材准备：Official Shot Authority 收敛
+Phase 2  Global Shell + Design Tokens
    ↓
-Phase 3  Analysis Data Model + Evidence/Provenance
+Phase 3  素材准备：Official Shot Authority 收敛
    ↓
 Phase 4  Analysis Workspace + Inspector
    ↓

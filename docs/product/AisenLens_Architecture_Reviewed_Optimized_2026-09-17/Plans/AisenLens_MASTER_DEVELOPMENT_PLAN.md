@@ -108,7 +108,7 @@ Formal Analysis Record / Approved Structure Command
 | W9 运行时可靠性与安全 | IndexedDB durability、quota/corruption、多标签页 revision、Worker lifecycle、输入/AI 信任边界、可观测性、发布门 | `05-runtime/OPERATIONAL_ARCHITECTURE.md` |
 | W10 迁移与质量 | 数据迁移、兼容、测试、性能、文档治理、dead-link/authority lint | `implementation/*`, `audit/*` |
 
-其中 **W2 UI/UX Design System 是横切主线**，从 Phase 1 开始贯穿全部阶段，不允许延后到功能开发结束后统一补做。
+其中 **W2 UI/UX Design System 是横切主线**，从 Phase 2 开始贯穿全部阶段，不允许延后到功能开发结束后统一补做。
 
 ---
 
@@ -200,9 +200,95 @@ Workspace
 
 ---
 
-# 5. Phase 1 — Global Shell + Workspace Design System
+# 5. Phase 1 — Analysis Data、Evidence/Provenance、Template 与持久化解耦
 
-## 5.1 Global Shell
+## 5.1 Analysis Data Model
+
+实施稳定的 Analysis 数据核心：
+
+- FieldDefinition / stable fieldId；
+- AnalysisRecord；
+- AnalysisCandidate；
+- human / algorithm / AI / derived 来源区分；
+- unknown / not_applicable 等字段状态；
+- record revision；
+- Candidate 独立生命周期；
+- confirmed/stale/eligibility 分离；
+- Data Review 与 AI Review 分离。
+
+禁止一个通用 `status` enum 同时表达 Candidate、Record、Revision 多种生命周期。
+
+## 5.2 从 ShotRecord.analysisFields 解耦
+
+按 P0 migration：
+
+1. 新建兼容 Analysis Repository/port；
+2. 旧 ShotRecord 数据可完整读取；
+3. 将 value / unknown / NA / source 等无损迁移；
+4. 新写入进入 Analysis Authority；
+5. 交叉核对后逐步停止旧字段写入；
+6. 最终移除物理耦合，但不删除用户数据。
+
+## 5.3 stale / remap / revalidation
+
+建立明确规则：Shot Boundary、Identity、Scene association、Sequence、Structure Revision 变化后，哪些 Record：
+
+- 仍有效；
+- 可 deterministic remap；
+- 必须 stale；
+- 必须 reanalyze；
+- 必须用户 semantic revalidation。
+
+Split/Merge/Move 都必须产生可预测影响队列。
+
+## 5.4 Evidence / Provenance
+
+实施：
+
+- Evidence 为一等数据；
+- EvidenceRef 可重定位；
+- Provenance 与所属 Record/Candidate revision 关联；
+- source/model/prompt/context/time/user-confirmation 可追溯；
+- evidence policy = none/optional/recommended/required 等规则按契约处理；
+- required evidence 不应阻塞早期记录，但会影响完成/eligible 状态。
+
+## 5.5 Template 子契约
+
+把 Template 从万能 JSON 拆成清晰边界：
+
+- TemplateDefinition / AnalysisProfile；
+- AnalysisSchema（稳定字段语义归 Analysis Data）；
+- UILayoutDefinition；
+- RendererDefinition；
+- PromptDefinition；
+- ContextDefinition；
+- ExportMapping。
+
+Template 切换不得删除数据；Template 通过 stable fieldId 引用字段；UI layout、AI prompt/context、export mapping 不反向成为 Analysis schema。
+
+## 5.6 UI/UX 交付
+
+本 Phase 即使以数据为主，也必须交付可视状态规范：
+
+- Human / AI / Algorithm / Derived 来源视觉；
+- confirmed / stale / candidate / conflict / unknown / NA；
+- save state；
+- Evidence chip；
+- provenance 默认弱化但可追溯；
+- Template 切换的影响预览与无损提示。
+
+## 5.7 Exit Criteria
+
+- Analysis Fact 不再依赖 Shot 聚合作为唯一存储。
+- Candidate 未 accept 不进入正式 Results/Export。
+- stale 传播确定且可测试。
+- Template 子域责任不再混在同一模型里。
+
+---
+
+# 6. Phase 2 — Global Shell + Workspace Design System
+
+## 6.1 Global Shell
 
 实现三一级 Workspace：**素材准备 / 逐镜分析 / 成果应用**，并落实全局左侧导航、顶部区域和主工作区三稳定区域。取消“总览”作为与主任务竞争的一级工作区；全局层只负责跨工作区导航、关系与状态，不重新定义 Domain 数据。
 
@@ -216,7 +302,7 @@ Workspace
 - Drawer、Inspector、Modal 的统一层级；
 - 跨工作区 correction flow 的导航能力。
 
-## 5.2 Design System
+## 6.2 Design System
 
 完整实现 `WORKSPACE_DESIGN_SYSTEM.md` 所定义的视觉和交互基础：
 
@@ -230,11 +316,11 @@ Workspace
 - Empty、Loading、AI UI、Editing、Accessibility、Keyboard First、Tooltip；
 - View Preference 与 Workspace Modes。
 
-## 5.3 UI/UX 重点
+## 6.3 UI/UX 重点
 
 UI 首阶段就必须达到“可作为后续工作台母体”的质量，而不是临时壳。Shell 的视觉密度、左右面板关系、选中态、Focus、主题、快捷键、状态反馈必须稳定后，Preparation/Analysis/Results 才继续叠加。
 
-## 5.4 Exit Criteria
+## 6.4 Exit Criteria
 
 - 三 Workspace 可进入、可切换且上下文不丢失。
 - Design System 基础组件覆盖后续工作台必需状态。
@@ -243,20 +329,20 @@ UI 首阶段就必须达到“可作为后续工作台母体”的质量，而�
 
 ---
 
-# 6. Phase 2 — Preparation Workspace + Official Shot Authority
+# 7. Phase 3 — Preparation Workspace + Official Shot Authority
 
-## 6.1 目标
+## 7.1 目标
 
 把 Preparation 建成可靠形成 Official Shot Structure 的唯一工作台，完成从素材导入到切点确认的连续任务流。
 
-## 6.2 Step 1：导入素材
+## 7.2 Step 1：导入素材
 
 - 空状态与导入入口；
 - 素材导入后的媒体信息、可用状态与错误反馈；
 - Media identity 与当前 project persistence 对齐；
 - 丢失媒体、重新关联、再次打开项目的行为。
 
-## 6.3 Step 2：智能切分
+## 7.3 Step 2：智能切分
 
 - 待识别状态；
 - 切分设置 Drawer；用户参数语言与专家设置分层；
@@ -266,7 +352,7 @@ UI 首阶段就必须达到“可作为后续工作台母体”的质量，而�
 - 识别完成后的候选结果进入 Review，不重复确认；
 - 分析 Template 与 Analysis AI 从 Preparation 中移除。
 
-## 6.4 Step 3：Boundary Review / Calibration
+## 7.4 Step 3：Boundary Review / Calibration
 
 以 Boundary 而非 Segment 为核心导航实体：
 
@@ -285,7 +371,7 @@ UI 首阶段就必须达到“可作为后续工作台母体”的质量，而�
 - 未完成项与全部完成态；
 - 重新打开项目后的恢复。
 
-## 6.5 Shot Domain Command 落地
+## 7.5 Shot Domain Command 落地
 
 正式 Shot 修改只能通过：ConfirmBoundary、MoveBoundary、SplitShot、MergeShots 等命令；每次结构变化必须：
 
@@ -296,106 +382,20 @@ UI 首阶段就必须达到“可作为后续工作台母体”的质量，而�
 - 可撤销；
 - 触发下游 stale/remap 影响评估。
 
-## 6.6 Keyframe
+## 7.6 Keyframe
 
 保留 `KEYFRAME_DESIGN_DRAFT.md` 的 draft 状态。只实现当前已有明确需求，不把空白草稿自行升级为 approved；后续需独立设计后再进入总计划的具体开发项。
 
-## 6.7 UI/UX 重点
+## 7.7 UI/UX 重点
 
 Preparation 必须表现为**连续任务**而非模块仪表盘。核心原则：主操作唯一、参数渐进披露、扫描不滥用 Modal、异常优先、Review 以视觉证据为中心、正常状态降噪。
 
-## 6.8 Exit Criteria
+## 7.8 Exit Criteria
 
 - 非 Shot Authority 路径无法直接写正式 Shot。
 - Candidate 不会未经确认进入 Official Shot。
 - Boundary Review 的鼠标、键盘、Undo/Redo、保存、重新进入流程完整。
 - Analysis Workspace 只能只读消费 Official Shot。
-
----
-
-# 7. Phase 3 — Analysis Data、Evidence/Provenance、Template 与持久化解耦
-
-## 7.1 Analysis Data Model
-
-实施稳定的 Analysis 数据核心：
-
-- FieldDefinition / stable fieldId；
-- AnalysisRecord；
-- AnalysisCandidate；
-- human / algorithm / AI / derived 来源区分；
-- unknown / not_applicable 等字段状态；
-- record revision；
-- Candidate 独立生命周期；
-- confirmed/stale/eligibility 分离；
-- Data Review 与 AI Review 分离。
-
-禁止一个通用 `status` enum 同时表达 Candidate、Record、Revision 多种生命周期。
-
-## 7.2 从 ShotRecord.analysisFields 解耦
-
-按 P0 migration：
-
-1. 新建兼容 Analysis Repository/port；
-2. 旧 ShotRecord 数据可完整读取；
-3. 将 value / unknown / NA / source 等无损迁移；
-4. 新写入进入 Analysis Authority；
-5. 交叉核对后逐步停止旧字段写入；
-6. 最终移除物理耦合，但不删除用户数据。
-
-## 7.3 stale / remap / revalidation
-
-建立明确规则：Shot Boundary、Identity、Scene association、Sequence、Structure Revision 变化后，哪些 Record：
-
-- 仍有效；
-- 可 deterministic remap；
-- 必须 stale；
-- 必须 reanalyze；
-- 必须用户 semantic revalidation。
-
-Split/Merge/Move 都必须产生可预测影响队列。
-
-## 7.4 Evidence / Provenance
-
-实施：
-
-- Evidence 为一等数据；
-- EvidenceRef 可重定位；
-- Provenance 与所属 Record/Candidate revision 关联；
-- source/model/prompt/context/time/user-confirmation 可追溯；
-- evidence policy = none/optional/recommended/required 等规则按契约处理；
-- required evidence 不应阻塞早期记录，但会影响完成/eligible 状态。
-
-## 7.5 Template 子契约
-
-把 Template 从万能 JSON 拆成清晰边界：
-
-- TemplateDefinition / AnalysisProfile；
-- AnalysisSchema（稳定字段语义归 Analysis Data）；
-- UILayoutDefinition；
-- RendererDefinition；
-- PromptDefinition；
-- ContextDefinition；
-- ExportMapping。
-
-Template 切换不得删除数据；Template 通过 stable fieldId 引用字段；UI layout、AI prompt/context、export mapping 不反向成为 Analysis schema。
-
-## 7.6 UI/UX 交付
-
-本 Phase 即使以数据为主，也必须交付可视状态规范：
-
-- Human / AI / Algorithm / Derived 来源视觉；
-- confirmed / stale / candidate / conflict / unknown / NA；
-- save state；
-- Evidence chip；
-- provenance 默认弱化但可追溯；
-- Template 切换的影响预览与无损提示。
-
-## 7.7 Exit Criteria
-
-- Analysis Fact 不再依赖 Shot 聚合作为唯一存储。
-- Candidate 未 accept 不进入正式 Results/Export。
-- stale 传播确定且可测试。
-- Template 子域责任不再混在同一模型里。
 
 ---
 
@@ -753,14 +753,14 @@ Domain contracts 不依赖 React/Workspace/Zustand；Application commands/servic
 | Batch | 核心范围 | 主要可见成果 | 阻塞关系 |
 | --- | --- | --- | --- |
 | B0 | Phase 0 | 真实代码基线、迁移设计、UI 基线 | 无 |
-| B1 | Phase 1 | Global Shell + Design System | B0 |
-| B2 | Phase 2 | Preparation + Official Shot Authority | B1 |
-| B3 | Phase 3 | Analysis Repository + Evidence + Template contracts | B2 的 Shot revision |
-| B4 | Phase 4 + Phase 5 基础 | Analysis Workspace + Inspector V1 | B3 |
-| B5 | Phase 6 | Timeline domain/view + Analysis 联动 | B2/B3/B4 |
-| B6 | Phase 5 深化 + Phase 8 基础 | Data Review / AI Review / Evidence UX | B3/B4/B5 |
-| B7 | Phase 7 | Results Table / Export / Creative | B3/B4/B5 |
-| B8 | Phase 8 完整 | AI Candidate / Context Builder / AI Ask | B3/B5/B7 |
+| B1 | Phase 1 | Analysis Repository + Evidence + Template contracts | B0 |
+| B2 | Phase 2 | Global Shell + Design System | B1 |
+| B3 | Phase 3 | Preparation + Official Shot Authority | B1/B2 |
+| B4 | Phase 4 + Phase 5 基础 | Analysis Workspace + Inspector V1 | B1/B2/B3 |
+| B5 | Phase 6 | Timeline domain/view + Analysis 联动 | B1/B3/B4 |
+| B6 | Phase 5 深化 + Phase 8 基础 | Data Review / AI Review / Evidence UX | B1/B4/B5 |
+| B7 | Phase 7 | Results Table / Export / Creative | B1/B4/B5 |
+| B8 | Phase 8 完整 | AI Candidate / Context Builder / AI Ask | B1/B5/B7 |
 | B9 | Phase 9 | Migration hardening / performance / a11y / release | 前述全部 |
 | B10 | Phase 10 | 文档状态、Agent 指南、长期治理 | 持续进行，发布前收口 |
 

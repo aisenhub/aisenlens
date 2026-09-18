@@ -1,7 +1,7 @@
 > **用途**：本文件只用于指导后续执行 agent 实施。本轮未修改产品代码、未安装依赖、未部署、未执行测试或 Git 提交。
 > **事实规则**：代码现状以执行时本地仓库核实结果为准；目标行为以 AisenLens 2026-09-17 Reviewed/Optimized 架构包为准。未经核实的路径、接口、命令一律不得臆造。
 
-# 04 — Preparation Workspace + Official Shot Authority
+# 05 — Preparation Workspace + Official Shot Authority
 
 ## 目标
 

@@ -65,11 +65,11 @@ Git 权限：本提示词已授权每阶段正常 commit + push；无需重复�
 ## 阶段依赖与停止边界
 
 - 01→02 必须串行。
-- 04 的 Shot Authority 是 05 Analysis migration 的依赖。
-- 05 是 06/08/09 的核心依赖。
-- 07 依赖 04/05/06 的共享状态/structure read models。
+- 03 Analysis migration 先于 05 Shot Authority。
+- 03 是 06/08/09 的核心依赖。
+- 07 依赖 03/05/06 的共享状态/structure read models。
 - 10 在功能阶段基本完成后统一 harden。
-- 若 Phase 02 persistence migration 设计失败：停止 Phase 05 migration；可继续不依赖它的 Shell 工作。
+- 若 Phase 02 persistence migration 设计失败：停止 Phase 03 migration；可继续不依赖它的 Shell 工作。
 - 若发现可能丢用户数据：立即停止相关写路径改造，保留证据并修正迁移方案。
 
 ## 多 agent 协作与文件所有权

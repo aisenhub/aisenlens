@@ -43,7 +43,7 @@ empty results、filter 无结果、部分 stale、export blocked、export queued
 ### Results Workspace / Data Table
 - Results 内部明确为 **数据表 / 导出与分享 / 创作转化** 三个二级工作区（可按现有路由实现），不把全部复杂功能塞进一个大 Modal。
 - Data Table 是 Analysis 的数据库视图：核心列（镜号/截图/时长等）+ stable fieldId 驱动的动态列；支持 search/filter/group/show-fields/sort/aggregate，并可按 Scene/标签/模板字段等真实维度分组。
-- 默认“查看优先”；需要编辑正式数据时必须进入明确编辑态并走 Phase 05 Analysis command/Authority，不复制“导出数据”或 Results 私有 Analysis 副本。
+- 默认“查看优先”；需要编辑正式数据时必须进入明确编辑态并走 Phase 03 Analysis command/Authority，不复制“导出数据”或 Results 私有 Analysis 副本。
 - stale 可以展示但必须显式标记/可筛选；pending Candidate/unsaved draft 不作为正式列；Evidence/Provenance 可追溯。
 
 ### Export Studio / Preset

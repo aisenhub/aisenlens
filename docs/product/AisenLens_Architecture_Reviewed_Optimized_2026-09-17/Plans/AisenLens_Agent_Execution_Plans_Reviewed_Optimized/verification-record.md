@@ -16,7 +16,7 @@
 - 起始 commit：`7fa9a0b4d3604284c0278bce6490afc88294835c`
 - 起始 commit：`2026-09-17T17:54:56+08:00 docs: adopt reviewed architecture package`
 - 初始工作区：干净，`main...origin/main`
-- 已有用户修改及归属：开始核查时未发现未提交修改；核查期间另发现一组非本阶段计划文件变更，未纳入本阶段提交，继续保留在工作区。
+- 已有用户修改及归属：开始核查时未发现未提交修改；核查期间形成的新执行顺序计划变更在 Phase 01 交付后作为收尾对齐纳入同一专用分支，产品代码仍保持不变。
 - package manager / runtime：`pnpm 11.24.0`（Corepack），`Node v24.19.0`；仓库 packageManager 与 lockfile 均存在。
 - 工作区：Windows / PowerShell；依赖已存在，本阶段未安装软件或依赖。
 - CI：未发现 `.github` 目录或 CI workflow；只能核对本地 package scripts。
@@ -44,8 +44,8 @@
 | Project repository / IndexedDB | `apps/webapp/src/features/project/services/projectRepository.ts`; `features/project/types.ts` | `openDatabase` → `readProjectEditorState` / `saveProjectEditorState` / `applyCalibrationDraft` | 部分实现 | DB v18、项目事务、fault injector 已存在；typed runtime error、migration、quota、跨 tab 协作待 Phase 02/10 |
 | Media/import | `features/project/services/mediaService.ts`; `features/project/components/ProjectMediaGate.tsx`; `features/media/` | picker → fingerprint/metadata → handle/blob → project update | 部分实现 | FSA/input picker、relink、missing/permission 状态存在；当前依赖扩展/MIME/native/Mediabunny，无 magic 校验 |
 | Auto-shot/Worker | `features/auto-shot/autoShotTaskService.ts`; `hooks/useAutoShotTask.ts`; `workers/scene-engine.worker.ts`; `packages/scene-engine/` | Worker/WASM → task service → `auto-shot-runs` candidates | 部分实现 | pause/resume/cancel/interrupted 与进程内 late guard 存在；缺 queued/succeeded 统一模型、dependency revision、跨 tab |
-| Shot/Calibration | `features/shot/`; `features/shot-calibration/`; `EditorWorkspace.tsx` | draft command/revision → explicit apply → shots store | 部分实现 | CalibrationDraft v3 与原子 apply 存在；普通 move/split/merge 仍在 EditorWorkspace 本地直接改数组，正式 Shot command authority 待 Phase 04 |
-| Analysis | `features/analysis/`; `features/editor/hooks/useEditorPersistence.ts`; `features/shot/types.ts` | inspector command → `shotDims` → `ShotRecord.analysisFields` → save/reload | 与目标冲突 | research range/context/evidence 有 revision；AnalysisRecord 独立持久化尚未落地，待 Phase 05 |
+| Shot/Calibration | `features/shot/`; `features/shot-calibration/`; `EditorWorkspace.tsx` | draft command/revision → explicit apply → shots store | 部分实现 | CalibrationDraft v3 与原子 apply 存在；普通 move/split/merge 仍在 EditorWorkspace 本地直接改数组，正式 Shot command authority 待 Phase 05 |
+| Analysis | `features/analysis/`; `features/editor/hooks/useEditorPersistence.ts`; `features/shot/types.ts` | inspector command → `shotDims` → `ShotRecord.analysisFields` → save/reload | 与目标冲突 | research range/context/evidence 有 revision；AnalysisRecord 独立持久化尚未落地，待 Phase 03 |
 | Template/Profile | `features/template/` | `templateService` → `resolveAnalysisProfile` → UI/overlay/export | 部分实现 | profile v2、field validation、surface settings 存在；Layout/Renderer/Prompt/Context/ExportMapping 子契约尚未拆出 |
 | Timeline | `features/timeline/`; `EditorWorkspace.tsx` | local viewport/track preference + selection/playback | 部分实现 | viewport 与 preference 已有；domain/application/view 分层和 command 写入未形成，待 Phase 07 |
 | Results/Export | `features/export/`; `features/group/services/groupExportService.ts` | Editor local state → report/video export worker | 部分实现 | CSV/HTML/XLSX/PDF、video worker/cancel 存在；无独立 Results derived query/registry，待 Phase 08 |
@@ -61,14 +61,14 @@
 |---|---|---|---|---|---|---|
 | 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
 | 02 | Contract & Runtime Baseline | 未开始 | 无 | Phase 01；先处理 browser harness 基线问题并冻结 typed contract/runtime gap | 未产生 | 未推送 |
-| 03 | Global Shell & Design System | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
-| 04 | Preparation & Shot Authority | 未开始 | 无 | 02/03 | 未产生 | 未推送 |
-| 05 | Analysis Data/Evidence/Template | 未开始 | 无 | 02/04 | 未产生 | 未推送 |
-| 06 | Analysis Workspace & Inspector | 未开始 | 无 | 03/05 | 未产生 | 未推送 |
-| 07 | Timeline | 未开始 | 无 | 04/05/06 | 未产生 | 未推送 |
-| 08 | Results/Export/Creative | 未开始 | 无 | 05/07 | 未产生 | 未推送 |
-| 09 | AI Candidate/Context | 未开始 | 无 | 05/07/08 | 未产生 | 未推送 |
-| 10 | Hardening/Release Gate | 未开始 | 无 | 04–09 | 未产生 | 未推送 |
+| 03 | Analysis Data/Evidence/Template | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
+| 04 | Global Shell & Design System | 未开始 | 无 | 01/02/03 | 未产生 | 未推送 |
+| 05 | Preparation & Shot Authority | 未开始 | 无 | 02/03/04 | 未产生 | 未推送 |
+| 06 | Analysis Workspace & Inspector | 未开始 | 无 | 03/04/05 | 未产生 | 未推送 |
+| 07 | Timeline | 未开始 | 无 | 03/05/06 | 未产生 | 未推送 |
+| 08 | Results/Export/Creative | 未开始 | 无 | 03/07 | 未产生 | 未推送 |
+| 09 | AI Candidate/Context | 未开始 | 无 | 03/07/08 | 未产生 | 未推送 |
+| 10 | Hardening/Release Gate | 未开始 | 无 | 03–09 | 未产生 | 未推送 |
 | 11 | Governance/Closeout | 未开始 | 无 | 01–10 | 未产生 | 未推送 |
 
 ## 2.1 Architecture Coverage Evidence
@@ -84,7 +84,7 @@
 | 01 | `audit/ARCHITECTURE_REVIEW_2026-09-17.md` | implemented | 已核对 review 的 P0/P1、runtime completeness、phase order | web baseline pass；UI E2E harness failure retained | cloud/telemetry 等仍为明确 non-goal | 已核对 |
 | 01 | `audit/MASTER_PLAN_COVERAGE_MATRIX.md` | implemented | 总计划范围逐项对照，并把未闭合 runtime/fixture gap 写入 §5/§6 | `verify:web` pass；browser split result recorded | 后续阶段按矩阵继续关闭 | 已核对 |
 | 01 | `audit/CURRENT_REPOSITORY_BASELINE.md` | implemented | 已用 2026-09-18 实际 SHA、仓库路径、DB/Shot/Template 事实更新基线 | 命令及 browser evidence in §4 | 当前/目标差异保留，不提前迁移 | 已核对 |
-| 01 | `audit/CONCEPT_REGISTRY.md` + `FINAL_CONCEPT_REGISTRY.md` | implemented | Candidate、Official Shot、Analysis、Evidence、Scene/Sequence/Section 非别名关系已核对 | 相关 workflow/contract tests pass | 结构域改造留 Phase 04/05/07 | 已核对 |
+| 01 | `audit/CONCEPT_REGISTRY.md` + `FINAL_CONCEPT_REGISTRY.md` | implemented | Candidate、Official Shot、Analysis、Evidence、Scene/Sequence/Section 非别名关系已核对 | 相关 workflow/contract tests pass | 结构域改造留 Phase 03/05/07 | 已核对 |
 | 01 | `audit/SOURCE_OF_TRUTH_MATRIX.md` | implemented | 已对照实际 `ShotRecord`、research stores、template store、local editor state | save/reload 与 contract tests pass | 独立 Analysis authority deferred | 已核对 |
 | 01 | `audit/CONFLICT_AUDIT.md` + `CONFLICT_MATRIX.md` | implemented | 已记录 workflow 六阶段 vs 目标三 workspace、Shot/Analysis coupling、test path drift | browser failure retained as baseline failure | 不以兼容层掩盖结构冲突 | 已核对 |
 | 01 | `audit/FINAL_ARCHITECTURE_AUDIT.md` | implemented | R-01（仓库未完整核对）已通过本阶段 map/chain/fixture 核查关闭；其余风险仍开放 | §4–§6 | R-02/R-03 留对应后续阶段 | 已核对 |
@@ -134,20 +134,20 @@
 
 | Architecture target | 当前 path | 状态 | 后续 phase | Phase 01 verification |
 |---|---|---|---|---|
-| Official Shot single authority | `EditorWorkspace.applyCalibrationDraftToEditor`; `projectRepository.applyCalibrationDraft` | 部分实现 | 04 | §3.1 #2/#3 |
-| Analysis fact separated from Shot | `features/shot/types.ts`; `useEditorPersistence.ts` | 与目标冲突 | 05/10 | §3.1 #4 |
+| Official Shot single authority | `EditorWorkspace.applyCalibrationDraftToEditor`; `projectRepository.applyCalibrationDraft` | 部分实现 | 05 | §3.1 #2/#3 |
+| Analysis fact separated from Shot | `features/shot/types.ts`; `useEditorPersistence.ts` | 与目标冲突 | 03/10 | §3.1 #4 |
 | AI Candidate ≠ canonical value | `features/analysis/ai/types.ts`; `candidateDecision.ts` | 部分实现 | 09 | §1.2 / §3.1 #8 |
-| Evidence/Provenance | `analysis/types.ts`; calibration detection metadata | 部分实现 | 05/06 | §3.1 #2/#4 |
-| Template sub-contracts | `features/template/types.ts`; `resolveAnalysisProfile.ts` | 部分实现 | 05/06/08/09 | §3.1 #5 |
+| Evidence/Provenance | `analysis/types.ts`; calibration detection metadata | 部分实现 | 03/06 | §3.1 #2/#4 |
+| Template sub-contracts | `features/template/types.ts`; `resolveAnalysisProfile.ts` | 部分实现 | 03/06/08/09 | §3.1 #5 |
 | Timeline domain/application/view | `features/timeline/`; `EditorWorkspace.tsx` | 部分实现 | 07 | §3.1 #6 |
 | Results derived query | no dedicated path; export reads Editor state | 未实现 | 08 | §3.1 #7 |
 | Local-first canonical persistence | `projectRepository.ts` | 部分实现 | 02/10 | §1.2 / §5 |
 | Typed runtime error/recovery model | `requestResult`/`transactionResult` generic `Error` | 未实现 | 02/10 | §5 |
 | Quota/corruption/multi-tab safety | recovery/backup/revision checks, no persistence/quarantine/channel | 部分实现 | 02/10 | §5/§6 |
-| Worker lifecycle and late-result safety | auto-shot task state + hook revision ref | 部分实现 | 02/04/07/08/09/10 | §1.1 CMD-E2E-WASM / §6 |
+| Worker lifecycle and late-result safety | auto-shot task state + hook revision ref | 部分实现 | 02/05/07/08/09/10 | §1.1 CMD-E2E-WASM / §6 |
 | Import/provider trust boundary | backup validation; media extension/MIME/native; no provider | 部分实现 | 02/09/10 | §5/§6 |
-| Three stable workspaces | `WorkflowSidebar` + `workflowStages.ts` six stages | 与目标冲突 | 03 | §5 UI baseline |
-| Design tokens/surface hierarchy | `index.css`; `SurfaceCard`; `Button`/`Dialog`/`Tooltip` | 部分实现且有漂移 | 03 | §5 UI baseline |
+| Three stable workspaces | `WorkflowSidebar` + `workflowStages.ts` six stages | 与目标冲突 | 04 | §5 UI baseline |
+| Design tokens/surface hierarchy | `index.css`; `SurfaceCard`; `Button`/`Dialog`/`Tooltip` | 部分实现且有漂移 | 04 | §5 UI baseline |
 | R-01 repository verification | 本记录 §1–§6 | 已关闭 | 01 | command/path/call-chain/fixture evidence |
 
 ## 4. 验证记录
@@ -214,5 +214,5 @@
 - Phase 02 必须先解决：修复/验证 browser harness 的 `apps/web` 旧路径；保留 `apps/webapp` 为唯一产品入口，不创建重复 `apps/web` 目录。
 - 可直接复用：`projectRepository.readProjectEditorState/saveProjectEditorState/applyCalibrationDraft`；CalibrationDraft v3 与 `applyCalibrationCommand`；auto-shot task lifecycle/repository；template validation/profile resolver；CDP harness 的隔离 profile/fixture 机制（修正入口后）；现有 fault/pressure/lifecycle fixtures。
 - 不应重复实施：IndexedDB v18 store 创建、project editor 原子保存、recovery snapshot、auto-shot pause/cancel 基础状态、template v2 validation、report escaping。
-- 当前未提交修改及归属：本阶段记录文档已交付；产品代码无修改。工作区仍有未纳入本阶段的计划文件变更，已按路径排除且保留。
+- 当前未提交修改及归属：Phase 01 主交付记录已推送；随后发现的新执行顺序计划变更作为收尾对齐纳入本专用分支；产品代码无修改。
 - 需要用户决定的事项：无。按阶段计划执行专用分支、提交和远程推送；不部署、不改生产/第三方设置。

@@ -50,7 +50,7 @@
 
 ## 完成门槛
 
-用户能从导航→播放→编辑→证据→保存→纠错→返回完成真实闭环；所有写入通过 Phase 05 Analysis Authority 或 Phase 04 Shot command。
+用户能从导航→播放→编辑→证据→保存→纠错→返回完成真实闭环；所有写入通过 Phase 03 Analysis Authority 或 Phase 05 Shot command。
 
 ## Analysis Workspace 完整优化清单
 

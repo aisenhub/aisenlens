@@ -24,7 +24,7 @@
 - **问题**：当前 schema 如何升级、事务失败如何传播、backup 是否版本化。
 - **方法**：读取真实 schema/migration 代码和已有测试；构造非破坏 migration fixture。
 - **成功**：写出 versioned migration + rollback/recovery 策略，不要求 destructive downgrade。
-- **失败处理**：Phase 05 数据迁移不得开始。
+- **失败处理**：Phase 03 数据迁移不得开始。
 
 ### V3 — 多标签页与异步 late result
 - **问题**：是否已有 revision/lock/channel 协调；正确性不能只靠 UI。
@@ -101,7 +101,7 @@ Phase 02 不只冻结 revision/error 的类型名，还要冻结下面的行为�
 ## 阶段完整性出口
 
 - `OPERATIONAL_ARCHITECTURE.md` 的 1–11 节均有代码落点、测试设计或明确下游 Phase，不得只覆盖 persistence/worker 的一部分。
-- Accepted Risk R-02（Scene/Sequence/Section schema）在此形成单一模型决议或明确阻塞；R-03 中 Prompt/Context/ExportMapping 的边界已冻结到 Phase 05/08/09 的可实施 contract。
+- Accepted Risk R-02（Scene/Sequence/Section schema）在此形成单一模型决议或明确阻塞；R-03 中 Prompt/Context/ExportMapping 的边界已冻结到 Phase 03/08/09 的可实施 contract。
 - 下游不得再各自定义 revision/task/error/trust/diagnostic/feature-flag 语义。
 
 ## Git / 验证硬门

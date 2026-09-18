@@ -13,27 +13,27 @@
 
 | 正式来源 | 执行阶段 |
 |---|---|
-| `00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md` | 03 |
-| `00-global/WORKSPACE_DESIGN_SYSTEM.md` | 03 |
-| `01-preparation/PREPARATION_WORKSPACE.md` | 04 |
-| `01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md` | 04 (仅已批准/现有需求；其余 deferred) |
+| `00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md` | 04 |
+| `00-global/WORKSPACE_DESIGN_SYSTEM.md` | 04 |
+| `01-preparation/PREPARATION_WORKSPACE.md` | 05 |
+| `01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md` | 05 (仅已批准/现有需求；其余 deferred) |
 | `02-analysis/ANALYSIS_WORKSPACE.md` | 06 |
 | `02-analysis/inspector/ANALYSIS_INSPECTOR.md` | 06 |
 | `03-results/RESULTS_WORKSPACE.md` | 08 |
-| `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` | 05 |
-| `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` | 05/06 |
-| `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` | 04 |
-| `04-domain/template/TEMPLATE_CONTRACT.md` | 05/06/08/09 |
+| `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` | 03 |
+| `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` | 03/06 |
+| `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` | 05 |
+| `04-domain/template/TEMPLATE_CONTRACT.md` | 03/06/08/09 |
 | `04-domain/timeline/TIMELINE_ARCHITECTURE.md` | 07 |
 | `05-runtime/OPERATIONAL_ARCHITECTURE.md` | 02/09/10 |
 | `90-implementation/IMPLEMENTATION_MAP.md` | 01/11 |
 | `implementation/IMPLEMENTATION_BOUNDARY.md` | 01/02/11 |
-| `implementation/MIGRATION_PLAN.md` | 02/04/05/07/08/09/10/11 |
+| `implementation/MIGRATION_PLAN.md` | 02/03/05/07/08/09/10/11 |
 | `implementation/AI_DEVELOPMENT_GUIDE.md` | 01/11 |
 | `audit/AUTHORITY_MAP.md` | 02/11 |
-| `audit/COMMAND_EVENT_MAP.md` | 02/04/07 |
+| `audit/COMMAND_EVENT_MAP.md` | 02/05/07 |
 | `audit/DEPENDENCY_GRAPH.md` | 02/11 |
-| `audit/STATE_OWNERSHIP.md` | 02/03/06/07 |
+| `audit/STATE_OWNERSHIP.md` | 02/04/06/07 |
 | `audit/FINAL_SOURCE_OF_TRUTH_MATRIX.md` | 01/11 |
 | `audit/ARCHITECTURE_REVIEW_2026-09-17.md` | 01/02/10/11 |
 | `audit/MASTER_PLAN_COVERAGE_MATRIX.md` | 01–11 |
@@ -44,7 +44,7 @@
 | `audit/SOURCE_OF_TRUTH_MATRIX.md` | 01/11 |
 | `audit/CONFLICT_AUDIT.md` | 01/11 |
 | `audit/CONFLICT_MATRIX.md` | 01/11 |
-| `audit/WORKSPACE_BOUNDARY_AUDIT.md` | 03/04/06/08/11 |
+| `audit/WORKSPACE_BOUNDARY_AUDIT.md` | 04/05/06/08/11 |
 | `audit/DUPLICATE_AUDIT.md` | 11 |
 | `audit/DOCUMENT_QUALITY_CHECK.md` | 11 |
 | `audit/FINAL_ARCHITECTURE_AUDIT.md` | 01–11 |
@@ -55,7 +55,7 @@
 
 ## 章节级不得遗漏清单
 
-### `00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md` → Phase 03
+### `00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md` → Phase 04
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -91,7 +91,7 @@
 | 538 | 36. 页面关系总结 | 未开始 |
 | 568 | 37. 推荐的产品定位表达 | 未开始 |
 
-### `00-global/WORKSPACE_DESIGN_SYSTEM.md` → Phase 03
+### `00-global/WORKSPACE_DESIGN_SYSTEM.md` → Phase 04
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -166,7 +166,7 @@
 | 1912 | 51. Final Design Formula | 未开始 |
 | 1954 | 52. One Sentence Design Principle | 未开始 |
 
-### `01-preparation/PREPARATION_WORKSPACE.md` → Phase 04
+### `01-preparation/PREPARATION_WORKSPACE.md` → Phase 05
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -248,7 +248,7 @@
 | 1839 | 48. 最终理想体验 | 未开始 |
 | 1889 | 49. 一句话设计原则总结 | 未开始 |
 
-### `01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md` → Phase 04 (仅已批准/现有需求；其余 deferred)
+### `01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md` → Phase 05 (仅已批准/现有需求；其余 deferred)
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -474,7 +474,7 @@
 | 476 | 31. AI 视频生成未来的位置 | 未开始 |
 | 517 | 32. 成果应用的数据消费契约（冻结） | 未开始 |
 
-### `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` → Phase 05
+### `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` → Phase 03
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -510,7 +510,7 @@
 | 729 | 103. Inspector 的最终数据流 | 未开始 |
 | 762 | 104. 冻结数据原则 | 未开始 |
 
-### `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` → Phase 05/06
+### `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` → Phase 03/06
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -525,7 +525,7 @@
 | 195 | 49. Evidence Required 不应阻止早期记录 | 未开始 |
 | 220 | 50. 冻结原则 | 未开始 |
 
-### `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` → Phase 04
+### `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` → Phase 05
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -540,7 +540,7 @@
 | 103 | ↳ 8. 工作区边界 | 未开始 |
 | 111 | ↳ 9. 冻结原则 | 未开始 |
 
-### `04-domain/template/TEMPLATE_CONTRACT.md` → Phase 05/06/08/09
+### `04-domain/template/TEMPLATE_CONTRACT.md` → Phase 03/06/08/09
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -635,8 +635,8 @@
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
-| 14 | AisenLens 设计 → 代码实施映射 | 未开始 |
-| 30 | ↳ 推荐实施顺序 | 未开始 |
+| 14 | AisenLens 设计 → 代码实施映射 | 已核对（01基线） |
+| 30 | ↳ 推荐实施顺序 | 已核对（01基线） |
 | 50 | ↳ 每个 Phase 的最小出口条件 | 已核对（01基线） |
 
 ### `implementation/IMPLEMENTATION_BOUNDARY.md` → Phase 01/02/11
@@ -646,7 +646,7 @@
 | 1 | IMPLEMENTATION BOUNDARY | 已核对（01基线） |
 | 19 | ↳ Cross-cutting runtime boundary | 已核对（01基线） |
 
-### `implementation/MIGRATION_PLAN.md` → Phase 02/04/05/07/08/09/10/11
+### `implementation/MIGRATION_PLAN.md` → Phase 02/03/05/07/08/09/10/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -667,7 +667,7 @@
 | 1 | AUTHORITY MAP | 未开始 |
 | 16 | ↳ Frozen authority chain | 未开始 |
 
-### `audit/COMMAND_EVENT_MAP.md` → Phase 02/04/07
+### `audit/COMMAND_EVENT_MAP.md` → Phase 02/05/07
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -684,7 +684,7 @@
 | 40 | ↳ Cycle audit | 未开始 |
 | 45 | ↳ Runtime boundary additions (2026-09-17 review) | 未开始 |
 
-### `audit/STATE_OWNERSHIP.md` → Phase 02/03/06/07
+### `audit/STATE_OWNERSHIP.md` → Phase 02/04/06/07
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -775,7 +775,7 @@
 |---:|---|---|
 | 1 | CONFLICT MATRIX | 已核对（01基线） |
 
-### `audit/WORKSPACE_BOUNDARY_AUDIT.md` → Phase 03/04/06/08/11
+### `audit/WORKSPACE_BOUNDARY_AUDIT.md` → Phase 04/05/06/08/11
 
 | Line | Section | 阶段核对状态 |
 |---:|---|---|
@@ -974,15 +974,15 @@
 
 | 架构建议 | Phase | 必须证明 |
 |---|---|---|
-| Shot Authority，禁止非命令写入 | 04 | direct formal writes 已迁移到 command；revision 一致 |
-| Analysis Fact 从 ShotRecord.analysisFields 解耦 | 05/10 | 兼容读、无损迁移、旧数据 fixture、停止旧写 |
-| AI Candidate 与正式值分离 | 05/09 | 未 accept 不进入正式 query/export |
-| Template 子契约 | 05/06/08/09 | stable fieldId；layout/prompt/context/export 不反向定义字段语义 |
-| stale/remap/revalidation | 05/06/07 | split/merge/move 有确定影响矩阵与测试 |
+| Shot Authority，禁止非命令写入 | 05 | direct formal writes 已迁移到 command；revision 一致 |
+| Analysis Fact 从 ShotRecord.analysisFields 解耦 | 03/10 | 兼容读、无损迁移、旧数据 fixture、停止旧写 |
+| AI Candidate 与正式值分离 | 03/09 | 未 accept 不进入正式 query/export |
+| Template 子契约 | 03/06/08/09 | stable fieldId；layout/prompt/context/export 不反向定义字段语义 |
+| stale/remap/revalidation | 03/06/07 | split/merge/move 有确定影响矩阵与测试 |
 | Timeline domain/application/view | 07 | viewport/hover 不持久化；结构 edit 走 command |
 | Results derived query | 08 | table/export/creative 同 query |
 | persistence quota/corruption/multi-tab/race | 02/10 | typed failure + recovery + fixtures |
-| Worker lifecycle | 02/04/07/08/09/10 | cancel/crash/late-result tests |
+| Worker lifecycle | 02/05/07/08/09/10 | cancel/crash/late-result tests |
 | import/AI trust boundary | 02/09/10 | malformed input rejected before canonical write |
 | privacy diagnostics/performance marks | 02/10 | 默认支持数据不含用户正文；关键耗时可定位 |
 | CI/release/rollback gate | 10/11 | 所有真实 gate 运行并记录；不部署 |

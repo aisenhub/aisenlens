@@ -49,25 +49,25 @@
 |---|---|---|---|
 | 01 | 真实仓库核实与差异冻结 | 无 | 代码/命令/调用链事实可复核 |
 | 02 | 跨阶段契约 + persistence/runtime baseline | 01 | revision/transaction/task/error/trust 规则有代码落点与测试设计 |
-| 03 | Global Shell + Design System | 01,02 | 三 Workspace 可真实导航，状态/主题/键盘基础稳定 |
-| 04 | Preparation + Official Shot Authority | 02,03 | 导入→Candidate→Boundary Review→Official Shot |
-| 05 | Analysis Data + Evidence + Template + 无损迁移 | 02,04 | 正式分析脱离 Shot 聚合且旧数据不丢 |
-| 06 | Analysis Workspace + Inspector | 03,05 | 选择→播放→分析→证据→纠错返回闭环 |
-| 07 | Timeline Domain/Application/View | 04,05,06 | 时间轴浏览/结构命令/双向联动且无第二数据源 |
-| 08 | Results + Export + Creative | 05,07 | 同一 derived query 进入表格与可复现导出 |
-| 09 | AI Candidate + Context Builder | 05,07,08 | provider→validated Candidate→review→accept/reject |
-| 10 | Reliability/Security/Migration/Performance/A11y/Release Gate | 04–09 | failure/race/corrupt/backup/perf 真实验证闭环 |
+| 03 | Analysis Data + Evidence + Template + 无损迁移 | 01,02 | 正式分析脱离 Shot 聚合且旧数据不丢 |
+| 04 | Global Shell + Design System | 01,02,03 | 三 Workspace 可真实导航，状态/主题/键盘基础稳定 |
+| 05 | Preparation + Official Shot Authority | 02,03,04 | 导入→Candidate→Boundary Review→Official Shot |
+| 06 | Analysis Workspace + Inspector | 03,04,05 | 选择→播放→分析→证据→纠错返回闭环 |
+| 07 | Timeline Domain/Application/View | 03,05,06 | 时间轴浏览/结构命令/双向联动且无第二数据源 |
+| 08 | Results + Export + Creative | 03,07 | 同一 derived query 进入表格与可复现导出 |
+| 09 | AI Candidate + Context Builder | 03,07,08 | provider→validated Candidate→review→accept/reject |
+| 10 | Reliability/Security/Migration/Performance/A11y/Release Gate | 03–09 | failure/race/corrupt/backup/perf 真实验证闭环 |
 | 11 | 文档治理与最终交付收口 | 01–10 | 文档状态与代码证据一致，所有阶段已推送 |
 
 ## 6. 并行与串行规则
 
-**必须串行**：01→02；04 的 Official Shot Authority 在 05 Analysis migration 之前；05 在 06/08/09 之前；07 的结构/revision 基础在 08/09 完整集成之前；10 必须在功能阶段后做最终门禁。
+**必须串行**：01→02→03；04 的 Shell/Design System 在 05 Preparation UI 与 06 Analysis Workspace 之前；05 的 Official Shot Authority 在 06/07 之前；03 在 06/08/09 之前；07 的结构/revision 基础在 08/09 完整集成之前；10 必须在功能阶段后做最终门禁。
 
 **可有限并行**（仅当集成负责人冻结文件所有权且共享契约已完成）：
 
-- Phase 03 的 Shell/Design System 与 Phase 04 的纯 domain command 测试准备可并行，但 Preparation UI 集成等 Phase 03 稳定。
+- Phase 04 的 Shell/Design System 与 Phase 05 的纯 domain command 测试准备可并行，但 Preparation UI 集成等 Phase 04 稳定。
 - Phase 06 Inspector renderer/UI 与 Phase 07 Timeline View Adapter 可并行；共享 selection/revision contracts 由集成负责人独占。
-- Phase 08 Results UI 与 Phase 09 provider adapter 可并行；两者都只读/消费 Phase 05 的 Analysis contract，不得各自定义字段语义。
+- Phase 08 Results UI 与 Phase 09 provider adapter 可并行；两者都只读/消费 Phase 03 的 Analysis contract，不得各自定义字段语义。
 - Phase 10 中性能/a11y/安全 fixture 可按文件所有权并行，最终 release gate 统一串行收口。
 
 ## 7. 跨阶段唯一权威契约
@@ -155,9 +155,9 @@
 
 - [01 — Repository Verification](01-repository-verification.md)
 - [02 — Contract & Runtime Baseline](02-contract-runtime-baseline.md)
-- [03 — Global Shell & Design System](03-global-shell-design-system.md)
-- [04 — Preparation & Shot Authority](04-preparation-shot-authority.md)
-- [05 — Analysis Data Migration](05-analysis-data-evidence-template.md)
+- [03 — Analysis Data Migration](03-analysis-data-evidence-template.md)
+- [04 — Global Shell & Design System](04-global-shell-design-system.md)
+- [05 — Preparation & Shot Authority](05-preparation-shot-authority.md)
 - [06 — Analysis Workspace & Inspector](06-analysis-workspace-inspector.md)
 - [07 — Timeline](07-timeline-domain-application-view.md)
 - [08 — Results/Export/Creative](08-results-export-creative.md)

@@ -1,7 +1,7 @@
 > **用途**：本文件只用于指导后续执行 agent 实施。本轮未修改产品代码、未安装依赖、未部署、未执行测试或 Git 提交。
 > **事实规则**：代码现状以执行时本地仓库核实结果为准；目标行为以 AisenLens 2026-09-17 Reviewed/Optimized 架构包为准。未经核实的路径、接口、命令一律不得臆造。
 
-# 03 — Global Shell + Workspace Design System
+# 04 — Global Shell + Workspace Design System
 
 ## 目标
 
@@ -48,7 +48,7 @@ Overview 一级入口、页面私有颜色/圆角/阴影/临时 modal 规则逐�
 
 ## 架构优化完整覆盖清单
 
-Phase 03 必须显式覆盖 `GLOBAL_WORKSPACE_ARCHITECTURE.md` 与 `WORKSPACE_DESIGN_SYSTEM.md` 的完整优化目标，而不只实现 tokens 和三栏壳：
+Phase 04 必须显式覆盖 `GLOBAL_WORKSPACE_ARCHITECTURE.md` 与 `WORKSPACE_DESIGN_SYSTEM.md` 的完整优化目标，而不只实现 tokens 和三栏壳：
 
 ### Global IA / Shell
 - 三个一级 Workspace 的职责、进入条件、空态/错误态与跨 Workspace Return Context 明确；Overview 信息下沉，不保留竞争一级入口。
@@ -74,7 +74,7 @@ Phase 03 必须显式覆盖 `GLOBAL_WORKSPACE_ARCHITECTURE.md` 与 `WORKSPACE_DE
 
 ## 完整性验收
 
-除了原测试，还要用真实浏览器验证：hover 无 layout jump、selected 驱动关系、局部 loading、view-first editing、AI proposal 基础视觉、overlay focus restore、tooltip shortcut、至少一个 density/panel mode 切换，以及设计 anti-pattern 审查。Traceability 中映射到 Phase 03 的全部章节必须有 evidence 或明确 deferred/non-goal。
+除了原测试，还要用真实浏览器验证：hover 无 layout jump、selected 驱动关系、局部 loading、view-first editing、AI proposal 基础视觉、overlay focus restore、tooltip shortcut、至少一个 density/panel mode 切换，以及设计 anti-pattern 审查。Traceability 中映射到 Phase 04 的全部章节必须有 evidence 或明确 deferred/non-goal。
 
 ## Git / 验证硬门
 

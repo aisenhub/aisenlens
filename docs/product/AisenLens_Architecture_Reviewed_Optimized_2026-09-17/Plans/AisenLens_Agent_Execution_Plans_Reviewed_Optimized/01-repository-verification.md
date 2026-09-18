@@ -70,7 +70,7 @@
 - 盘点现有 token：surface、dark/light、accent/semantic、typography、spacing、radius、border、shadow、motion/easing、focus ring。
 - 建立核心组件状态矩阵：default/hover/pressed/focused/selected/disabled/loading/error/dirty/saved；确认 Selection 与 Playback 是否已有独立语义。
 - 记录 responsive/panel collapse、keyboard shortcut、tooltip、view preference/density/workspace mode 的现状；有截图/e2e/Story 能力则记录真实命令和产物位置。
-- 标出页面私有颜色/圆角/阴影、Card/Modal 过度使用、深层页面跳转等设计系统漂移点，供 Phase 03 收敛。
+- 标出页面私有颜色/圆角/阴影、Card/Modal 过度使用、深层页面跳转等设计系统漂移点，供 Phase 04 收敛。
 
 ### E. Runtime / trust / delivery 基线
 - 核实 IndexedDB storage persistence、quota/eviction/private mode/transaction abort/corruption 的现有处理路径；不要只记录 schema happy path。
