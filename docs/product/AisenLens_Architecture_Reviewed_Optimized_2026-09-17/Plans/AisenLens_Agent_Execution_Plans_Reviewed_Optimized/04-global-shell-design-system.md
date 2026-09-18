@@ -5,46 +5,92 @@
 
 ## 目标
 
-交付后续所有工作台使用的稳定母体：素材准备 / 逐镜分析 / 成果应用三 Workspace、项目上下文、统一 Overlay 层级、主题/状态/键盘/响应式基础。第一阶段可见交付必须是真导航和真状态，不做静态壳。
+交付后续所有工作台使用的 **AisenLens Native Studio** 母体：素材准备 / 逐镜分析 / 成果应用三 Workspace、桌面式 Window/Panel geometry、可 resize/collapse 的工作面板、布局记忆、统一 Studio Glass chrome、Overlay/source anchoring、主题/token、pointer/keyboard、motion 与性能体验基础。第一阶段可见交付必须是真导航、真状态和真实桌面交互，不做静态壳。
+
+## UI 先行策略
+
+Phase 04 可以先交付三 Workspace 的真实外壳，用于验证导航、布局、项目上下文和返回路径；这不等于提前完成后续业务功能：
+
+- 可以实现真实路由、导航选中态、项目上下文、空态、loading/error/saved/unsaved 和明确的 Coming Soon 状态。
+- Preparation、Analysis、Results 中尚未具备 domain/service 支撑的操作不得做成可执行按钮；需要保留入口时使用禁用状态并说明未接入原因。
+- 不创建假数据、假进度、no-op 提交或点击后无反馈的控件；后续功能完成后再把同一入口接到真实能力。
+- Phase 04 的验收证据必须分别记录 `shell/placeholder` 与 `implemented`，只有真实状态、键盘/焦点和错误路径通过验证，才能计入功能完成。
 
 ## 必读
 
-`GLOBAL_WORKSPACE_ARCHITECTURE.md`、`WORKSPACE_DESIGN_SYSTEM.md`、Phase 01 code map、Phase 02 error/save contracts。
+`GLOBAL_WORKSPACE_ARCHITECTURE.md`、`WORKSPACE_DESIGN_SYSTEM.md`、Phase 01 code map、Phase 02 error/save contracts、Phase 03 v19 frozen data contracts、`docs/architecture/PROJECT_ARCHITECTURE.md`。
 
 ## 必须复用
 
-- 现有 router/app shell/project context/design tokens/components；能扩展则不复制。
-- 现有可访问组件和快捷键基础；不要新建平行 UI kit。
+- 现有 router/app shell/project context 可以复用；旧 visual token/palette 只作为迁移输入，不再是设计权威。
+- 现有可访问组件、Base UI/shadcn primitives 与快捷键基础在结构兼容时复用；其视觉必须迁到 `WORKSPACE_DESIGN_SYSTEM.md` V2 Native Studio，不得保留第二套主题。
+
+## Phase 03 / v19 硬前置
+
+- Phase 04 从 Phase 03 已冻结的 v19 canonical boundary 开始工作：Shell/Navigation 只能消费 Project/Repository 状态，不得复制 Shot、AnalysisRecord、Candidate、Evidence、ContextManifest 或 Results 数据到 shell store。
+- 顶层 **Workspace** 与 Workspace 内 **View/Mode** 必须拆开建模。顶层只允许 Preparation / Analysis / Results；Boundary Review、Timeline/Structure、Shots/Sound、Data Table、Export、Creative 等只能是二级 view/mode。
+- Workspace/navigation state 属 application/session/view 边界，不得因为路由改造新增 canonical IndexedDB store 或修改 v19 domain ownership。
+- Phase 04 开始实现前必须核对当前代码中 `features/workflow`、`EditorPage`、`EditorWorkspace` 的真实六阶段调用点；不得只改 Sidebar 文案而保留六套一级语义。
+
+## 六阶段 → 三 Workspace 导航迁移契约
+
+| 当前一级 stage | 目标归属 | Phase 04 处理原则 |
+|---|---|---|
+| `prepare` | Preparation / import | 迁为 Preparation 默认 view |
+| `calibrate` | Preparation / boundary-review | 不再是一级入口；保留真实复核能力 |
+| `overview` | Analysis / timeline-structure | 原 Film Map/结构信息下沉到 Analysis Timeline/派生结构视图，不保留 Overview 一级页 |
+| `analyze` | Analysis / workbench | Shots/Scenes/Sound/ResearchScope 作为 Analysis 内部 view/mode，保留研究 URL 上下文 |
+| `learn` | 按职责拆分 | 仍在编辑/复核 Notes/Evidence/Analysis 的能力回 Analysis；纯浏览/消费/成果整理进入 Results；禁止保留 Learn 一级 Workspace |
+| `create` | Results / creative | 迁为 Results 内 Creative Transformation 二级页面 |
+
+- 当前项目尚无需要长期兼容的正式外部 deep-link 契约，因此旧 `stage=` URL 不形成永久兼容层。若迁移期间需要临时 parser/redirect adapter，只能读旧值、写新值，并在 Phase 04 结束前删除；若有经过核实的外部链接需求，必须记录 owner、范围和删除条件。
+- canonical URL/navigation writer 完成迁移后只能产生三 Workspace + 二级 view/mode；现有 browser tests、Return Context、research range URL 与内部 `onWorkflowNavigate` 调用必须同步迁移，不能让测试长期依赖旧 stage。
+- Research 参数（scope/target/range）是 Analysis navigation context，不能因一级 IA 收敛而丢失；刷新/重开必须仍可恢复到正确 Workspace + view + target。
+
+## Return Context 最小契约
+
+Phase 04 只冻结跨 Workspace navigation contract，不实现 Phase 05/06 的领域纠错逻辑。最小字段/语义必须能够表达：
+
+- origin workspace + origin view/mode；
+- selected entity / research scope；
+- 需要恢复的 playback position 与 viewport hint（只保存必要值，不复制领域对象）；
+- correction target（Shot/Boundary 等稳定 ID）；
+- return/fallback 规则：目标仍存在则恢复原 selection；目标被 split/merge/remap 后由后续领域结果解析；无法恢复时回到最近合法上下文并显式提示。
+
+Return Context 属 application/navigation state；不得把它写入 Shot/Analysis canonical facts，也不得自行解释 split/merge 后的语义有效性。
 
 ## 实施步骤
 
-1. 收敛一级导航为 Preparation / Analysis / Results；旧 Overview 若存在，按架构决定迁移其信息到 Timeline/派生视图，不作为竞争一级入口。
+1. 收敛一级导航为 Preparation / Analysis / Results，并按“六阶段 → 三 Workspace 导航迁移契约”完成类型、URL parser/writer、内部 navigation call 和测试迁移；不能只隐藏旧入口。
 2. 固定左导航、顶部项目状态、主 Workspace 三区域；项目级 saved/error 状态读取 Phase 02 repository contract。
-3. 落实 Return Context/Breadcrumb 的跨 Workspace 承载能力，为 Analysis→Preparation correction 预留真实导航状态。
-4. 统一 Drawer/Inspector/Modal/Popover/Context Menu/Command Palette 层级和 focus trap/restore 规则。
-5. 按现有 token 系统实现/补齐 surface、dark/light、accent/semantic、typography、spacing、radius、border、shadow、focus。
-6. 补齐后续需要的 Button/IconButton/Input/Toolbar/NavigationPanel/Inspector/ShotCard/ShotStrip 等状态；不为未来假需求建立完整组件库。
-7. 实现 Interaction State Model：hover/selected/focus/disabled/loading/error/dirty/saved；Selection 与 Playback 视觉语义不得混用。
-8. 落实 density、panel collapse、≥1440 / 1180–1439 / <1180 策略，以文档为目标并结合现有布局核实。
+3. 按本计划冻结的 Return Context 最小契约落实 Breadcrumb/跨 Workspace 承载能力，为 Analysis→Preparation correction 预留真实 navigation state；Phase 05/06 只能扩展领域结果，不得另造第二套返回上下文。
+4. 建立 Native Studio overlay system：Drawer/Inspector/Modal/Popover/Context Menu/Command Palette 共用 z-layer、portal、source anchoring、focus trap/restore；局部动作从触发源出现，不默认居中 Modal。
+5. **从零迁移视觉系统**：实现 Graphite + Frost + Signal Blue 的 V2 token、Studio Glass、typography、2px precision grid、radius、hairline、shadow、focus、motion；旧 `--app-*` / blue `#3b82f6` / `--ai` / legacy timeline palette 只允许中央短期 alias，不能成为新代码入口。
+6. 建立共享桌面组件：Window Bar、Workspace Rail、Resizable Panel、Panel Header、Resize Handle、Button/IconButton/Input/Toolbar/Transport/Popover/Context Menu/Command Palette/Inspector shell；不为未来假需求建立完整组件库。
+7. 实现 native interaction state：hover/pressed/focus-visible/selected/disabled/loading/error/dragging/drop-target，并保证 Selection、Playback、Focus、Research Context 四类语义分离；direct manipulation 使用 pointer capture + live preview + safe cancel。
+8. 建立 versioned UI preference + layout memory：Workspace Rail、Panel width/visibility、Timeline height、Density、Grid/List、last view/mode 按 V2 ownership 持久化；不得进入 canonical domain store。
+9. 落实 ≥1440 Pro / 1180–1439 Compact / 960–1179 Focus / <960 Review-Survival 四档；桌面编辑体验优先，不追求手机全功能等价。
+10. 建立 performance-as-design gate：禁止 `transition-all`、大面积 backdrop blur、drag 中 persistence、无关 playback rerender；大列表按真实规模 virtualize/window。
 
 ## 状态与验收
 
 - 空项目/无可进入数据时有明确入口，不是假功能。
 - loading/error/disabled/unsaved/saved/focus/keyboard 路径真实工作。
-- theme 切换、focus ring、tab 顺序、tooltip、overlay closing/restore 可浏览器验证。
-- Workspace 切换不丢 project context；不把 domain 数据复制到 shell store。
+- theme、focus ring、tab 顺序、tooltip、source-anchored overlay opening/closing/restore、panel resize、layout memory、Context Menu、Command Palette 均可真实浏览器验证。
+- Workspace 切换不丢 project context；不把 domain 数据复制到 shell store；返回原 Workspace 时恢复其用户布局偏好。
+- Pointer hover/press/drag/resize 在交互期间连续响应；后台 loading/save/task 不锁死整个 Workspace。
 
 ## 旧路径退出
 
-Overview 一级入口、页面私有颜色/圆角/阴影/临时 modal 规则逐步退出；在全部消费者迁移前可保留 adapter，但不得长期维护两套设计语法。
+旧 `prepare/calibrate/overview/analyze/learn/create` 一级 stage 语义、Overview 一级入口，以及旧 `Calm/Cinematic` 视觉、Primary Violet/legacy blue、`--app-*`、`--ai` 私色、旧 spacing/motion/density、页面私有颜色/圆角/阴影/z-index/临时 modal 规则全部退出。迁移 adapter 只能作为短期兼容并有删除条件；Phase 04 完成后不得长期维护两套 IA 或两套视觉/交互语言。
 
 ## 测试
 
-运行 Phase 01 登记的 UI/unit/e2e/browser 命令；真实浏览器 smoke 覆盖三 Workspace 切换、主题、键盘、窄屏折叠、overlay/focus。若现有 E2E 不覆盖，则新增最小真实测试，不使用假页面。
+运行 Phase 01 登记的 UI/unit/e2e/browser 命令；真实浏览器 smoke 覆盖三 Workspace 切换、旧六阶段 URL 的处理符合迁移决议（若临时 adapter 保留则只读映射并 canonicalize；若已删除则受控 fallback）、canonical URL writer 只写新 workspace/view、research target 刷新恢复、Return Context round-trip、主题、键盘、窄屏折叠、overlay/focus。若现有 E2E 不覆盖，则新增最小真实测试，不使用假页面。
 
 ## 交给下一阶段
 
-稳定的 shell route/context、design tokens/components、save/error surface、Return Context API。
+稳定的三 Workspace shell route/context、Workspace/View 分层类型、旧六阶段迁移完成的 canonical navigation、design tokens/components、save/error surface、Return Context API 与明确的 legacy adapter 删除状态。
 
 ## 架构优化完整覆盖清单
 
@@ -54,27 +100,27 @@ Phase 04 必须显式覆盖 `GLOBAL_WORKSPACE_ARCHITECTURE.md` 与 `WORKSPACE_DE
 - 三个一级 Workspace 的职责、进入条件、空态/错误态与跨 Workspace Return Context 明确；Overview 信息下沉，不保留竞争一级入口。
 - 左侧导航只承担工作阶段/工作区切换；顶部承担项目名、保存/异常、全局工具等项目级状态；主工作区承载具体任务，不把 domain 事实复制到 shell store。
 - Workspace / Drawer-Sheet / Inspector / Modal / Dropdown-Popover 层级固定；Modal 仅用于真正阻塞决策，扫描/长任务不以全屏阻断式 Modal 代替工作台状态。
-- 交互文案使用用户任务语言而非工程术语；正常状态安静，异常/待处理状态突出；信息密度按工作内容组织，不做 dashboard/KPI 化。
+- Global Shell 只承载项目级状态与稳定窗口 chrome；工作区内部信息密度由 Native Studio Panel/Density/Layout Memory 处理，工程标识只在诊断或专家设置出现。
 
-### Design System 行为
-- **Interaction**：default/hover/pressed/focused/selected/disabled/loading/error 一致；Hover 只 reveal/preview/highlight/quick action，不触发布局跳变；Selected 明确表示“正在驱动 Player/Inspector/Timeline 等面板”。
-- **Motion/Easing**：采用统一短时长 motion/easing，表达 state/continuity/relationship/position；高频工作流不使用拖沓动画，并尊重 reduced-motion（如现有可访问基础支持）。
-- **Media First**：媒体保持完整色彩/对比/视觉忠实，UI 低饱和、低抢占；颜色用于语义而非模块彩虹编码。
-- **Density/Workspace Modes**：Visual/Analysis/Data density 与 Watch/Shots/Analyze/Storyboard/Compare 等 panel configuration 采用同一 Workspace，不复制成互不一致页面；只实现当前产品实际需要的 mode，但底层状态模型能承载架构定义。
-- **View Preference**：Grid/List、thumbnail size、aspect ratio、title/duration/metadata/shot number/tags 等偏好若当前范围实现，归 view preference，不进入 domain canonical data。
-- **Empty/Loading**：空态简洁“解释 + 一个行动”；已有内容保持并局部 loading，避免整页 skeleton/整 Inspector 闪烁。
-- **AI UI foundation**：AI 不建立独立渐变/发光视觉世界；AI Proposal 与 Confirmed Data 有可辨但克制的语义。这里只落 shared style/state，真实 AI workflow 在 Phase 09。
-- **Editing Philosophy**：view first, edit second；Inspector/字段默认阅读态，进入编辑时才显示控件，不把专业工作台做成永久大表单。
-- **Accessibility/Keyboard/Tooltip**：WCAG AA 对比；状态不只靠颜色；focus ring/tab order/keyboard-first；Tooltip 简短并展示快捷键；Command Palette 可按真实需求接入。
-- **Anti-pattern gate**：Dashboardization、Card Everything、Rainbow UI、Huge Radius、Heavy Shadow、Permanent Controls、Deep Page Navigation 均列入视觉审查；页面完成后检查“UI 是否与媒体竞争注意力”。
+### Native Studio Experience
+- **Single-window continuity**：三个 Workspace 在一个稳定 App Window 内切换；Global Chrome 不重建，Panel geometry 尽量连续，不出现网页式整页跳转。
+- **Panel system**：Workspace Rail / Navigation / Primary / Inspector / Timeline 可 resize/collapse；6px resize hit-zone、1px seam、pointer capture、双击恢复默认（适用处），并按 Workspace 记忆布局。
+- **Direct manipulation**：drag/scrub/resize/reorder/inline edit 优先于参数表单；拖动中显示 live preview 与 invalid target，commit 与 preview 分离。
+- **Studio Glass**：只用于 toolbar/floating controls/popover/menu/command/drawer 等功能 chrome；大面积 Work Surface 使用 solid material，并提供 blur fallback。
+- **Interaction & Motion**：hover≈90ms、control≈120ms、reveal≈160ms、panel≈220ms、workspace≈280ms；source-anchored transform-origin；禁止 `transition-all`，尊重 reduced-motion。
+- **Color/Depth**：统一 Graphite + Frost + Signal Blue；AI 只允许低频 Intelligence Signal，不建立独立 theme；depth 由 material/hairline/shadow/overlap/motion 联合表达。
+- **Density**：Comfort / Standard / Compact 是 UI geometry preference；Workspace mode 是 panel configuration，两者不得混成一个枚举。
+- **Desktop input**：keyboard + mouse/trackpad 平权；right-click Context Menu、Command Palette、cursor language、Tooltip shortcut 是正式交互能力。
+- **Performance**：UI smoothness 属设计验收；hover 不触发 query、drag 不做 persistence、大列表 virtualize、playback 不重渲染无关树、玻璃层数量受控。
+- **Accessibility**：WCAG AA、focus-visible 与 selected 分离、keyboard-only、overlay focus restore、reduced-motion、高 zoom 可用。
 
 ### 组件覆盖与迁移
-- ShotCard/ShotCard states/hover preview、ShotStrip、NavigationPanel、Inspector/Section、Toolbar/Context Toolbar、Popover、Context Menu、Command Palette 的共有状态必须来自同一设计系统；不要求一次实现未使用组件，但凡当前阶段/后续阶段已使用者不得私有复制。
-- 页面私有 token/overlay/focus/快捷键规则在消费者迁移后删除；adapter 只能短期存在并有退出条件。
+- Window Bar、Workspace Rail、Resizable Panel、ShotCard/ShotStrip、NavigationPanel、Inspector/Section、Toolbar/Transport、Popover、Context Menu、Command Palette 的 geometry/state/material 必须来自同一 Native Studio System；已使用者不得 feature 私有复制。
+- 页面私有 token/overlay/focus/keyboard/cursor/resize/motion 规则在消费者迁移后删除；Tailwind/shadcn 只作为 semantic adapter；legacy visual alias 必须有退出条件。
 
 ## 完整性验收
 
-除了原测试，还要用真实浏览器验证：hover 无 layout jump、selected 驱动关系、局部 loading、view-first editing、AI proposal 基础视觉、overlay focus restore、tooltip shortcut、至少一个 density/panel mode 切换，以及设计 anti-pattern 审查。Traceability 中映射到 Phase 04 的全部章节必须有 evidence 或明确 deferred/non-goal。
+除了原测试，还要用真实浏览器验证：Dark/Light Pro Layout、Compact/Focus Desktop、panel resize + layout restore、hover/pressed/selected/focus、source-anchored popover/context menu、direct drag preview、local loading、AI Intelligence Signal、overlay focus restore、tooltip shortcut、Density 切换、reduced-motion，以及大列表/blur/transition 的性能体验检查。Traceability 中映射到 Phase 04 的全部章节必须有 evidence 或明确 deferred/non-goal。
 
 ## Git / 验证硬门
 

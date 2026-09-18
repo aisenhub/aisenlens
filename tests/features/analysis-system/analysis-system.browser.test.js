@@ -1,39 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { browserPath, createProjectAndEnterEditor, evaluate, launchBrowser, until } from "../shot-calibration/calibration-browser-harness.js"
-
-const importRepository = "/src/features/project/services/projectRepository.ts"
-
-async function attachPage(client, serverPort, label) {
-  const target = await client.send("Target.createTarget", { url: `http://127.0.0.1:${serverPort}/projects`, newWindow: false })
-  const attached = await client.send("Target.attachToTarget", { targetId: target.targetId, flatten: true })
-  await client.send("Runtime.enable", {}, attached.sessionId)
-  await client.send("Page.enable", {}, attached.sessionId)
-  await until(async () => await evaluate(client, attached.sessionId, "document.body.innerText.includes('项目库')"), `${label} 项目库未加载`)
-  return attached.sessionId
-}
-
-async function navigateToProject(client, sessionId, serverPort, projectId, query = "stage=analyze&view=scenes") {
-  await client.send("Page.navigate", { url: `http://127.0.0.1:${serverPort}/app?project=${projectId}&${query}` }, sessionId)
-  await until(async () => await evaluate(client, sessionId, "location.pathname === '/app'"), "项目页未加载")
-}
-
-async function seedProject(client, sessionId, shotCount = 3) {
-  return evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then(async ({ default: repository }) => {
-    const { loadOrCreateProjectTemplate } = await import('/src/features/template/services/templateService.ts')
-    const project = await repository.createProject({ title: '分析系统验收项目' })
-    const template = await loadOrCreateProjectTemplate(project.id)
-    const now = new Date().toISOString()
-    const shots = Array.from({ length: ${shotCount} }, (_, index) => ({
-      id: crypto.randomUUID(), projectId: project.id, order: index, startFrame: index * 24, endFrame: index * 24 + 24,
-      status: 'draft', detection: { source: 'manual' }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null,
-      analysisFields: index === 0 ? { shot: { state: 'set', value: 'shot.wide' } } : {}, description: index === 0 ? '初始描述' : '', notes: index === 0 ? '初始笔记' : '', createdAt: now, updatedAt: now,
-    }))
-    const state = { project, shots, groups: [], markers: [], template, researchRanges: [], researchContexts: [] }
-    const saved = await repository.saveProjectEditorState(state, project.updatedAt)
-    return { projectId: project.id, updatedAt: saved.updatedAt, shotIds: shots.map((shot) => shot.id) }
-  }))()`)
-}
+import { attachPage, importRepository, navigateToProject, seedProject } from "./analysis-system-browser-harness.js"
 
 test("P1 保存 fault points 全部回滚且保留原始内存基线", { timeout: 120_000 }, async (context) => {
   assert.ok(browserPath, "未找到 Chrome 或 Edge；可通过 AISENLENS_CHROME_PATH 指定浏览器路径。")
@@ -41,12 +9,12 @@ test("P1 保存 fault points 全部回滚且保留原始内存基线", { timeout
   const { projectId } = await seedProject(client, sessionId)
   const result = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then(async ({ default: repository, setProjectRepositoryFaultInjector }) => {
     const before = await repository.readProjectEditorState('${projectId}')
-    const points = ['project-write', 'shots-write', 'groups-write', 'markers-write', 'template-write', 'research-range-write', 'research-context-write']
+    const points = ['project-write', 'shots-write', 'groups-write', 'markers-write', 'template-write', 'research-range-write', 'research-context-write', 'analysis-record-write', 'analysis-candidate-write', 'analysis-evidence-write']
     const results = []
     for (const point of points) {
       const candidate = structuredClone(before)
       candidate.project = { ...candidate.project, title: '失败后不应出现的标题' }
-      candidate.shots = candidate.shots.map((shot) => ({ ...shot, description: '失败后不应出现的描述' }))
+      candidate.analysisRecords = candidate.analysisRecords.map((record) => ({ ...record, entry: { state: 'set', value: '失败后不应出现的分析值' } }))
       candidate.template = { ...candidate.template, name: '失败后不应出现的模板' }
       const now = new Date().toISOString()
       candidate.researchRanges = [{ id: crypto.randomUUID(), projectId: '${projectId}', mediaIdentityDigest: 'fault-test', startUs: 1, endUs: 2, title: 'fault', observation: '', interpretation: '', summary: '', createdAt: now, updatedAt: now, revision: 1 }]
@@ -70,6 +38,9 @@ test("P1 保存 fault points 全部回滚且保留原始内存基线", { timeout
     { point: "template-write", rejected: true, unchanged: true },
     { point: "research-range-write", rejected: true, unchanged: true },
     { point: "research-context-write", rejected: true, unchanged: true },
+    { point: "analysis-record-write", rejected: true, unchanged: true },
+    { point: "analysis-candidate-write", rejected: true, unchanged: true },
+    { point: "analysis-evidence-write", rejected: true, unchanged: true },
   ])
 })
 
@@ -84,12 +55,12 @@ test("P1 UI 保存失败保留 dirty 与基线，清除故障后可重试成功"
   await until(async () => await evaluate(client, sessionId, "document.body.innerText.includes('FOCUS ANALYSIS')"), "Focus 未打开")
   await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '大远景' && element.getClientRects().length > 0); button?.click(); return Boolean(button) })()")
   await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === '重试保存')"), "保存失败状态未出现")
-  const failedState = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.readProjectEditorState('${projectId}').then((state) => state.shots[0].analysisFields.shot?.value))`)
+  const failedState = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.listProjectAnalysisRecords('${projectId}').then((records) => records.find((record) => record.subject.kind === 'shot' && record.fieldId === 'shot')?.entry?.value))`)
   assert.equal(failedState, "shot.wide")
   await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ setProjectRepositoryFaultInjector }) => setProjectRepositoryFaultInjector(null))`)
   await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '重试保存'); button?.click(); return Boolean(button) })()")
   await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === '保存') && ![...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === '重试保存')"), "保存重试未恢复")
-  const retriedState = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.readProjectEditorState('${projectId}').then((state) => state.shots[0].analysisFields.shot?.value))`)
+  const retriedState = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.listProjectAnalysisRecords('${projectId}').then((records) => records.find((record) => record.subject.kind === 'shot' && record.fieldId === 'shot')?.entry?.value))`)
   assert.equal(retriedState, "shot.extreme-wide")
   await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.deleteProject('${projectId}'))`)
 })
@@ -114,12 +85,12 @@ test("P1 两个标签页拒绝旧基线并保留较新的保存", { timeout: 120
   const secondAttempt = await evaluate(client, secondSessionId, `(() => import(${JSON.stringify(importRepository)}).then(async ({ default: repository }) => {
     const state = ${JSON.stringify(second)}
     state.project.title = '标签页 B 不应覆盖'
-    try { await repository.saveProjectEditorState(state, '${result.baseline}'); return { rejected: false } } catch (error) { return { rejected: true, message: error instanceof Error ? error.message : String(error) } }
+    try { await repository.saveProjectEditorState(state, '${result.baseline}'); return { rejected: false, code: null } } catch (error) { return { rejected: true, code: error && typeof error === 'object' && 'code' in error ? error.code : null, message: error instanceof Error ? error.message : String(error) } }
   }))()`)
   const finalState = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.readProjectEditorState('${projectId}')))()`)
   assert.equal(firstSave, "标签页 A 已保存")
   assert.equal(secondAttempt.rejected, true)
-  assert.match(secondAttempt.message, /其他标签页更新/)
+  assert.equal(secondAttempt.code, "REVISION_CONFLICT")
   assert.equal(finalState.project.title, "标签页 A 已保存")
 })
 
@@ -129,6 +100,7 @@ test("P1 Recovery 恢复模板、字段值、笔记和 Research/Evidence", { tim
   const { projectId } = await seedProject(client, sessionId, 1)
   const result = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then(async ({ default: repository }) => {
     const { createResearchRange, createResearchContext } = await import('/src/features/analysis/services/researchService.ts')
+    const { buildShotAnalysisRecords, analysisEntriesByShotId, shotNotesByShotId } = await import('/src/features/analysis/services/analysisRecordService.ts')
     const before = await repository.readProjectEditorState('${projectId}')
     const now = new Date().toISOString()
     const shotId = before.shots[0].id
@@ -137,7 +109,7 @@ test("P1 Recovery 恢复模板、字段值、笔记和 Research/Evidence", { tim
     const snapshotState = structuredClone(before)
     snapshotState.project = { ...snapshotState.project, title: '恢复前项目' }
     snapshotState.template = { ...snapshotState.template, name: '恢复前模板', version: snapshotState.template.version + 1 }
-    snapshotState.shots = [{ ...snapshotState.shots[0], description: '恢复前描述', notes: '恢复前笔记', analysisFields: { shot: { state: 'set', value: 'shot.close' }, sound: { state: 'unknown' } }, updatedAt: now }]
+    snapshotState.analysisRecords = buildShotAnalysisRecords({ projectId: '${projectId}', entriesByShotId: { [shotId]: { shot: { state: 'set', value: 'shot.close' }, sound: { state: 'unknown' } } }, notesByShotId: { [shotId]: { content: '恢复前描述', analysis: '恢复前笔记' } }, existingRecords: snapshotState.analysisRecords ?? [], activeShotIds: [shotId], profile: snapshotState.template, structureRevision: snapshotState.project.structureRevision, now })
     snapshotState.researchRanges = [range]
     snapshotState.researchContexts = [context]
     const saved = await repository.saveProjectEditorState(snapshotState, before.project.updatedAt)
@@ -146,19 +118,21 @@ test("P1 Recovery 恢复模板、字段值、笔记和 Research/Evidence", { tim
     const mutated = structuredClone(snapshotState)
     mutated.project = { ...mutated.project, title: '恢复后被改动' }
     mutated.template = { ...mutated.template, name: '被改动模板', version: mutated.template.version + 1 }
-    mutated.shots = [{ ...mutated.shots[0], description: '被改动描述', notes: '被改动笔记', analysisFields: {} }]
+    mutated.analysisRecords = buildShotAnalysisRecords({ projectId: '${projectId}', entriesByShotId: {}, notesByShotId: {}, existingRecords: snapshotState.analysisRecords ?? [], activeShotIds: [shotId], profile: mutated.template, structureRevision: mutated.project.structureRevision, now })
     mutated.researchRanges = []
     mutated.researchContexts = []
     await repository.saveProjectEditorState(mutated, saved.updatedAt)
     await repository.restoreProjectRecoverySnapshot(snapshot)
     const restored = await repository.readProjectEditorState('${projectId}')
+    const restoredEntries = analysisEntriesByShotId(restored.analysisRecords ?? [])
+    const restoredNotes = shotNotesByShotId(restored.analysisRecords ?? [])
     await repository.deleteProject('${projectId}')
     return {
       title: restored.project.title,
       template: restored.template.name,
-      entries: restored.shots[0].analysisFields,
-      description: restored.shots[0].description,
-      notes: restored.shots[0].notes,
+      entries: restoredEntries[shotId] ?? {},
+      description: restoredNotes[shotId]?.content ?? '',
+      notes: restoredNotes[shotId]?.analysis ?? '',
       range: restored.researchRanges[0]?.title,
       context: restored.researchContexts[0]?.question,
       evidence: restored.researchContexts[0]?.evidence.length,
@@ -174,6 +148,86 @@ test("P1 Recovery 恢复模板、字段值、笔记和 Research/Evidence", { tim
     context: "恢复问题",
     evidence: 1,
   })
+})
+
+test("P1 Backup v4 导出、导入并恢复 Analysis 交叉引用", { timeout: 120_000 }, async (context) => {
+  assert.ok(browserPath, "未找到 Chrome 或 Edge；可通过 AISENLENS_CHROME_PATH 指定浏览器路径。")
+  const { client, sessionId } = await launchBrowser(context, "analysis-system-backup-v4")
+  const { projectId } = await seedProject(client, sessionId, 1)
+  const result = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then(async ({ default: repository }) => {
+    const { downloadProjectBackup, importProjectBackup } = await import('/src/features/project/services/projectBackupService.ts')
+    const before = await repository.readProjectEditorState('${projectId}')
+    const now = new Date().toISOString()
+    const shotId = before.shots[0].id
+    const record = before.analysisRecords[0]
+    const evidence = {
+      id: crypto.randomUUID(), projectId: '${projectId}',
+      ref: { id: crypto.randomUUID(), kind: 'shot', projectId: '${projectId}', mediaIdentityDigest: 'backup-v4-media', shotId },
+      status: 'valid', staleReason: null, recordId: record.id, candidateId: null,
+      boundRevision: record.revision, createdAt: now, updatedAt: now, revision: 1,
+    }
+    const manifest = {
+      id: crypto.randomUUID(), projectId: '${projectId}', taskKind: 'shot-analysis',
+      subject: { kind: 'shot', id: shotId }, dependencyRevision: { structureRevision: before.project.structureRevision, analysisRevision: before.project.analysisRevision },
+      promptDefinitionId: 'prompt-v1', promptDefinitionVersion: 1, contextDefinitionId: 'context-v1', contextDefinitionVersion: 1,
+      evidenceRefs: [evidence.id], includedFieldIds: [record.fieldId], mediaRanges: [{ startFrame: 0, endFrame: 24 }], createdAt: now,
+    }
+    const candidate = {
+      id: crypto.randomUUID(), projectId: '${projectId}', subject: { kind: 'shot', id: shotId }, fieldId: record.fieldId,
+      proposedEntry: structuredClone(record.entry), status: 'pending', evidenceRefs: [evidence.id], contextManifestId: manifest.id,
+      source: { provider: 'fixture', model: 'fixture-v1', promptVersion: 'prompt-v1', contextDefinitionVersion: 'context-v1' },
+      dependencyRevision: { structureRevision: before.project.structureRevision, analysisRevision: before.project.analysisRevision }, acceptedRecordId: null,
+      createdAt: now, updatedAt: now, revision: 1,
+    }
+    evidence.candidateId = candidate.id
+    await repository.saveProjectEditorState({ ...before, analysisRecords: [{ ...record, evidenceRefs: [evidence.id] }], analysisCandidates: [candidate], analysisEvidence: [evidence], analysisContextManifests: [manifest] }, before.project.updatedAt)
+
+    let captured = null
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalAnchorClick = HTMLAnchorElement.prototype.click
+    URL.createObjectURL = (blob) => { captured = blob; return 'blob:aisenlens-backup-v4' }
+    HTMLAnchorElement.prototype.click = () => {}
+    let restoredProject
+    try {
+      await downloadProjectBackup('${projectId}')
+      if (!captured) throw new Error('backup archive was not captured')
+      restoredProject = await importProjectBackup(new File([captured], 'phase-03-backup.zip', { type: 'application/zip' }))
+      const restored = await repository.readProjectEditorState(restoredProject.id)
+      const restoredRecord = restored.analysisRecords.find((item) => item.fieldId === record.fieldId)
+      const restoredCandidate = restored.analysisCandidates[0]
+      const restoredEvidence = restored.analysisEvidence[0]
+      const restoredManifest = restored.analysisContextManifests[0]
+      return {
+        restoredProjectId: restored.project.id,
+        recordProjectId: restoredRecord?.projectId,
+        candidateProjectId: restoredCandidate?.projectId,
+        evidenceProjectId: restoredEvidence?.projectId,
+        manifestProjectId: restoredManifest?.projectId,
+        candidateManifestIdMatches: restoredCandidate?.contextManifestId === restoredManifest?.id,
+        candidateEvidenceIdMatches: restoredCandidate?.evidenceRefs[0] === restoredEvidence?.id,
+        recordEvidenceIdMatches: restoredRecord?.evidenceRefs[0] === restoredEvidence?.id,
+        evidenceRecordIdMatches: restoredEvidence?.recordId === restoredRecord?.id,
+        evidenceCandidateIdMatches: restoredEvidence?.candidateId === restoredCandidate?.id,
+        manifestEvidenceIdMatches: restoredManifest?.evidenceRefs[0] === restoredEvidence?.id,
+      }
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL
+      HTMLAnchorElement.prototype.click = originalAnchorClick
+      await repository.deleteProject('${projectId}').catch(() => undefined)
+      if (restoredProject) await repository.deleteProject(restoredProject.id).catch(() => undefined)
+    }
+  }))()`)
+  assert.notEqual(result.restoredProjectId, projectId)
+  assert.equal(result.recordProjectId, result.restoredProjectId)
+  assert.equal(result.candidateProjectId, result.restoredProjectId)
+  assert.equal(result.evidenceProjectId, result.restoredProjectId)
+  assert.equal(result.manifestProjectId, result.restoredProjectId)
+  assert.equal(result.candidateManifestIdMatches, true)
+  assert.equal(result.candidateEvidenceIdMatches, true)
+  assert.equal(result.recordEvidenceIdMatches, true)
+  assert.equal(result.evidenceRecordIdMatches, true)
+  assert.equal(result.evidenceCandidateIdMatches, true)
+  assert.equal(result.manifestEvidenceIdMatches, true)
 })
 
 test("P1 只读盘点当前 IndexedDB schema 与 legacy 字段形态", { timeout: 120_000 }, async (context) => {
@@ -197,16 +251,22 @@ test("P1 只读盘点当前 IndexedDB schema 与 legacy 字段形态", { timeout
       if (!stores.length) resolve({ version: database.version, stores, counts })
     }
   }))()`)
-  assert.equal(inventory.version, 17)
+  assert.equal(inventory.version, 19)
   assert.ok(inventory.stores.includes("projects"))
   assert.ok(inventory.stores.includes("project-templates"))
   assert.ok(inventory.stores.includes("recovery-snapshots"))
   assert.ok(inventory.stores.includes("research-ranges"))
+  assert.ok(inventory.stores.includes("analysis-records"))
+  assert.ok(inventory.stores.includes("analysis-candidates"))
+  assert.ok(inventory.stores.includes("analysis-evidence"))
+  assert.ok(inventory.stores.includes("analysis-context-manifests"))
   assert.equal(typeof inventory.counts.projects, "number")
   const shape = await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.readProjectEditorState('${projectId}').then((state) => ({ project: Object.keys(state.project).sort(), shot: Object.keys(state.shots[0]).sort(), template: Object.keys(state.template ?? {}).sort() })))`)
   assert.ok(shape.project.includes("mediaAssets"))
   assert.ok(shape.project.includes("primaryVideoAssetId"))
-  assert.ok(shape.shot.includes("analysisFields"))
+  assert.equal(shape.shot.includes("analysisFields"), false)
+  assert.ok(shape.shot.includes("structureRevision"))
+  assert.ok(shape.project.includes("analysisRevision"))
   assert.ok(shape.template.includes("fieldDefinitions"))
   assert.ok(shape.template.includes("fieldUsages"))
   await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.deleteProject('${projectId}')))()`)
@@ -303,11 +363,11 @@ test("P3 Batch 明确选择、覆盖预览与一次确认", { timeout: 120_000 }
   await until(async () => await evaluate(client, sessionId, "document.body.innerText.includes('将更新 2 镜')"), "Batch 覆盖预览未出现")
   await evaluate(client, sessionId, "(() => { const button = [...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '确认替换'); button?.click(); return Boolean(button) })()")
   await new Promise((resolve) => setTimeout(resolve, 700))
-  const result = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.readProjectEditorState('${projectId}').then((state) => state.shots.map((shot) => shot.analysisFields.shot?.value ?? null))))()`)
+  const result = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.readProjectEditorState('${projectId}').then((state) => state.shots.map((shot) => state.analysisRecords.find((record) => record.subject.kind === 'shot' && record.subject.id === shot.id && record.fieldId === 'shot')?.entry?.value ?? null))))()`)
   assert.deepEqual(result, ["shot.extreme-wide", "shot.extreme-wide", null])
   await evaluate(client, sessionId, "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }))")
   await new Promise((resolve) => setTimeout(resolve, 700))
-  const undone = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.readProjectEditorState('${projectId}').then((state) => state.shots.map((shot) => shot.analysisFields.shot?.value ?? null))))()`)
+  const undone = await evaluate(client, sessionId, `(() => import(${JSON.stringify(importRepository)}).then((module) => module.default.readProjectEditorState('${projectId}').then((state) => state.shots.map((shot) => state.analysisRecords.find((record) => record.subject.kind === 'shot' && record.subject.id === shot.id && record.fieldId === 'shot')?.entry?.value ?? null))))()`)
   assert.deepEqual(undone, ["shot.wide", null, null])
 })
 
@@ -347,7 +407,8 @@ test("P3 1,000 镜头 × 20 字段记录 resolver、命令、序列化与事务�
     const serializationMs = performance.now() - serializationStart
     const transactionState = structuredClone(state)
     transactionState.project = { ...transactionState.project, title: '性能验收' }
-    transactionState.shots = Array.from({ length: 1000 }, (_, index) => ({ id: 'persist-' + index, projectId: '${projectId}', order: index, startFrame: index, endFrame: index + 1, status: 'draft', detection: { source: 'manual' }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: Object.fromEntries(fields.map((field) => [field.fieldId, { state: 'set', value: 'persisted' }])), description: '', notes: '', createdAt: now, updatedAt: now }))
+    transactionState.shots = Array.from({ length: 1000 }, (_, index) => ({ id: 'persist-' + index, projectId: '${projectId}', order: index, startFrame: index, endFrame: index + 1, status: 'draft', detection: { source: 'manual' }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, revision: 1, structureRevision: state.project.structureRevision + 1, lineage: { origin: 'manual', parentShotIds: [] }, createdAt: now, updatedAt: now }))
+    transactionState.analysisRecords = transactionState.shots.flatMap((shot) => fields.map((field) => ({ id: ['${projectId}', 'shot', shot.id, field.fieldId].join(':'), projectId: '${projectId}', subject: { kind: 'shot', id: shot.id }, fieldId: field.fieldId, entry: { state: 'set', value: 'persisted' }, status: 'confirmed', staleReason: null, provenance: { kind: 'user' }, evidenceRefs: [], structureRevision: state.project.structureRevision + 1, createdAt: now, updatedAt: now, revision: 1 })))
     transactionState.project.shots = 1000
     const transactionStart = performance.now()
     const saved = await repository.saveProjectEditorState(transactionState, state.project.updatedAt)
@@ -363,39 +424,4 @@ test("P3 1,000 镜头 × 20 字段记录 resolver、命令、序列化与事务�
   assert.ok(report.serializedBytes > 0)
   assert.equal(report.savedTitle, "性能验收")
   console.log("analysis-system-performance", JSON.stringify(report))
-})
-
-test("P3 Focus/Batch 在宽、中、窄视口处理 IME、重复键与 Escape", { timeout: 120_000 }, async (context) => {
-  assert.ok(browserPath, "未找到 Chrome 或 Edge；可通过 AISENLENS_CHROME_PATH 指定浏览器路径。")
-  const { client, sessionId, serverPort } = await launchBrowser(context, "analysis-system-responsive")
-  const { projectId } = await seedProject(client, sessionId, 4)
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
-    await client.send("Emulation.setDeviceMetricsOverride", { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: viewport.width < 500 }, sessionId)
-    await navigateToProject(client, sessionId, serverPort, projectId, "stage=analyze&view=scenes")
-    if (viewport.width <= 1100) {
-      await until(async () => await evaluate(client, sessionId, "document.querySelector('.editor-workspace')?.getAttribute('data-mobile-panel') === 'analysis' || [...document.querySelectorAll('.editor-mobile-panel-switcher button')].some((element) => element.textContent?.trim() === '分析')"), `${viewport.width} 视口分析面板切换入口未出现`)
-      const analysisPanelOpen = await evaluate(client, sessionId, "document.querySelector('.editor-workspace')?.getAttribute('data-mobile-panel') === 'analysis'")
-      if (!analysisPanelOpen) await evaluate(client, sessionId, "[...document.querySelectorAll('.editor-mobile-panel-switcher button')].find((element) => element.textContent?.trim() === '分析')?.click()")
-    }
-    await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === '维度' && element.getClientRects().length > 0)"), `${viewport.width} 视口维度面板未出现`)
-    await evaluate(client, sessionId, "[...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '维度' && element.getClientRects().length > 0)?.click()")
-    await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === '批量记录' && element.getClientRects().length > 0)"), `${viewport.width} 视口批量入口未出现`)
-    await evaluate(client, sessionId, "[...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === '批量记录' && element.getClientRects().length > 0)?.click()")
-    await until(async () => await evaluate(client, sessionId, "document.querySelector('button[aria-label=\"关闭批量记录\"]') !== null"), `${viewport.width} 视口 Batch 面板未打开`)
-    await evaluate(client, sessionId, "document.querySelector('button[aria-label=\"关闭批量记录\"]')?.click()")
-    await navigateToProject(client, sessionId, serverPort, projectId, "stage=analyze&view=shots&mode=sequential")
-    await until(async () => await evaluate(client, sessionId, "new URL(location.href).searchParams.get('view') === 'shots'"), `${viewport.width} 视口 Shots 未加载`)
-    await until(async () => await evaluate(client, sessionId, "[...document.querySelectorAll('button')].some((element) => element.textContent?.trim() === 'Focus' && element.getClientRects().length > 0)"), `${viewport.width} 视口 Focus 入口未出现`)
-    await evaluate(client, sessionId, "[...document.querySelectorAll('button')].find((element) => element.textContent?.trim() === 'Focus' && element.getClientRects().length > 0)?.click()")
-    await until(async () => await evaluate(client, sessionId, "document.body.innerText.includes('FOCUS ANALYSIS')"), `${viewport.width} 视口 Focus 未打开`)
-    const composingQueue = await evaluate(client, sessionId, "(() => { const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }); Object.defineProperty(event, 'isComposing', { value: true }); window.dispatchEvent(event); return document.body.innerText.match(/本轮队列[^\\n]*/)?.[0] ?? '' })()")
-    assert.match(composingQueue, /1\/4/)
-    const repeatQueue = await evaluate(client, sessionId, "(() => { const event = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, repeat: true }); window.dispatchEvent(event); return document.body.innerText.match(/本轮队列[^\\n]*/)?.[0] ?? '' })()")
-    assert.match(repeatQueue, /1\/4/)
-    await evaluate(client, sessionId, "document.activeElement?.blur(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))")
-    await until(async () => await evaluate(client, sessionId, "document.body.innerText.includes('本轮队列 2/4')"), `${viewport.width} 视口正常方向键未推进 Focus`)
-    await evaluate(client, sessionId, "window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))")
-    await until(async () => await evaluate(client, sessionId, "!document.body.innerText.includes('FOCUS ANALYSIS')"), `${viewport.width} 视口 Focus Escape 未关闭`)
-  }
-  await evaluate(client, sessionId, `import(${JSON.stringify(importRepository)}).then(({ default: repository }) => repository.deleteProject('${projectId}'))`)
 })

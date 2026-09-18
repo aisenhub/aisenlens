@@ -18,6 +18,10 @@ interface EvidenceReferencesProps {
 function label(evidence: EvidenceRef) {
   if (evidence.kind === "screenshot") return `截图 · ${evidence.screenshotId.slice(0, 8)}`
   if (evidence.kind === "shot") return `镜头 · ${evidence.shotId.slice(0, 8)}`
+  if (evidence.kind === "frame") return `帧 · ${evidence.frame}`
+  if (evidence.kind === "range") return `帧范围 · ${evidence.startFrame}–${evidence.endFrame}`
+  if (evidence.kind === "dialogue") return `对白 · ${(evidence.dialogueId ?? evidence.text ?? "引用").slice(0, 16)}`
+  if (evidence.kind === "statistic") return `统计 · ${evidence.metric}`
   if (evidence.kind === "time-point") return `时间点 · ${(evidence.atUs / 1_000_000).toFixed(2)} s`
   if (evidence.kind === "time-range") return `时间段 · ${(evidence.startUs / 1_000_000).toFixed(2)}–${(evidence.endUs / 1_000_000).toFixed(2)} s`
   if (evidence.kind === "marker") return `标记 · ${evidence.markerId.slice(0, 8)}`

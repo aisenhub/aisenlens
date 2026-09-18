@@ -5,19 +5,20 @@
 | Path | Purpose / Title | Status |
 | --- | --- | --- |
 | 00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md | AisenLens 全局产品架构与工作台 IA | target-design |
-| 00-global/WORKSPACE_DESIGN_SYSTEM.md | AisenLens Workspace Design System | target-design |
+| 00-global/WORKSPACE_DESIGN_SYSTEM.md | AisenLens Native Studio Design System | target-design |
 | 01-preparation/PREPARATION_WORKSPACE.md | AisenLens 素材准备工作台 UX / UI 设计方案 | target-design |
 | 01-preparation/drafts/KEYFRAME_DESIGN_DRAFT.md | 关键帧方案（待设计） | draft |
 | 02-analysis/ANALYSIS_WORKSPACE.md | AisenLens 逐镜分析工作台 UI / UX / 交互架构方案 | target-design |
 | 02-analysis/inspector/ANALYSIS_INSPECTOR.md | AisenLens Analysis Inspector UI / UX 架构方案 | target-design |
 | 03-results/RESULTS_WORKSPACE.md | AisenLens 成果应用 Workspace 架构 | target-design |
 | 04-domain/analysis-data/ANALYSIS_DATA_MODEL.md | AisenLens Analysis Data Model | target-design |
+| 04-domain/ai/AI_ANALYSIS_CONTRACT.md | AisenLens AI Analysis Contract | target-design |
 | 04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md | AisenLens Evidence / Provenance 契约 | target-design |
 | 04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md | AisenLens Shot Structure Contract | target-design |
 | 04-domain/template/TEMPLATE_CONTRACT.md | AisenLens Template Contract | target-design |
 | 04-domain/timeline/TIMELINE_ARCHITECTURE.md | AisenLens 时间轴优化架构方案 | target-design |
 | 05-runtime/OPERATIONAL_ARCHITECTURE.md | AisenLens Operational / Runtime Architecture | target-design |
-| Plans/AisenLens_MASTER_DEVELOPMENT_PLAN_2026-09-17.md | AisenLens 总开发计划（Master Development Plan） | approved-plan |
+| Plans/AisenLens_MASTER_DEVELOPMENT_PLAN.md | AisenLens 总开发计划（Master Development Plan） | approved-plan |
 | 90-implementation/IMPLEMENTATION_MAP.md | AisenLens 设计 → 代码实施映射 | target-design |
 | ARCHITECTURE_INDEX.md | ARCHITECTURE INDEX | target-design |
 | CHANGELOG.md | CHANGELOG | target-design |

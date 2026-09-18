@@ -43,9 +43,9 @@ function makeShot(projectId: string, id = "shot:seed"): StoredShotRecord {
     screenshotIds: [],
     firstFrameScreenshotId: null,
     lastFrameScreenshotId: null,
-    analysisFields: {},
-    description: "seed",
-    notes: "",
+    revision: 1,
+    structureRevision: 0,
+    lineage: { origin: "manual", parentShotIds: [] },
     createdAt: timestamp,
     updatedAt: timestamp,
   }

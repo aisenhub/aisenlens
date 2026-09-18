@@ -2,8 +2,8 @@
 title: "AisenLens Template Contract"
 doc_type: domain-contract
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - analysis
   - results
@@ -34,6 +34,27 @@ implementation_areas:
 ## Purpose
 
 本文件把散落在 Analysis Workspace、Inspector、Analysis Data Model 和 Results 中的 Template 职责收敛为单一权威边界。原文中的 Template 说明继续保留，用于工作流和 UI 语境；发生定义冲突时，以本文件为 Template 领域 Source of Truth。
+
+## Phase 03 Frozen Template/Profile Baseline — 2026-09-18
+
+Template/Profile 的正式职责已经冻结为“配置与版本化定义”，不再承担事实存储。
+
+```text
+FieldDefinition          → 稳定语义 / evidence policy / capabilities
+AnalysisProfile          → 当前项目采用哪些 field + section + interaction
+UILayoutDefinition       → surface / order / density / visibility
+RendererDefinition       → field kind → renderer preference
+PromptDefinition         → AI task instruction + output field contract
+ContextDefinition        → AI 可以读取哪些 subject / field / evidence
+ExportMapping            → Results dataset → 输出列/格式
+AnalysisRecord           → 正式值（不属于 Template）
+```
+
+- `PromptDefinition` 和 `ContextDefinition` 只定义可版本化规则；一次真实 AI 执行的已选择输入必须落为 `AnalysisContextManifest`。
+- Candidate provenance 必须记录 provider/model/prompt/context version；Prompt 本身不能直接产生 confirmed AnalysisRecord。
+- `ExportMapping` 只决定字段到列/区块/外部格式的映射，不能绕过 Results eligibility。
+- Profile 切换只改变当前视图与采集配置；隐藏字段的 AnalysisRecord 继续保留。
+- `required` evidence 是 FieldDefinition/usage 的业务规则，不是 UI required attribute。
 
 ## Core separation
 
@@ -98,13 +119,9 @@ Formal analysis facts             -> Analysis Record
 
 ## Current vs Target
 
-### CURRENT（仓库 2026-09-17 核对）
+### FROZEN BASELINE（2026-09-18）
 
-当前 `apps/webapp/src/features/template/types.ts` 已存在 `FieldDefinitionSnapshot`、`ProjectAnalysisProfileSnapshot`、`AnalysisProfileFieldUsage`、Surface/Widget/Density 等类型，并由 Shot 数据直接引用 `AnalysisFieldEntry`。当前实现更接近“Project Analysis Profile + field snapshot”，尚未等同于本文完整的 Prompt/Context/ExportMapping 拆分。
-
-### TARGET
-
-沿用现有 Profile/Field Snapshot，而不是另造第二套 Template 模型；逐步将 UI layout、AI prompt/context 与 export mapping 从万能 Template 概念中拆出明确子契约。
+`apps/webapp/src/features/template/types.ts` 继续沿用 `FieldDefinitionSnapshot / ProjectAnalysisProfileSnapshot / AnalysisProfileFieldUsage`，并已冻结 PromptDefinition、ContextDefinition、TemplateExportMapping 等子契约。Shot 已不再持久化 AnalysisFieldEntry；Profile 只决定字段组织与交互，正式值由 AnalysisRecord 持有。后续阶段应扩展现有子契约，不再另造第二套 Template 模型。
 
 ## Consumers
 

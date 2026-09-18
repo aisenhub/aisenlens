@@ -184,26 +184,40 @@ export async function runVideoExportBrowserVerification() {
     projectRepository.saveMediaAssetBlob(videoAsset.id, source),
     projectRepository.saveMediaAssetBlob(audioAsset.id, audioBlob),
   ])
-  await projectRepository.replaceProjectShots(project.id, [
+  const shotId = crypto.randomUUID()
+  project = await projectRepository.replaceProjectShots(project.id, [
     {
-      id: crypto.randomUUID(),
+      id: shotId,
       projectId: project.id,
       order: 0,
       startFrame: 0,
       endFrame: durationFrames,
       status: "confirmed",
-      detection: { runId: null, kind: "manual", confidence: null },
+      detection: { source: "manual" },
       primaryScreenshotId: null,
       screenshotIds: [],
       firstFrameScreenshotId: null,
       lastFrameScreenshotId: null,
-      analysisFields: {},
-      description: "用于验证分析信息图层。",
-      notes: "用于验证画面分析图层。",
+      revision: 1,
+      structureRevision: project.structureRevision,
+      lineage: { origin: "manual", parentShotIds: [] },
       createdAt: now,
       updatedAt: now,
     },
   ])
+  const editorState = await projectRepository.readProjectEditorState(project.id)
+  if (!editorState) throw new Error("无法读取视频导出验证项目。")
+  const analysisRecords = buildShotAnalysisRecords({
+    projectId: project.id,
+    entriesByShotId: {},
+    notesByShotId: { [shotId]: { content: "用于验证分析信息图层。", analysis: "用于验证画面分析图层。" } },
+    existingRecords: editorState.analysisRecords ?? [],
+    activeShotIds: [shotId],
+    profile: editorState.template,
+    structureRevision: project.structureRevision,
+    now,
+  })
+  project = await projectRepository.saveProjectEditorState({ ...editorState, analysisRecords }, project.updatedAt)
 
   const capabilities = (await getVideoExportCapabilities(320, 180)).filter(
     (item) => item.supported,

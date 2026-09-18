@@ -2,8 +2,8 @@
 title: "AisenLens Analysis Data Model"
 doc_type: domain-contract
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - analysis
   - results
@@ -31,6 +31,78 @@ implementation_areas:
 本文从原 Analysis Inspector 方案中抽取**不属于 UI 的正式数据契约**。Inspector、Timeline、Results 都只能消费本契约，不应各自维护另一套 Analysis 数据定义。原章节编号保留用于追溯。
 
 > **边界注记（2026-09-17）**：以下原始章节完整保留，用于规定 Analysis Data 与 Template 的分离关系。Template 本体、Profile、UILayout、Prompt/Context/ExportMapping 的定义归 `../template/TEMPLATE_CONTRACT.md`；本文件继续唯一拥有 `AnalysisFieldDefinition / AnalysisRecord / AnalysisCandidate / stale`。
+
+## Phase 03 Frozen Baseline — 2026-09-18
+
+从 Phase 03 起，本文件不再描述“未来可能的 Analysis 拆分”，而冻结为 Phase 04–09 必须复用的正式数据边界。
+
+### Canonical ownership
+
+```text
+Project
+├─ structureRevision
+├─ analysisRevision
+├─ ShotRecord[]                  ← Shot Authority
+├─ ShotGroupRecord[]             ← Structure Authority
+├─ AnalysisRecord[]              ← confirmed/stale formal analysis
+├─ AnalysisCandidate[]           ← pending/accepted/rejected/stale/superseded/expired proposals
+├─ AnalysisEvidenceRecord[]      ← first-class evidence bindings
+└─ AnalysisContextManifest[]     ← reproducible AI/context input snapshot
+```
+
+`ShotRecord` **不再拥有** `analysisFields / description / notes`。逐镜描述与分析笔记若作为正式研究数据存在，必须通过稳定 `fieldId` 进入 `AnalysisRecord`。UI 可以用 `ShotAnalysisView` 等 read adapter 聚合显示，但不得把该投影重新持久化为 Shot 字段。
+
+### Frozen AnalysisRecord shape
+
+```ts
+interface AnalysisRecord {
+  id: string
+  projectId: string
+  subject: { kind: "shot" | "scene" | "sequence" | "section" | "film"; id: string }
+  fieldId: string
+  entry: AnalysisFieldEntry
+  status: "confirmed" | "stale"
+  staleReason: string | null
+  provenance: AnalysisProvenance
+  evidenceRefs: string[]
+  structureRevision: number
+  createdAt: string
+  updatedAt: string
+  revision: number
+}
+```
+
+正式值只有 `AnalysisRecord`。Template、Timeline、Results、AI adapter、Export preset 都只能引用或消费该记录，不能复制出新的正式值集合。
+
+### Frozen Candidate dependency contract
+
+Candidate 的依赖版本必须同时冻结结构与分析版本：
+
+```ts
+interface AnalysisDependencyRevision {
+  structureRevision: number
+  analysisRevision: number
+}
+```
+
+Provider/Worker 返回结果只有在依赖版本仍匹配时才能继续进入 review。`accept` 必须通过 repository transaction：校验 Candidate revision + dependency revision → 写入/更新 `AnalysisRecord` → Candidate 标记 accepted → 推进 `analysisRevision`。任何 provider response、React component 或 Timeline adapter 都不得绕过该事务直接写正式值。
+
+### Structure → Analysis invalidation
+
+Shot / ShotGroup 结构变更推进 `structureRevision`。对不能机械证明仍成立的语义记录：
+
+- `AnalysisRecord` → `stale`
+- pending `AnalysisCandidate` → `stale`
+- 与 stale record/candidate 绑定的 Evidence → `stale`
+- Results/Export 默认排除 stale
+- Timeline 可以显示 stale 状态，但不得把它重新“确认”
+- 后续 AI 必须生成新的 ContextManifest / Candidate，而不是复用旧依赖
+
+结构变化与语义重新确认是两个不同命令；禁止在 Shot split/merge/boundary move 时静默生成新的 confirmed semantic value。
+
+### Persistence baseline
+
+IndexedDB v19 为第一版冻结 canonical baseline。`analysis-records`、`analysis-candidates`、`analysis-evidence`、`analysis-context-manifests` 分 store；Timeline/Results 不建立 canonical store。v18 及以前只属于冻结前开发期数据，允许一次性 development reset；从 v19 起恢复正式 versioned non-destructive migration discipline。
 
 # 19. Template 与数据库 Schema 必须分离
 
@@ -279,7 +351,10 @@ interface AnalysisCandidate<T = unknown> {
     promptVersion?: string
   }
 
-  dependencyRevision: number
+  dependencyRevision: {
+    structureRevision: number
+    analysisRevision: number
+  }
 }
 ```
 

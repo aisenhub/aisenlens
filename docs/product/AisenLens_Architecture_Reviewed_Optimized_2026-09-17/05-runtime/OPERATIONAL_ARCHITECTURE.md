@@ -2,8 +2,8 @@
 title: "AisenLens Operational / Runtime Architecture"
 doc_type: runtime-architecture
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 scope:
   - webapp
   - local-first-runtime
@@ -55,9 +55,21 @@ Official Shot、AnalysisRecord、Evidence、Template/Profile、正式结构 revi
 
 - 在 repository transaction 成功后才显示“已保存”；
 - 带 schema version / migration version；
-- 迁移失败保持旧数据可恢复，不清库；
+- v19 frozen baseline 之后的正式 migration 失败必须保持旧用户数据可恢复，不得通过清库解决；Phase 03 的 v18→v19 development-reset 是正式用户数据产生前的一次性例外；
 - backup/restore 经过版本、引用、range、identity 与必要 checksum/manifest 校验；
 - 导出前能够记录输入 revision/profile/version，保证结果可追溯。
+
+### 2.1.1 Phase 03 v19 development-freeze exception
+
+Phase 03 是正式用户数据产生前的数据架构冻结窗口，因此允许一次**明确且有范围的开发期例外**：
+
+- IndexedDB v1–v18 均视为冻结前开发数据；
+- v18→v19 使用显式 `development-reset`，不承诺旧开发项目兼容；
+- reset 只发生在 IndexedDB upgrade transaction 内，失败由 upgrade transaction abort 回滚；
+- v19 是第一版 frozen canonical baseline；
+- 从 v19 开始恢复本节的长期规则：用户数据不得通过清库解决 schema 冲突，所有演进必须 versioned migration + backup/restore + rollback/abort evidence。
+
+该例外不能被后续 Phase 当作“以后也可以 reset”的先例。
 
 ### 2.2 Quota / eviction / corruption
 
@@ -76,7 +88,7 @@ IndexedDB 属浏览器持久化，不等于无限可靠磁盘。实现必须覆�
 
 即使 V1 是单用户 local-first，也要防止同一项目被多个标签页或异步旧任务覆盖：
 
-- canonical mutation 使用 `expectedRevision` / project editRevision；
+- canonical mutation 使用单实体 `expectedRevision`，跨域依赖使用 project `structureRevision / analysisRevision`；项目级 compare-and-write 可继续使用 `updatedAt` 作为事务门，但不能替代领域 revision；
 - revision mismatch 取消提交并刷新；
 - autosave 只调度当前 command chain，不允许旧 snapshot 晚到覆盖新 revision；
 - 可选使用 BroadcastChannel / Web Locks 做同项目编辑协调，但它们只是协调机制，不替代 revision correctness。
@@ -167,7 +179,7 @@ UI 把技术错误映射为可执行恢复动作；Domain/Application 保留 mac
 - timeline/results performance budget；
 - dependency/security audit（按现有工具链可实现范围）。
 
-发布使用可回滚构建；数据 schema migration 必须向前兼容旧数据读取，不能把“应用版本回滚”建立在回滚已破坏的数据 schema 上。
+发布使用可回滚构建；从 v19 起数据 schema migration 必须采用显式 versioned forward migration，并保证失败时 upgrade transaction 可回滚/旧数据可恢复。Phase 03 的 v18→v19 development-reset 仅适用于冻结前开发数据，不适用于后续正式用户数据。
 
 ## 8. Feature rollout
 

@@ -9,6 +9,7 @@ import type { AnalysisFieldEntry, ProjectAnalysisProfileSnapshot } from "../../t
 import { getShotAnalysisCompleteness } from "../../template/services/templateValidation"
 import type { ShotData } from "../constants/editorData"
 import type { ResearchContext, ResearchRange } from "../../analysis/types"
+import { buildShotAnalysisRecords } from "../../analysis/services/analysisRecordService"
 
 interface UseEditorPersistenceInput {
   projectId: string
@@ -48,6 +49,11 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
   return useCallback(async () => {
     if (loadedProjectId !== projectId || loadedShotGroupProjectId !== projectId || !template) return
     const now = new Date().toISOString()
+    const [storedShots, existingAnalysisRecords] = await Promise.all([
+      projectRepository.listProjectShots(projectId),
+      projectRepository.listProjectAnalysisRecords(projectId),
+    ])
+    const storedById = new Map(storedShots.map((shot) => [shot.id, shot]))
     const records: ShotRecord[] = shots.map((shot, index) => {
       const frames = shotFrames[shot.id] ?? {
         first: Math.round(shot.start * frameRate),
@@ -56,9 +62,8 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
       const description = shotNotes[shot.id]?.content ?? ""
       const analysisFields = structuredClone(shotEntries[shot.id] ?? {})
       const boundaryScreenshots = shotBoundaryScreenshotIds[shot.id] ?? { first: null, last: null }
-      // Completeness is a non-blocking progress signal. It must never invent
-      // a human confirmation state or rewrite a stored entry.
       getShotAnalysisCompleteness(template, analysisFields, description)
+      const stored = storedById.get(shot.id)
       return {
         id: shot.id,
         projectId,
@@ -71,12 +76,22 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
         screenshotIds: shotScreenshotIds[shot.id] ?? [],
         firstFrameScreenshotId: boundaryScreenshots.first,
         lastFrameScreenshotId: boundaryScreenshots.last,
-        analysisFields,
-        description,
-        notes: shotNotes[shot.id]?.analysis ?? "",
-        createdAt: currentProject.createdAt,
+        revision: stored?.revision ?? 1,
+        structureRevision: stored?.structureRevision ?? currentProject.structureRevision,
+        lineage: stored?.lineage ?? { origin: "manual", parentShotIds: [] },
+        createdAt: stored?.createdAt ?? currentProject.createdAt,
         updatedAt: now,
       }
+    })
+    const analysisRecords = buildShotAnalysisRecords({
+      projectId,
+      entriesByShotId: shotEntries,
+      notesByShotId: shotNotes,
+      existingRecords: existingAnalysisRecords,
+      activeShotIds: shots.map((shot) => shot.id),
+      profile: template,
+      structureRevision: currentProject.structureRevision,
+      now,
     })
     const reconciledGroups = reconcileShotGroups(shotGroups, shots.map((shot) => shot.id))
     const updatedProject = await projectRepository.saveProjectEditorState({
@@ -87,6 +102,7 @@ export default function useEditorPersistence(input: UseEditorPersistenceInput) {
       template: template as ProjectTemplateSnapshotRecord,
       researchRanges,
       researchContexts,
+      analysisRecords,
     }, expectedUpdatedAt)
     onProjectUpdated(updatedProject)
   }, [annotationMarkers, autoShotDetection, compositionOverlay, contentOverlay, currentProject, expectedUpdatedAt, frameRate, loadedProjectId, loadedShotGroupProjectId, onProjectUpdated, primaryShotScreenshotIds, projectId, projectTitle, researchContexts, researchRanges, shotBoundaryScreenshotIds, shotEntries, shotFrames, shotGroups, shotNotes, shotScreenshotIds, shotStatuses, shots, template])

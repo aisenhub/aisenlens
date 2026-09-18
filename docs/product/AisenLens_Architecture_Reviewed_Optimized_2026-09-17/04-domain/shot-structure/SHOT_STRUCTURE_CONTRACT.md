@@ -2,8 +2,8 @@
 title: "AisenLens Shot Structure Contract"
 doc_type: domain-contract
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 workspace:
   - preparation
   - analysis
@@ -31,6 +31,46 @@ implementation_areas:
 ## 1. 目的
 
 本契约把散落在“素材准备 / 逐镜分析 / Timeline”中的 Shot 权责收敛为一个共享规则，避免多个 Workspace 同时成为 Shot 的写入源。
+
+## Phase 03 Frozen Shot Baseline — 2026-09-18
+
+Phase 03 已提前冻结 Phase 05 将继续实现的正式 Shot 数据形态，后续结构功能不得再把 Analysis 数据塞回 Shot。
+
+```ts
+interface ShotRecord {
+  id: string
+  projectId: string
+  order: number
+  startFrame: number
+  endFrame: number
+  status: ShotStatus
+  detection: ShotDetectionMeta | null
+  primaryScreenshotId: string | null
+  screenshotIds: string[]
+  firstFrameScreenshotId: string | null
+  lastFrameScreenshotId: string | null
+  revision: number
+  structureRevision: number
+  lineage: {
+    origin: "manual" | "detected" | "split" | "merge" | "remapped"
+    parentShotIds: string[]
+  }
+  createdAt: string
+  updatedAt: string
+}
+```
+
+明确禁止以下字段重新进入 canonical Shot：`analysisFields`、`description`、`notes`、AI candidate/value、Timeline track state、Results/export state。
+
+### Revision rules
+
+- `ShotRecord.revision`：该 Shot 自身内容/边界的单对象版本。
+- `ProjectRecord.structureRevision`：项目级正式 Shot/Group 结构版本。
+- 每次正式 Shot/Group 结构变更都必须在 repository transaction 中推进 `structureRevision`。
+- 结构写事务必须同步执行 Analysis stale propagation；不能先改 Shot 再由另一个异步保存“尽量”更新 Analysis。
+- split/merge/remap 通过 `lineage.parentShotIds` 记录来源关系，但 lineage 不是自动复用旧语义结论的授权。
+
+Timeline、Results 与 AI Context 只能读取这套 Shot Authority；不得持久化自己的 Shot 副本。
 
 ## 2. Authority
 

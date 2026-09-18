@@ -13,9 +13,9 @@
 
 ## 1. Migration & data integrity
 
-- Shot→Analysis 解耦老数据 fixtures；Template/Profile 迁移；Scene/Sequence/Section 持久化。
-- schema migration 幂等/中断恢复；不依赖 destructive downgrade。
-- backup/restore 覆盖 Media refs/Shot/Analysis/Evidence/Profile/必要结构；完整性和版本校验；corrupt/超版本拒绝且不污染现有项目。
+- v18→v19 development-reset 只作为已记录的冻结前历史边界复验，不重新建立 Shot.analysisFields legacy compatibility fixture；正式迁移测试从 v19 frozen baseline 开始。
+- 对任何 v20+ schema evolution 验证 versioned migration、幂等/中断/upgrade abort/恢复，不依赖 destructive downgrade 或清库。
+- backup/restore 覆盖 Media refs/Shot/ShotGroup/AnalysisRecord/Candidate/Evidence/ContextManifest/Profile/必要结构；完整性和版本校验；corrupt/超版本拒绝且不污染现有项目。
 
 ## 2. Persistence race/recovery
 
@@ -41,7 +41,7 @@
 
 ## 6. UI/Accessibility
 
-Dark/Light、Focus、keyboard-first、tooltip、semantic text、responsive/panel collapse、empty/loading/error/stale/local media issue；真实浏览器完成导入→切分→复核→分析→纠错→返回→导出。
+按 Native Studio V2 验证 Dark/Light、Signal Blue/semantic contrast、Studio Glass fallback、focus-visible、keyboard/pointer parity、Context Menu/Command Palette、source-anchored overlay、panel resize/layout memory、responsive desktop matrix、reduced-motion、empty/loading/error/stale/local media issue；真实浏览器完成导入→切分→复核→分析→纠错→返回→导出。
 
 ## 7. Release gate（不部署）
 
@@ -59,7 +59,7 @@ Dark/Light、Focus、keyboard-first、tooltip、semantic text、responsive/panel
 
 ### Storage / persistence failure surface
 - 在 quota/transaction abort/corruption 之外，显式测试或验证 browser storage persistence unavailable、private/incognito 限制、eviction 风险；cache 丢失可重建，canonical data 不得自动重置。
-- autosave/multi-tab/old snapshot/old async task 都以 expected revision/project editRevision 为 correctness gate；BroadcastChannel/Web Locks 只能辅助协调。
+- autosave/multi-tab/old snapshot/old async task 使用单实体 expected revision + Project `structureRevision / analysisRevision` dependency 作为 correctness gate；`updatedAt` 仅可作为 repository transaction CAS 辅助，禁止重新引入第三套 project editRevision；BroadcastChannel/Web Locks 只能辅助协调。
 - restore 前做 version/schema/reference/range/identity/manifest/checksum（按实际格式）完整性；restore failure 保持现有项目不变。
 
 ### Task/resource hardening
@@ -78,14 +78,16 @@ Dark/Light、Focus、keyboard-first、tooltip、semantic text、responsive/panel
 
 ### Feature rollout / rollback
 - 对高风险 migration、新 Timeline renderer、provider change、batch conversion 等已有/新增 flag 做审计：typed、owner、default、removal criteria；禁止 flag 形成长期双写/双 schema/双 domain semantics。
-- release build 可回滚，但数据 migration 必须向前兼容旧数据读取；禁止把应用回滚建立在破坏性 schema downgrade 上。
+- release build 可回滚；从 v19 起的用户/冻结数据 migration 必须可验证地保留并迁移 canonical data、失败可恢复/abort。这里不要求旧应用理解任意未来 schema，也不恢复 pre-v19 legacy reader；禁止把应用回滚建立在破坏性 schema downgrade 或清库上。
 
 ### Capacity budget
-固定环境/fixture 至少记录：project open/reopen、large timeline pan/zoom/playback、thumbnail/waveform cache、worker queue、peak decode/export memory、Inspector large groups、Results large table、Candidate list、migration duration、backup/restore duration。阈值以真实目标媒体规模冻结，不编造跨设备数字。
+固定环境/fixture 至少记录：project open/reopen、Workspace switch/layout restore、panel resize、large timeline pan/zoom/drag/playback、thumbnail/waveform cache、worker queue、peak decode/export memory、Inspector large groups、Results large table/column resize、Candidate list、migration duration、backup/restore duration。额外检查 `transition-all`、大面积 backdrop-filter、arbitrary z-index、drag-time persistence 和无关 playback rerender；阈值以真实目标媒体规模冻结，不编造跨设备数字。
 
 ## 最终 Release Gate 补强
 
 发布前清单增加：critical workspace interaction smoke、dependency/security audit（现有工具可执行范围）、feature-flag owner/removal 审查、diagnostics privacy 审查、export filename/rich-text safety、storage unavailable/eviction 风险验证、capacity budget 记录。任何 P0 data-integrity/security/race 失败继续阻断验收。
+
+另外加入三 Workspace navigation 回归：Preparation/Analysis/Results canonical URL、旧六阶段入口已退出、research target 刷新恢复、Analysis→Preparation→Analysis Return Context、Results creative deep link；不得让发布 gate 继续以旧 `stage=calibrate/overview/analyze/learn/create` 作为产品 IA。
 
 ## Git / 验证硬门
 

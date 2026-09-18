@@ -58,7 +58,7 @@ export interface FieldInteractionPolicy {
   allowQuickEntry: boolean
   allowCopyPrevious: boolean
   allowBatchEdit: boolean
-  evidencePolicy: "none" | "optional" | "recommended"
+  evidencePolicy: "none" | "optional" | "recommended" | "required"
 }
 
 export interface AnalysisProfileFieldUsage {
@@ -112,4 +112,36 @@ export interface ResolvedAnalysisProfile {
   fields: ResolvedAnalysisField[]
   sections: AnalysisProfileSection[]
   issues: AnalysisProfileIssue[]
+}
+
+export interface PromptDefinition {
+  id: string
+  version: number
+  taskKind: string
+  instruction: string
+  outputFieldIds: string[]
+}
+
+export interface ContextDefinition {
+  id: string
+  version: number
+  taskKind: string
+  allowedSubjectKinds: Array<"shot" | "scene" | "sequence" | "section" | "film">
+  fieldIds: string[]
+  includeEvidence: boolean
+  neighborShotCount: number
+}
+
+export interface TemplateExportMapping {
+  id: string
+  version: number
+  fieldIds: string[]
+  columnLabels: Record<string, string>
+  includeStale: boolean
+}
+
+export interface AnalysisProfileRuntimeDefinitions {
+  prompts: PromptDefinition[]
+  contexts: ContextDefinition[]
+  exportMappings: TemplateExportMapping[]
 }

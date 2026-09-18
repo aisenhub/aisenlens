@@ -1,5 +1,6 @@
 > **用途**：本文件是 AisenLens 分阶段执行的动态事实记录。代码现状以执行时本地仓库为准；目标行为以 `AisenLens_Architecture_Reviewed_Optimized_2026-09-17` 架构包及总计划为准。
-> **本阶段边界**：当前执行 Phase 02 — Contract & Runtime Baseline；只收敛跨阶段 revision/transaction/task/error/trust/diagnostic/migration 基线与必要 fixture，不提前实施 Phase 03 Analysis migration，不部署。
+> **本阶段边界**：当前执行 Phase 03 — Analysis Data / Evidence / Template；冻结 v19 canonical Analysis authority、结构影响传播、Backup/Recovery v4 与下游 derived read contract，不提前实施 Phase 04–09 的完整 UI/provider 功能，不部署。
+> **阶段状态标记（2026-09-18）**：按用户决定停止继续追跑最终组合压力门禁；Phase 03 实现与定向验证暂标记为阶段完成，组合门禁的压力场景保留为后续复跑项，不将其误记为已通过。
 
 # Verification Record — 实施进度与验证记录
 
@@ -34,6 +35,8 @@
 | CMD-E2E-UI | workflow browser E2E | `corepack pnpm run test:workflow-browser` | 根 `package.json`、`tests/features/workflow/workflow-end-to-end.browser.test.js` | Phase 02 已通过，退出码 0；旧 `apps/web` harness 路径已修为 `apps/webapp`；Phase 01 的失败记录保留在 §4/§6 |
 | CMD-E2E-WASM | browser/worker smoke | `$env:AISENLENS_ONLY_WASM_SMOKE='1'; corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline` | `apps/webapp/package.json`、`apps/webapp/test/auto-shot-baseline.browser.test.js` | 通过，退出码 0；Chrome 152，WASM baseline `READY` |
 | CMD-DOCS | docs structural check | `git diff --check` | Git | 通过；仓库没有独立 docs lint/link script 或 CI 可供核对 |
+| CMD-PHASE03-CONTRACTS | Phase 03 Node contract gate | `corepack pnpm --filter @aisenlens/webapp run test:phase-03-contracts` | `apps/webapp/package.json`、analysis/cross-phase/backup tests | 通过，10 tests passed；覆盖 v19/stale/eligibility/derived read/Backup v4 remap+archive |
+| CMD-PHASE03-BROWSER | Phase 03 browser gate | `corepack pnpm run verify:phase-03` | `scripts/verify-phase-03.mjs`、analysis/overview/calibration browser suites | 以 §4 的最终记录为准；专门排除已批准延期的 `synthetic.webm` real-media timing 用例 |
 
 构建期间保留的非阻断警告：Node `MODULE_TYPELESS_PACKAGE_JSON` / `DEP0190` 弃用提示；webapp Vite 将 WASM bundle 对 `node:module` 的引用 externalize 以适配浏览器。未因警告弱化检查。
 
@@ -41,27 +44,27 @@
 
 | Architecture area | 当前真实文件/目录 | 主要入口/调用链 | 当前状态 | 后续落点 |
 |---|---|---|---|---|
-| Project repository / IndexedDB | `apps/webapp/src/features/project/services/projectRepository.ts`; `projectDatabaseMigration.ts`; `features/project/types.ts` | `openDatabase` → migration plan → typed request/transaction → compare-and-write canonical writes | 部分实现 | Phase 02 已完成 typed runtime error、forward-only migration、project/group/editor/calibration/research revision gate；真实 quota/private-mode、corruption quarantine 与跨 tab UX 协调留 Phase 10 |
+| Project repository / IndexedDB | apps/webapp projectRepository + migration + project types | openDatabase → v19 migration plan → canonical Shot/Analysis stores → revision-gated transaction | Phase 03 数据基线已冻结 | v19 首次冻结 Analysis stores、structure/analysis revision 与 development-reset cutoff；quota/private-mode、corruption quarantine、跨 tab UX 仍留 Phase 10 |
 | Media/import | `features/project/services/mediaService.ts`; `features/project/components/ProjectMediaGate.tsx`; `features/media/` | picker → fingerprint/metadata → handle/blob → project update | 部分实现 | FSA/input picker、relink、missing/permission 状态存在；当前依赖扩展/MIME/native/Mediabunny，无 magic 校验 |
 | Auto-shot/Worker | `features/auto-shot/autoShotTaskService.ts`; `taskState.ts`; `hooks/useAutoShotTask.ts`; `workers/scene-engine.worker.ts`; `packages/scene-engine/` | Worker/WASM → task service → persisted auto-shot state → shared runtime lifecycle adapter | 部分实现 | Phase 02 已冻结 queued/running/succeeded/failed/cancelled + dependency revision/late-result contract；Auto-shot 保留现有 persisted 状态并适配，具体 producer 持久化 dependency revision 按所属后续 Phase 接入 |
-| Shot/Calibration | `features/shot/`; `features/shot-calibration/`; `EditorWorkspace.tsx` | draft command/revision → explicit apply → shots store | 部分实现 | CalibrationDraft v3 与原子 apply 存在；普通 move/split/merge 仍在 EditorWorkspace 本地直接改数组，正式 Shot command authority 待 Phase 05 |
-| Analysis | `features/analysis/`; `features/editor/hooks/useEditorPersistence.ts`; `features/shot/types.ts` | inspector command → `shotDims` → `ShotRecord.analysisFields` → save/reload | 与目标冲突 | research range/context/evidence 有 revision；AnalysisRecord 独立持久化尚未落地，待 Phase 03 |
-| Template/Profile | `features/template/` | `templateService` → `resolveAnalysisProfile` → UI/overlay/export | 部分实现 | profile v2、field validation、surface settings 存在；Layout/Renderer/Prompt/Context/ExportMapping 子契约尚未拆出 |
-| Timeline | `features/timeline/`; `EditorWorkspace.tsx` | local viewport/track preference + selection/playback | 部分实现 | viewport 与 preference 已有；domain/application/view 分层和 command 写入未形成，待 Phase 07 |
-| Results/Export | `features/export/`; `features/group/services/groupExportService.ts` | Editor local state → report/video export worker | 部分实现 | CSV/HTML/XLSX/PDF、video worker/cancel 存在；无独立 Results derived query/registry，待 Phase 08 |
-| AI/provider | `features/analysis/ai/` | `AICandidate` evaluation/accept pure functions | 未实现 | 只有候选类型与校验；未发现 provider adapter、Context Builder、网络调用或 feature-flag boundary，待 Phase 09/10 |
-| Backup/Restore | `features/project/services/projectBackupService.ts`; `projectRecoveryService.ts` | file/manifest size+version → ZIP/CRC/path/ref validate → remap → atomic save；snapshot restore | 部分实现 | Phase 02 已验证 corrupt/future backup 在 canonical create 前 reject 且 no-pollution；旧 backup semantic migration、manifest-wide digest、quota/corruption quarantine 留 Phase 10 |
-| Tests/Fixtures | `apps/webapp/test/`; `tests/features/`; `packages/scene-engine/test/` | Node contracts、真实 IndexedDB/CDP browser harness、WASM/media fixtures | 部分实现 | Phase 02 已修 browser harness 并新增 runtime/migration/rollback/backup trust/stale-result fixtures；真实 quota/private-mode/provider malformed 与 `synthetic.webm` timing issue 仍开放 |
+| Shot/Calibration | shot / shot-calibration / EditorWorkspace | structural state → repository transaction → structureRevision → Analysis reconcile | 部分实现 | Stored Shot 已移除 Analysis persistence；Shot/Group repository 写入口推进 structureRevision/stale impact；普通 Editor move/split/merge 收敛到唯一 command authority 仍待 Phase 05 |
+| Analysis | features/analysis + editor persistence + projectRepository | UI view/commands ↔ derived shot entries ↔ AnalysisRepositoryPort ↔ analysis stores | Phase 03 canonical authority 已落地 | Record/Candidate/Evidence/ContextManifest 独立 persistence + revision/accept/stale；UI 的 analysisFields 仅保留派生 DTO，不再属于 StoredShotRecord |
+| Template/Profile | features/template | profile/field definition → resolver；Prompt/Context/ExportMapping typed boundary | 部分实现 | stable field identity/evidence policy 与 PromptDefinition/ContextDefinition/TemplateExportMapping 类型已冻结；完整 persistence/UI/provider wiring 留 Phase 06/08/09 |
+| Timeline | features/timeline + EditorWorkspace | canonical Shot/Analysis → buildTimelineReadModel → Timeline view | 派生 contract 已冻结 | Phase 03 只建立不拥有第二事实的 read model；完整 Domain/Application/View、command、LOD 仍待 Phase 07 |
+| Results/Export | features/results + features/export + group export | canonical Shot/Analysis/Evidence/Profile → buildResultsDataset → consumers | 派生 contract 已冻结 | eligibility/stale/provenance/evidence 基线已建立；完整 Results workspace/export preset/creative workflow 仍待 Phase 08 |
+| AI/provider | features/analysis + analysis/ai | ContextManifest/Candidate schema → revision-gated accept → AnalysisRecord | contract-only | Candidate + ContextManifest persistence/backup 已冻结；provider adapter、Context Builder execution、network/secret UX 仍待 Phase 09/10 |
+| Backup/Restore | projectBackupService + projectBackupArchiveCodec + projectBackupRemap + recovery | v4 ZIP/CRC/path/ref validate → canonical ID remap → atomic save；snapshot restore | Phase 03 Analysis round-trip 已落地 | v4 包含 Record/Candidate/Evidence/ContextManifest；archive codec 与交叉引用 round-trip 有测试；更老正式 backup migration、manifest-wide digest、quota/corruption quarantine 留 Phase 10 |
+| Tests/Fixtures | apps/webapp/test + tests/features + scene-engine tests | Node contracts、真实 IndexedDB/CDP browser harness、WASM/media fixtures | Phase 03 定向验证已完成；最终组合门禁按用户决定暂缓 | v19 migration、Analysis stale/eligibility、Timeline/Results derived、Backup v4 remap/archive、Analysis/Overview/Sound/pressure/Calibration browser fixtures 已纳入；压力用例单独通过，但接在完整浏览器序列后曾超时；真实 quota/private-mode/provider malformed 与 synthetic.webm timing issue 仍按 Phase 10/05 延期 |
 
 ## 2. 阶段状态总表
 
-状态允许：`未开始 / 进行中 / 已阻塞 / 验证失败 / 验收通过待推送 / 已交付`。
+状态允许：`未开始 / 进行中 / 已阻塞 / 验证失败 / 验收通过待推送 / 已交付 / 已交付（组合门禁暂缓）`。
 
 | Phase | 名称 | 状态 | 已完成 | 剩余/依赖 | 代码 commit | Push/远程链接 |
 |---|---|---|---|---|---|---|
 | 01 | Repository Verification | 已交付 | 基线、命令、代码地图、9 条调用链、UI/runtime/fixture 差异及失败已冻结 | 修复失效 browser harness 后复测；产品迁移不属于本阶段 | `2a7921cc34282b476090af6786298213fdd35a50` | 已推送 |
 | 02 | Contract & Runtime Baseline | 已交付 | browser harness、typed runtime contract、DB migration baseline、revision CAS、task/trust/diagnostic contract、V1–V4 fixtures 与完整 gate 已完成 | 无；媒体 timing 已作为 Phase 05/10 独立开放风险记录 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | 已推送并核对远程 ref |
-| 03 | Analysis Data/Evidence/Template | 未开始 | 无 | 01/02 | 未产生 | 未推送 |
+| 03 | Analysis Data/Evidence/Template | 已交付（组合门禁暂缓） | v19 canonical Analysis stores、Shot/Analysis 解耦、revision/stale propagation、Context Manifest、Backup v4、下游 read contract 与定向 Phase 03 gate 已完成 | 最终组合压力复跑按用户决定暂缓；后续在 Phase 10/发布门复核 | `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` | 已推送并已核对远程 SHA |
 | 04 | Global Shell & Design System | 未开始 | 无 | 01/02/03 | 未产生 | 未推送 |
 | 05 | Preparation & Shot Authority | 未开始 | 无 | 02/03/04 | 未产生 | 未推送 |
 | 06 | Analysis Workspace & Inspector | 未开始 | 无 | 03/04/05 | 未产生 | 未推送 |
@@ -90,6 +93,10 @@
 | 01 | `audit/FINAL_ARCHITECTURE_AUDIT.md` | implemented | R-01（仓库未完整核对）已通过本阶段 map/chain/fixture 核查关闭；其余风险仍开放 | §4–§6 | R-02/R-03 留对应后续阶段 | 已核对 |
 | 01 | `ARCHITECTURE_INDEX.md` + `README.md` | implemented | 目录、Authority Chain、Source of Truth、维护规则已对照本记录 | `verify:web` pass | 文档治理最终收口留 Phase 11 | 已核对 |
 | 01 | `Plans/AisenLens_MASTER_DEVELOPMENT_PLAN_2026-09-17.md` | implemented | Phase 0/1–10 的先后依赖与阶段门已对照；当前执行的是 repository verification | `verify:web`、WASM browser smoke | 后续阶段不提前宣称完成 | 已核对 |
+| 03 | `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` | implemented | v19 AnalysisRecord/Candidate/ContextManifest ownership、stable field/evidence/source semantics 与 structure stale propagation 已落地 | `test:phase-03-contracts` 10 pass；Analysis browser matrix | 完整 Analysis Workspace/Inspector UI 延期 Phase 06 | 已核对 |
+| 03 | `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` | implemented | Evidence/EvidenceRef variants、provenance、policy 与 project/media identity remap 已落地 | contract + Backup v4 archive round-trip；consumer browser pass | 完整 Evidence picker/Inspector UI 延期 Phase 06/08 | 已核对 |
+| 03 | `04-domain/template/TEMPLATE_CONTRACT.md` | implemented | Template/Profile、Prompt/Context/ExportMapping typed boundary 与不删旧值规则已冻结 | template contract 4 pass；Backup/Recovery browser pass | 完整 profile persistence/UI/provider wiring 延期 Phase 06/08/09 | 已核对 |
+| 03 | `implementation/MIGRATION_PLAN.md` | implemented | v18→v19 development-reset cutoff、v19 versioned migration discipline、Backup/Recovery v4 边界已对齐 | migration/runtime tests；Phase 03 browser gate | v19 之后正式 migration hardening 留 Phase 10 | 已核对 |
 
 ## 3. Phase 01 — Repository Verification
 
@@ -167,8 +174,30 @@
 - Capacity 方法：用真实浏览器/机器/构建模式 + 显式 fixture 记录；现有 pressure matrix 覆盖至 3,000 boundaries，不把单机数字写成跨设备 SLA。
 - R-02：结构持久化单一模型决议已形成；Phase 05 如引入正式 Shot Structure revision，必须从当前 project revision 单一路径演进，不能并存第二 Source of Truth。
 - R-03：Prompt/Context/ExportMapping 本阶段只冻结 runtime/trust 边界；具体 Analysis/Template/Results/AI 模型仍由 Phase 03/08/09 实施。
-- 明确未提前实施：`ShotRecord.analysisFields` 解耦、Official Shot command authority、三 Workspace UI、Results derived query、AI provider/network。
-- 注：§4.2/§4.3 保留 Phase 01 handoff baseline 作为历史证据；与本节冲突处以本节的 Phase 02 已验证事实为当前状态。
+- Phase 01 handoff 当时明确未提前实施：`ShotRecord.analysisFields` 解耦、Official Shot command authority、三 Workspace UI、Results derived query、AI provider/network；其中 Analysis 解耦与 Results derived read contract 已由 Phase 03 关闭，其他项仍按后续阶段延期。
+- 注：§4.2/§4.3 保留早期 handoff baseline 作为历史证据；与 §3.4 和最新 §4 验证行冲突处，以 Phase 03 当前事实为准。
+
+## 3.4 Phase 03 — Analysis Data / Evidence / Template
+
+- 开始日期：2026-09-18
+- 基线 SHA：570b72ce757177eed44526814882cff762934992（Phase 02 delivery evidence）
+- 工作分支：codex/phase-03-analysis-data-evidence-template
+- 新增依赖：无；未部署、未修改生产或第三方系统。
+- Persistence：IndexedDB schema/version 冻结为 v19；新增/冻结 analysis-records、analysis-candidates、analysis-evidence、analysis-context-manifests。StoredShotRecord 只保留结构/revision/lineage，正式 Analysis 不再持久化在 Shot aggregate。
+- Analysis Authority：AnalysisRepositoryPort + ProjectRepository 提供 Record/Candidate/Evidence/ContextManifest 独立读写；Candidate accept 有 candidate/project revision gate；Project 分离 structureRevision / analysisRevision。
+- Structure impact：saveProjectEditorState、calibration apply、replaceProjectShots/replaceProjectShotGroups 统一推进结构 revision，并用 reconcile 使受影响的 Analysis/Candidate/Evidence stale；不会静默改写 semantic value。
+- Editor compatibility：Editor 内部 shotDims/description/notes 仍可作为交互 view state，但 save/reload 通过 AnalysisRecord 构建/派生；Stored Shot 与 backup fixture 不再含旧 Analysis 字段。
+- Template contract：stable field definition/evidence policy 延续；PromptDefinition、ContextDefinition、TemplateExportMapping typed boundary 已冻结。完整 UI/runtime definition persistence 留 Phase 06/08/09。
+- Cross-phase read contract：Timeline 以 buildTimelineReadModel 派生；Results 以 buildResultsDataset 消费 eligibility/provenance/evidence；二者都没有第二 canonical store。
+- AI handoff：AnalysisContextManifest 绑定 subject、dependency revisions、Prompt/Context definition version、evidence refs、included fields、media ranges；Phase 09 必须通过 Candidate + ContextManifest 接 provider。
+- Backup/Recovery：backup format v4 + 纯 archive codec + ID/ref remap 覆盖 AnalysisRecord/Candidate/Evidence/ContextManifest；Recovery snapshot 同步覆盖。
+- Migration deviation：v18 及以前明确视为冻结前开发期数据，因此 v18→v19 使用 development-reset；v19 是第一版 frozen canonical baseline。该例外不适用于 v19 之后的用户/冻结数据。
+- 明确未提前实施：Phase 04 Shell、Phase 05 完整 Shot command authority、Phase 06 Analysis Workspace/Inspector UX、Phase 07 完整 Timeline、Phase 08 完整 Results/Export/Creative、Phase 09 provider/network。
+- 当前代码阻塞：无。Sound Research Range 已拆为独立浏览器进程并通过真实 IndexedDB 保存、URL 恢复与刷新读取；Overview pressure 单独运行时通过分批 IndexedDB 写入与有界 DOM 断言。
+- 组合门禁标记：`verify:phase-03` 在 `verify:web`、Analysis/响应式/consumer/Overview/Sound 后进入 pressure 场景；本次在前序浏览器序列后达到 120 秒超时，用户已要求停止测试。该项不改断言、不宣称组合门禁通过，后续可在 Phase 10/发布门统一复跑。
+- 对照证据：Analysis multi-tab revision conflict、结构 Move/Split/Merge/Group stale 矩阵、Context Manifest dependency stale、Backup v4 archive round-trip、Overview navigation/Sound/pressure 单独回归、Calibration workflow/verification 均已有通过记录。`synthetic.webm` real-media CFR/VFR 精确帧 timing 仍是已批准的 Phase 05/10 独立风险。
+- 交付门：Phase 03 的 Node contract、`verify:web`、定向 browser gate、`git diff --check` 已完成；实现已提交为 `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` 并推送到专用分支。最终组合压力复跑按用户决定暂缓。
+- 当前状态：Phase 03 标记为“已交付（组合门禁暂缓）”；不得把未完成的组合 pressure 复跑记录为通过。
 
 ## 4. 验证记录
 
@@ -189,6 +218,12 @@
 | 2026-09-18 | 02 | worktree（base `71e0491`） | Chrome/Edge Worker/WASM | `corepack pnpm --filter @aisenlens/webapp run test:auto-shot-baseline`；精确旧 `apps/web` 扫描；`git diff --check` | 0 | WASM browser smoke 1 pass；旧路径 0 命中；diff check 通过；Phase 03 Analysis 路径无 diff | 无 | 终端输出 |
 
 
+| 2026-09-18 | 03 | worktree（base 570b72c） | Node contracts；v19/Analysis/Timeline/Results/Backup fixtures | `corepack pnpm --filter @aisenlens/webapp run test:phase-03-contracts` | 0 | 10 tests passed；stale/remap、eligibility、derived read、Backup v4 archive round-trip 全部通过 | 无 | 终端输出 |
+| 2026-09-18 | 03 | worktree（base 570b72c） | Windows / Node / pnpm | `corepack pnpm run verify:web` | 0 | webhome/webapp typecheck、lint、contract/integration、build、web boundaries 全部通过；Phase 03 contracts 已纳入 `verify-webapp` | 保留 Node module/deprecation 与 Vite WASM externalize 非阻断 warning | 终端输出 |
+| 2026-09-18 | 03 | worktree（base 570b72c） | Chrome/Edge isolated CDP；Analysis system + responsive + consumer | `corepack pnpm --filter @aisenlens/webapp run test:analysis-system-browser`; `corepack pnpm --filter @aisenlens/webapp run test:analysis-system-responsive-browser`; `corepack pnpm --filter @aisenlens/webapp run test:analysis-consumer-browser` | 0 | 11 + 1 + 1 browser tests passed；Backup v4、Recovery、multi-tab、responsive Focus/Batch 与 downstream consumer 均通过 | 响应式用例拆为独立进程，并等待完整 route/mobile-panel 状态，消除旧路径竞态 | 终端输出 |
+| 2026-09-18 | 03 | worktree（base 570b72c） | Chrome/Edge isolated CDP；Overview/Analyze/Calibration fixtures | `test:overview-analyze-browser`; `test:overview-analyze-sound-browser`; `test:overview-analyze-pressure-browser`; `test:phase-03-calibration-browser` | 0 | Overview navigation 1、Sound round-trip 1、1000/3000 pressure 1、calibration 2 tests passed；pressure 使用分批 IndexedDB fixture，Sound 使用独立进程 | full `calibration-real-media.browser.test.js` 的 synthetic.webm timing 仍按 Phase 05/10 延期，不纳入 Phase 03 gate | 终端输出 |
+| 2026-09-18 | 03 | worktree（base 570b72c） | Windows / Node / pnpm；Phase 03 composite gate | `corepack pnpm run verify:phase-03` | 1（用户中止后续复跑） | `verify:web`、Analysis 11、responsive 1、consumer 1、Overview 1、Sound 1 已通过；进入 pressure 场景后在 120s 超时，未继续执行 calibration 尾段 | pressure 单独运行曾通过；不弱化断言，按用户决定暂缓组合门禁；synthetic.webm timing 仍非本阶段原因 | 终端输出 |
+
 ### 4.1 UI baseline
 
 - Workspace shell：`ProjectWorkspaceShell` 为全屏 flex；desktop `WorkflowSidebar` 宽 `w-40`，mobile 使用顶部横向导航；`EditorPage` 组合 `ProjectMediaGate → ProjectSessionProvider/Runtime → shell → EditorWorkspace`。
@@ -202,11 +237,11 @@
 
 ### 4.2 Runtime / trust / delivery baseline
 
-- Persistence：IndexedDB v18 stores 已存在；`saveProjectEditorState`/`applyCalibrationDraft` 使用 readwrite transaction，并在成功完成后更新 UI；fault injector 可覆盖 project/shots/groups/markers/template/task/draft/research 写点。缺 typed error code、quota handling、persist request、corruption quarantine、完整 oldVersion migration。
+- Persistence：IndexedDB **v19** stores 已冻结；`saveProjectEditorState`/`applyCalibrationDraft` 使用 readwrite transaction，并在成功完成后更新 UI；fault injector 可覆盖 project/shots/groups/markers/template/task/draft/research 写点。v18→v19 仅为无正式用户数据的 development-reset；quota handling、persist request、corruption quarantine 与后续正式 migration 留 Phase 10。
 - Recovery/eviction：recovery snapshot 每 30s、最多 3 个；`navigator.storage.estimate()` 只读 usage/quota；无 `navigator.storage.persist()`、LRU/size budget/eviction strategy。
 - Concurrency：full editor save/apply 有 `expectedUpdatedAt`；research range/context 和 calibration draft 有 revision；template 初始化处理并行创建竞态；未发现 `BroadcastChannel`、Web Locks 或统一 cross-tab change notification；`updateProjectAtomically` 也无 expected revision。
 - Task lifecycle：Auto-shot 有进程内 single active guard、progress persistence、pause checkpoint、cancel、reload running→interrupted 与 hook request revision guard；状态命名仍是 `running/paused/completed/failed/cancelled/interrupted`，缺统一 `queued/succeeded` 与 dependency revision/late-result persistence。
-- Trust boundary：backup ZIP store-only、512 MB backup/16 MB manifest 上限、CRC/path/duplicate/resource reference 校验；仅接受 backup v3；media 通过 extension/MIME/native metadata/Mediabunny，不做 magic bytes；当前无 AI provider boundary。
+- Trust boundary：backup ZIP store-only、512 MB backup/16 MB manifest 上限、CRC/path/duplicate/resource reference 校验；当前 Backup v4 覆盖 Analysis/Evidence/Candidate/ContextManifest 并执行引用重映射；media 通过 extension/MIME/native metadata/Mediabunny，不做 magic bytes；当前无 AI provider boundary。
 - Export/privacy：CSV/HTML escaping、filename illegal character sanitization、video settings validation、worker cancel 存在；无 structured diagnostics/performance marks/telemetry privacy contract；`AppErrorBoundary` 仍向 console 输出 error/component stack；未发现 Markdown/rich-text HTML injection path。
 - Feature flags/CI：未发现独立 feature flag registry；`advancedDetectionEnabled` 是 UI local state。未发现 `.github` CI；本地 `verify:web` 是当前可执行 gate。
 
@@ -214,12 +249,12 @@
 
 | 领域 | 现有证据 | 缺口/后续处理 |
 |---|---|---|
-| old schema migration | annotation storage compatibility；DB v18 store creation | 无完整 old DB/backup migration fixture；Phase 02/10 |
-| corrupt/too-new backup | ZIP signature/CRC/path/size checks；v3 mismatch reject | 无 nested schema quarantine、manifest-wide digest、older-version migration；Phase 10 |
+| old schema migration | v18→v19 development-reset contract；v19 store creation/upgrade abort tests | 无正式用户数据迁移；v19 后 versioned migration hardening 留 Phase 10 |
+| corrupt/too-new backup | Backup v4 signature/CRC/path/size/reference checks；future/invalid archive reject | 无 nested schema quarantine、manifest-wide digest、older-version migration；Phase 10 |
 | multi-tab race | expectedUpdatedAt、draft/research revision、template concurrent init | 无 BroadcastChannel/Locks；现有 browser race tests 共用失效 harness；Phase 02/10 |
 | late worker | hook `revisionRef`、service active task guard | 无持久 dependency revision；Phase 02/10 |
 | cancel/crash | auto-shot task state/service tests；video worker cancel protocol | app-level crash/reload browser flow 未完成；Phase 10 |
-| large timeline/table | source pressure fixtures: 1000 boundaries、1000/3000 shots | overview browser harness 仍引用 `apps/web`，未在当前代码布局复测；Phase 07/10 |
+| large timeline/table | source pressure fixtures: 1000 boundaries、1000/3000 shots；Overview pressure browser pass | 完整 Timeline/Results UI 性能留 Phase 07/10 |
 | missing/relink | ProjectMediaGate missing/relink/permission states；fingerprint match | 无 file magic/size budget；Phase 02/10 |
 | quota/transaction failure | repository fault injector + rollback verification source | 无真实 quota/private-mode fixture；Phase 02/10 |
 | malformed/oversized provider response | 当前无 provider implementation | Phase 09/10 创建 provider trust fixture 后再验收 |
@@ -232,6 +267,7 @@
 | 01 | `069913ae13de06d1f3024084c062e93d0b521e12` | `codex/phase-01-repository-verification` | `docs(phase-01): record delivery evidence` | 是 | 是 | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 回填主交付证据 |
 | 01 | `dd8e0696396cbd88c32e458fd824bc5f6fd54327` | `codex/phase-01-repository-verification` | `docs(phase-01): align execution order for closeout` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-01-repository-verification) | 对齐 03 Analysis → 04 Shell → 05 Preparation 的最新执行顺序；仅文档/索引/阶段文件改名 |
 | 02 | `3a1df374281da8a535bc9569de35ea45bc3c2f85` | `codex/phase-02-contract-runtime-baseline` | `feat(phase-02): establish contract runtime baseline` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-02-contract-runtime-baseline) | Phase 02 主实现；20 files，runtime/migration contracts、repository CAS、browser harness、回归 fixtures 与架构/验证记录 |
+| 03 | `02089a8dcc8d578483674d1d50b3a7e5a4b4589d` | `codex/phase-03-analysis-data-evidence-template` | `feat(phase-03): freeze analysis data and evidence contracts` | 是 | 是（`git ls-remote` 已核对） | [GitHub branch](https://github.com/aisenhub/aisenlens/tree/codex/phase-03-analysis-data-evidence-template) | Phase 03 实现与阶段状态标记；组合 pressure gate 按用户决定暂缓 |
 
 ## 6. 关键失败 / 阻塞日志
 
@@ -241,12 +277,14 @@
 | 2026-09-18 | 01 | 当前正式 baseline 文档旧 SHA | `audit/CURRENT_REPOSITORY_BASELINE.md` 原记录 `e08e0cc…`，实际起始 SHA 为 `7fa9a0b4…` | 可能误导后续 agent | 本阶段同步 baseline 文档并在本记录保留起始/最终 SHA 区分 | 已处理 |
 | 2026-09-18 | 01 | 无独立 docs lint/link gate、无 CI workflow | 未发现 `.github`；根 package scripts 无 docs lint/link | 文档链接/格式不能获得自动 gate 证据 | 使用 `git diff --check`，并由 Phase 11 governance 补正式 gate | 开放风险 |
 | 2026-09-18 | 02 | 真实 `synthetic.webm` 校准 browser case 等待 CFR/VFR 精确帧验证超时 | full suite 2 pass / 1 fail；隔离 real-media 同点复现 | 精确帧媒体校准专项；不影响 runtime/revision/migration fixture 与 Workflow E2E | 不删除/放宽断言；留 Phase 05/10 继续定位 timing/decoder 路径 | 开放风险（非 Phase 02 contract blocker） |
+| 2026-09-18 | 03 | Phase 03 composite pressure 在完整浏览器序列后达到 120s | `verify:phase-03` 已通过 verify:web、Analysis/响应式/consumer/Overview/Sound，进入 pressure 后超时；pressure 单独运行通过 | 组合门禁尾段；不影响已通过的 Node contract、verify:web 与定向 browser gate | 按用户要求停止测试并在本记录标记；不放宽断言，留 Phase 10/发布门复跑 | 暂缓（非代码阻塞） |
 
 ## 7. 阶段交接与用户决定
 
-- 下一阶段从哪里开始：Phase 03 `Analysis Data / Evidence / Template 与无损持久化迁移`；直接消费本阶段 typed revision/error/task/trust/migration contract，不再定义第二套语义。
-- Phase 03 必须保持：`ShotRecord.analysisFields` 迁移 versioned/non-destructive；Analysis canonical write 使用 repository revision gate；AI 仍只能 Candidate-only。
+- 历史交接起点：Phase 03 `Analysis Data / Evidence / Template 与无损持久化迁移`；其实现已完成并冻结 v19 canonical contract。
+- 当前下一阶段从哪里开始：Phase 04 `Global Shell + Design System`；直接消费本阶段 typed revision/error/task/trust/migration、Analysis/Evidence/Template 与下游 read contracts，不再定义第二套语义。
+- Phase 03 后续复核：最终组合 pressure gate 尚未完成，按用户决定暂缓；进入 Phase 10/发布门时必须复跑并更新本记录。
 - 可直接复用：`src/types/runtime.ts`、`projectDatabaseMigration.ts`、repository typed CAS、backup input validation、`RuntimeTaskEnvelope`、现有 fault/pressure/CDP fixtures。
 - 不应重复实施：DB v18 store 基线、project editor 原子 transaction、Scene/Sequence/Section 第二模型、另一个 error/task enum、另一个 provider trust policy。
-- 当前修改归属：Phase 02 主实现已提交并推送到专用分支；主提交 `3a1df374281da8a535bc9569de35ea45bc3c2f85` 已用 `git ls-remote` 核对远程包含；本次仅追加交付证据。
-- 需要用户决定的事项：无。继续按计划提交/推送专用分支；不部署、不合并主分支、不改生产/第三方设置。
+- 当前修改归属：Phase 03 主实现已提交并推送到 `codex/phase-03-analysis-data-evidence-template`，提交 `02089a8dcc8d578483674d1d50b3a7e5a4b4589d`；远程 SHA 已核对一致。
+- 用户决定：停止 Phase 03 组合压力测试，标记阶段完成，后续转入 Phase 04；不部署、不合并主分支、不改生产/第三方设置。

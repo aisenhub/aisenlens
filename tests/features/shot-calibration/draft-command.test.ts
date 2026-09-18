@@ -30,8 +30,8 @@ function createDraft() {
     baseProjectUpdatedAt: "2026-09-08T00:00:00.000Z",
     task: null,
     shots: [
-      { id: "shot-a", projectId: "project-1", order: 0, startFrame: 0, endFrame: 48, status: "confirmed", detection: { source: "manual" }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: "now", updatedAt: "now" },
-      { id: "shot-b", projectId: "project-1", order: 1, startFrame: 48, endFrame: 96, status: "confirmed", detection: { source: "manual" }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, analysisFields: {}, description: "", notes: "", createdAt: "now", updatedAt: "now" },
+      { id: "shot-a", projectId: "project-1", order: 0, startFrame: 0, endFrame: 48, status: "confirmed", detection: { source: "manual" }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, revision: 1, structureRevision: 0, lineage: { origin: "manual" as const, parentShotIds: [] }, createdAt: "now", updatedAt: "now" },
+      { id: "shot-b", projectId: "project-1", order: 1, startFrame: 48, endFrame: 96, status: "confirmed", detection: { source: "manual" }, primaryScreenshotId: null, screenshotIds: [], firstFrameScreenshotId: null, lastFrameScreenshotId: null, revision: 1, structureRevision: 0, lineage: { origin: "manual" as const, parentShotIds: [] }, createdAt: "now", updatedAt: "now" },
     ],
   })
 }
@@ -58,9 +58,9 @@ test("识别全片占位镜头，避免覆盖自动分镜候选", () => {
       screenshotIds: [],
       firstFrameScreenshotId: null,
       lastFrameScreenshotId: null,
-      analysisFields: {},
-      description: "",
-      notes: "",
+      revision: 1,
+      structureRevision: 0,
+      lineage: { origin: "manual" as const, parentShotIds: [] },
       createdAt: "now",
       updatedAt: "now",
     }))),

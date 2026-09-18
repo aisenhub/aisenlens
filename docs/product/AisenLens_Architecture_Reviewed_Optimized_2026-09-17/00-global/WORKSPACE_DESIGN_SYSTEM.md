@@ -1,9 +1,9 @@
 ---
-title: "AisenLens Workspace Design System"
+title: "AisenLens Native Studio Design System"
 doc_type: design-system
 status: target-design
-version: 1.0
-last_reviewed: 2026-09-17
+version: 2.0
+last_reviewed: 2026-09-18
 workspace:
   - global
 scope:
@@ -12,1945 +12,1742 @@ scope:
 depends_on:
   - GLOBAL_WORKSPACE_ARCHITECTURE
 source_of_truth_for:
+  - native-studio-experience
   - visual-tokens
-  - surface-system
+  - material-and-depth
+  - workspace-panels
+  - interaction-feedback
+  - motion-system
   - component-visual-rules
-  - interaction-visual-states
+  - view-preferences
   - accessibility-ui
+  - visual-regression
 implementation_areas:
   - apps/webapp/src/index.css
   - apps/webapp/src/components
   - apps/webapp/src/components/ui
+  - apps/webapp/src/features/workflow
 ---
 
-# AisenLens Workspace Design System
+# AisenLens Native Studio Design System
 
-> Version: 0.1  
-> Scope: 拉片工作台 / 分镜分析 / 镜头管理 / 影片分析  
-> Design direction: Calm Professional Workspace / Cinematic Editorial
+> Version: 2.0
+> Design direction: **Native Desktop Workbench / Fluid Creative Studio**
+> Platform target: desktop-first web application
+> Status: target design and implementation contract
 
----
+## 0. Supersession
 
-## 1. Design Philosophy
+本版本是一次完整视觉与交互换代。
 
-AisenLens 是一个长时间使用的影视分析工作环境，而不是传统 SaaS Dashboard。
+2026-09-17 的 `Calm Professional Workspace / Cinematic Editorial`、Primary Violet、旧 Surface/Spacing/Motion/Density 规则，以及由这些规则派生的旧 UI 原则，**全部停止作为正式设计依据**。
 
-设计目标不是让 UI 看起来“功能很多”，而是：
+旧设计只存在于 Git 历史与历史审计中，不形成兼容要求。Phase 04 起的新 UI 不需要保持旧视觉选择、旧 token 名称或旧交互手感。
 
-> 让影片、镜头和分析内容成为视觉中心，让界面退到背景。
-
-核心关键词：
-
-- Calm
-- Precise
-- Cinematic
-- Lightweight
-- Professional
-- Contextual
-
-### 1.1 核心原则
-
-#### Content First
-
-电影画面始终拥有最高视觉权重。
-
-UI 不应该和画面争夺注意力。
-
-视觉优先级：
-
-```text
-Film Frame
-↓
-Current Shot
-↓
-Analysis
-↓
-Metadata
-↓
-Controls
-```
+本文件重新定义 AisenLens 的唯一 UI / UX Design System Source of Truth。
 
 ---
 
-#### Surface over Border
+# 1. Product Experience Target
 
-优先使用：
+AisenLens 不是“网页套壳的后台系统”，也不是“影视主题 SaaS”。
 
-- Surface difference
-- Background level
-- Spacing
-- Typography
+目标是：
 
-建立层级。
+> **在浏览器里获得接近专业桌面创作软件的连续、精确、可定制和低摩擦体验。**
 
-避免依赖：
+用户应该感受到：
 
-- 大量 Border
-- Card Outline
-- Shadow
-- Divider
-
----
-
-#### Progressive Disclosure
-
-默认界面只显示当前任务所需的信息。
-
-更多功能通过：
-
-- Hover
-- Selection
-- Context Menu
-- Inspector
-- Popover
-- Command Palette
-
-逐步出现。
-
-功能复杂 ≠ 界面复杂。
+- 界面像一个持续存在的工作台，而不是一组网页；
+- Panel 可以 resize / collapse / reveal，并记住布局；
+- 选择一个对象后，Viewer / Timeline / Inspector 立即同步；
+- 鼠标、触控板和键盘都能高效操作；
+- Context Menu、Popover、Inspector、Command Palette 从操作来源自然出现；
+- Drag、Scrub、Seek、Resize、Selection 都有连续反馈；
+- Loading、Save、AI、Export 不冻结整个工作台；
+- 页面切换不会让用户觉得“离开了软件又打开一个网页”；
+- 动效不是装饰，而是空间关系和状态连续性的反馈；
+- 视觉细节服务于可操作性、层级和速度感。
 
 ---
 
-#### Selection Driven Workspace
+# 2. Native Studio Principles
 
-Workspace 的状态围绕当前选中的对象变化。
+## 2.1 Single-Window Continuity
 
-例如：
+三个一级 Workspace 共享同一个稳定 App Window。
 
 ```text
-Selected Shot
-↓
-Player seeks
-↓
-Shot Strip highlights
-↓
-Inspector updates
-↓
-AI Analysis updates
-↓
-Metadata updates
+AisenLens Window
+├── Window Bar / Global Chrome
+├── Workspace Rail
+└── Workspace Frame
+    ├── Navigation / Structure Panel
+    ├── Primary Work Surface
+    ├── Inspector / Detail Panel
+    └── Timeline / Context Surface
 ```
 
-Selection 是工作区的核心状态。
+切换 Workspace 时：
 
----
+- Window Bar 不重建；
+- Project identity 不消失；
+- Panel 几何尽量保持连续；
+- 相同对象的 Selection 尽量保持；
+- 不使用“整页白屏 → 新页面出现”的网页式切换；
+- 不为每个功能创建独立大页面。
 
-#### Contextual Tools
+## 2.2 Spatial UI
 
-工具属于上下文，而不是属于整个产品。
+界面要有稳定的空间记忆。
 
-例如：
+用户应能形成肌肉记忆：
 
-看片状态显示：
+- 左侧：导航、结构、对象列表；
+- 中央：主要编辑 / Viewer / Data Surface；
+- 右侧：Inspector / Properties / Review；
+- 下方：Timeline / Shot Strip / Task Context；
+- 顶部：项目状态和高频全局动作。
 
-```text
-播放 / 截帧 / 标记 / 倍速
-```
-
-镜头状态显示：
-
-```text
-拆分 / 合并 / 标签 / AI分析
-```
-
-人物分析状态显示：
-
-```text
-角色 / 表演 / 情绪 / 动作
-```
-
-禁止建立一个塞满所有功能的 Global Toolbar。
-
----
-
-# 2. Workspace Architecture
-
-整体结构：
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Global Header                                                │
-├──────────────┬───────────────────────────────┬───────────────┤
-│ Navigation   │                               │ Inspector     │
-│ Panel        │       Primary Workspace       │ Panel         │
-│              │                               │               │
-│              │                               │               │
-├──────────────┴───────────────────────────────┴───────────────┤
-│ Optional Shot Strip / Timeline                               │
-└──────────────────────────────────────────────────────────────┘
-```
-
-Workspace 由四种区域组成：
-
-```text
-App Shell
-├── Navigation Panel
-├── Primary Workspace
-├── Inspector Panel
-└── Context Panel
-```
-
-Panel 必须可以：
-
-- Resize
-- Collapse
-- Expand
-- Hide
-- Restore
-
----
-
-# 3. Recommended Layout
-
-Desktop ≥ 1440px：
-
-```text
-Navigation     220–280px
-Primary        flexible
-Inspector      300–380px
-Shot Strip     128–220px
-Header         48–52px
-```
-
-推荐默认：
-
-```text
-Navigation: 240px
-Inspector: 336px
-Header: 48px
-Shot Strip: 160px
-```
-
-最小宽度：
-
-```text
-Navigation min: 180px
-Inspector min: 280px
-Primary min: 640px
-```
-
----
-
-# 4. Surface System
-
-不要把界面理解成：
-
-```text
-Page
-Card
-Card
-Card
-```
-
-应该理解成：
-
-```text
-Canvas
-└── Workspace
-    ├── Panel
-    ├── Surface
-    └── Floating Surface
-```
-
-Surface Level：
-
-```text
-Level 0 Canvas
-Level 1 Panel
-Level 2 Surface
-Level 3 Elevated Surface
-Level 4 Overlay
-```
-
----
-
-# 5. Dark Theme
-
-Dark Mode 不使用纯黑。
-
-整体采用轻微冷蓝 / 紫灰 Neutral。
-
-```css
-:root[data-theme="dark"] {
-
-  --bg-canvas: #0D0F17;
-
-  --bg-panel: #12141E;
-
-  --bg-workspace: #151722;
-
-  --bg-surface: #1B1D29;
-
-  --bg-surface-hover: #222432;
-
-  --bg-surface-active: #262837;
-
-  --bg-surface-selected: #292B3B;
-
-  --bg-viewer: #08090D;
-
-  --border-subtle:
-    rgba(255,255,255,.055);
-
-  --border-default:
-    rgba(255,255,255,.085);
-
-  --border-strong:
-    rgba(255,255,255,.14);
-
-  --text-primary:
-    #F3F3F6;
-
-  --text-secondary:
-    #A7A8B3;
-
-  --text-tertiary:
-    #737582;
-
-  --text-disabled:
-    #50525D;
-
-  --accent:
-    #625BFF;
-
-  --accent-hover:
-    #716BFF;
-
-  --accent-active:
-    #554EE8;
-
-  --accent-soft:
-    rgba(98,91,255,.14);
-}
-```
-
----
-
-# 6. Light Theme
-
-Light Mode 不使用“全白”。
-
-通过微弱灰度层级建立空间。
-
-```css
-:root[data-theme="light"] {
-
-  --bg-canvas:
-    #F3F3F5;
-
-  --bg-panel:
-    #F7F7F9;
-
-  --bg-workspace:
-    #FAFAFB;
-
-  --bg-surface:
-    #FFFFFF;
-
-  --bg-surface-hover:
-    #F0F0F3;
-
-  --bg-surface-active:
-    #ECECF0;
-
-  --bg-surface-selected:
-    #E8E8EF;
-
-  --bg-viewer:
-    #101114;
-
-  --border-subtle:
-    rgba(0,0,0,.055);
-
-  --border-default:
-    rgba(0,0,0,.085);
-
-  --border-strong:
-    rgba(0,0,0,.14);
-
-  --text-primary:
-    #202126;
-
-  --text-secondary:
-    #656771;
-
-  --text-tertiary:
-    #92939C;
-
-  --text-disabled:
-    #BABBC1;
-
-  --accent:
-    #5B53FF;
-
-  --accent-hover:
-    #5149EC;
-
-  --accent-active:
-    #4841DA;
-
-  --accent-soft:
-    rgba(91,83,255,.10);
-}
-```
-
----
-
-# 7. Viewer Rule
-
-无论 Light / Dark Workspace：
-
-> Viewer 都保持深色环境。
-
-例如：
-
-```text
-Light Workspace
-
-#FAFAFB
-     ↓
-#101114
-     ↓
-Film
-```
-
-Viewer 必须成为视觉中的：
-
-**Dark Stage**
-
-这样用户注意力会自然进入影片。
-
----
-
-# 8. Accent Color
-
-Accent 不用于装饰。
-
-只用于：
-
-```text
-Active
-Selected
-Focus
-Playhead
-Primary Action
-Current Position
-Interactive State
-```
-
-推荐 Accent：
-
-```text
-Primary Violet
-#625BFF
-```
-
-界面 Neutral 色占比建议：
-
-```text
-Neutral 90–95%
-Accent  3–5%
-Semantic 2–5%
-```
-
----
-
-# 9. Semantic Colors
-
-Accent Color 与 Semantic Color 必须分离。
-
-```css
---success: #3CB179;
---warning: #D99A3E;
---danger:  #E45C5C;
---info:    #4C8DDB;
-```
-
-使用：
-
-```text
-Success → 已完成 / 已确认
-Warning → 需要检查
-Danger  → 错误 / 删除 / 无效
-Info    → 系统信息
-```
-
-禁止使用 Semantic Color 做界面装饰。
-
----
-
-# 10. Typography
-
-原则：
-
-> 小字号差异 + Weight + Color + Spacing 建立层级。
-
-不要依赖巨大字号。
-
-推荐：
-
-```text
-Workspace Title
-20px / 28px / 500
-
-Section Title
-15px / 22px / 500
-
-Control
-13px / 20px / 500
-
-Body
-13px / 20px / 400
-
-Metadata
-12px / 18px / 400
-
-Caption
-11px / 16px / 400
-```
-
-字体：
-
-中文：
-
-```text
-PingFang SC
-HarmonyOS Sans SC
-MiSans
-Source Han Sans
-```
-
-英文 / 数字：
-
-```text
-Inter
-Geist
-SF Pro
-```
-
-推荐 font-weight：
-
-```text
-400
-500
-600
-```
-
-避免大量：
-
-```text
-700+
-```
-
----
-
-# 11. Spacing System
-
-使用 4px Base Grid。
-
-```text
-4
-8
-12
-16
-20
-24
-32
-40
-48
-64
-```
-
-Token：
-
-```css
---space-1: 4px;
---space-2: 8px;
---space-3: 12px;
---space-4: 16px;
---space-5: 20px;
---space-6: 24px;
---space-8: 32px;
---space-10: 40px;
---space-12: 48px;
---space-16: 64px;
-```
-
-常用规则：
-
-```text
-Icon ↔ Text        6–8px
-
-Control ↔ Control  8px
-
-Content Padding    12–16px
-
-Panel Padding      12–16px
-
-Section Gap        20–24px
-```
-
----
-
-# 12. Radius System
-
-工作台保持：
-
-> 精密 + 柔和
-
-而不是“可爱 SaaS”。
-
-```css
---radius-xs: 4px;
---radius-sm: 6px;
---radius-md: 8px;
---radius-lg: 10px;
---radius-xl: 12px;
---radius-pill: 999px;
-```
-
-应用：
-
-```text
-Button          6px
-Input           6px
-Shot Card       8px
-Popover         8px
-Context Menu    8px
-Modal           10–12px
-Chip            pill
-Avatar          circle
-```
-
-禁止：
-
-所有 Card 统一 16–24px 巨大圆角。
-
----
-
-# 13. Border Rules
-
-Normal 状态：
-
-几乎不可见。
-
-```text
-Dark
-rgba(255,255,255,.055)
-
-Light
-rgba(0,0,0,.055)
-```
-
-只有以下状态增强：
-
-```text
-Hover
-Selected
-Focus
-Error
-Drag Target
-```
-
-Selected：
-
-```text
-Accent border
-+
-Accent soft background
-```
-
----
-
-# 14. Shadow Rules
-
-默认不依赖 Shadow 建层级。
-
-禁止：
-
-```text
-Panel Shadow
-Card Shadow
-Input Shadow
-```
-
-允许 Shadow：
-
-```text
-Popover
-Dropdown
-Context Menu
-Modal
-Floating Toolbar
-Command Palette
-```
-
-推荐：
-
-```css
-box-shadow:
-0 8px 28px rgba(0,0,0,.18);
-```
-
-Dark 可更弱。
-
----
-
-# 15. Button System
-
-按钮类型：
-
-```text
-Primary
-Secondary
-Ghost
-Icon
-Danger
-```
-
-Primary：
-
-```text
-Accent Background
-White Text
-```
-
-Secondary：
-
-```text
-Neutral Surface
-Subtle Border
-```
-
-Ghost：
-
-```text
-Transparent
-Hover Surface
-```
-
-尺寸：
-
-```text
-S   28px
-M   32px
-L   36px
-```
-
-默认工作台大量使用：
-
-```text
-Ghost
-Icon Button
-Secondary
-```
-
-Primary Button 应该非常少。
-
----
-
-# 16. Icon Button
-
-推荐：
-
-```text
-28 × 28
-32 × 32
-```
-
-Icon：
-
-```text
-16px
-18px
-```
-
-默认：
-
-```text
-transparent
-```
-
-Hover：
-
-```text
-surface-hover
-```
-
-Active：
-
-```text
-surface-active
-```
-
-Selected：
-
-```text
-accent-soft
-accent icon
-```
-
----
-
-# 17. Input System
-
-默认高度：
-
-```text
-32px
-```
-
-搜索框：
-
-```text
-32–36px
-```
-
-规则：
-
-```text
-Border subtle
-No heavy shadow
-6px radius
-12–13px text
-```
-
-Focus：
-
-```text
-Accent border
-+
-1–2px Focus Ring
-```
-
----
-
-# 18. Focus Ring
-
-Focus 必须独立于 Selected。
-
-```css
-outline:
-2px solid rgba(98,91,255,.55);
-
-outline-offset:
-2px;
-```
-
-Focus 用于：
-
-Keyboard Navigation。
-
-Selected 用于：
-
-Object State。
-
-两者不能混用。
-
----
-
-# 19. Shot Card
-
-Shot Card 是工作台最重要的组件之一。
-
-结构：
-
-```text
-┌────────────────────────────┐
-│                            │
-│        Film Frame          │
-│                            │
-│ #023                 04.2s │
-├────────────────────────────┤
-│ CU · Dolly In              │
-│ 50mm · Eye Level           │
-└────────────────────────────┘
-```
-
-视觉优先级：
-
-```text
-Frame
-↓
-Shot Number
-↓
-Shot Type
-↓
-Duration
-↓
-Camera Metadata
-```
-
----
-
-# 20. Shot Card States
-
-Shot Card 至少需要：
-
-```text
-Default
-Hover
-Selected
-Playing
-Marked
-Analyzing
-Error
-Disabled
-```
-
-Default：
-
-只显示必要 Metadata。
-
-Hover：
-
-显示：
-
-```text
-Play
-More
-Quick Mark
-Quick Analyze
-```
-
-Selected：
-
-```text
-Accent outline
-Accent-soft surface
-```
-
-Playing：
-
-```text
-Play indicator
-Current time
-```
-
-Analyzing：
-
-避免大型 Loading。
-
-使用：
-
-```text
-small spinner
-or
-subtle progress line
-```
-
----
-
-# 21. Shot Card Hover Preview
-
-推荐加入：
-
-**Hover Scrub**
-
-鼠标左右移动：
-
-```text
-Thumbnail
-→ Preview frames
-```
-
-不要强制打开 Player。
-
-Hover 操作：
-
-```text
-▶
-截帧
-标记
-AI
-···
-```
-
-默认隐藏。
-
----
-
-# 22. Shot Strip
-
-Shot Strip 是：
-
-> 当前 Sequence 的视觉上下文。
-
-默认高度：
-
-```text
-140–180px
-```
-
-Compact：
-
-```text
-96–120px
-```
-
-Expanded：
-
-```text
-200–240px
-```
-
-Shot Strip 卡片之间：
-
-```text
-6–8px gap
-```
-
-Current Shot：
-
-必须明显。
-
-其他 Shot：
-
-保持低对比。
-
----
-
-# 23. Navigation Panel
-
-Navigation 不应该像传统文件树那么“重”。
-
-内容：
-
-```text
-项目
-影片
-章节
-Sequence
-Scene
-Collection
-```
-
-Item Height：
-
-```text
-28–32px
-```
-
-Indent：
-
-```text
-16px
-```
-
-Selected：
-
-```text
-surface-selected
-```
-
-不要默认使用 Accent 背景。
-
-Accent 只作为：
-
-```text
-small marker
-icon
-or subtle text
-```
-
----
-
-# 24. Inspector
-
-Inspector 的核心原则：
-
-> 不是表单，而是当前镜头的上下文。
-
-结构：
-
-```text
-Shot 023
-
-Basic
-├ Duration
-├ Shot Size
-├ Angle
-└ Movement
-
-Composition
-├ Subject
-├ Position
-└ Depth
-
-Camera
-├ Lens
-├ Camera
-└ Movement
-
-Character
-
-Dialogue
-
-Sound
-
-Color
-
-AI Analysis
-```
-
----
-
-# 25. Inspector Section
-
-默认不使用 Card 包 Section。
-
-避免：
-
-```text
-┌─────────┐
-│ Camera  │
-└─────────┘
-```
-
-推荐：
-
-```text
-CAMERA
-
-Lens          50mm
-Movement      Dolly In
-Angle         Eye Level
-```
-
-Section 通过：
-
-```text
-Spacing
-Typography
-Subtle divider
-```
-
-区分。
-
----
-
-# 26. Inspector Density
-
-Inspector 支持：
-
-```text
-Comfortable
-Compact
-```
-
-Comfortable：
-
-```text
-Row 32px
-```
-
-Compact：
-
-```text
-Row 26–28px
-```
-
-专业用户长时间使用后通常更偏 Compact。
-
----
-
-# 27. Toolbar
-
-Global Header 只放：
-
-```text
-Project
-Search
-Workspace Mode
-Share
-Global Actions
-```
-
-禁止放所有业务工具。
-
----
-
-## Context Toolbar
-
-看片：
-
-```text
-Play
-Speed
-Frame
-Marker
-Capture
-```
-
-镜头编辑：
-
-```text
-Split
-Merge
-Tag
-Analyze
-```
-
-分镜：
-
-```text
-Move
-Insert
-Duplicate
-Delete
-```
-
----
-
-# 28. Toolbar Density
-
-Toolbar Height：
-
-```text
-36–40px
-```
-
-Button：
-
-```text
-28–32px
-```
-
-图标优先。
-
-文字只用于：
-
-- 重要行为
-- 不易理解的行为
-- Primary Action
-
----
-
-# 29. Popover
-
-用于：
-
-```text
-Sort
-Filter
-Group
-View
-Appearance
-Metadata
-```
-
-宽度：
-
-```text
-220–320px
-```
-
-Padding：
-
-```text
-8px
-```
-
-Item：
-
-```text
-28–32px
-```
-
-避免大型下拉。
-
----
-
-# 30. Context Menu
-
-Right Click 是专业工作台的重要入口。
-
-Shot Context Menu：
-
-```text
-播放
-打开
-截帧
-
-────────
-
-拆分
-合并
-复制
-
-────────
-
-AI 分析
-添加标签
-
-────────
-
-删除
-```
-
-Context Menu 可以承载低频操作。
-
-因此不需要把这些全部摆在屏幕上。
-
----
-
-# 31. Command Palette
-
-推荐加入：
-
-```text
-⌘ K / Ctrl K
-```
-
-功能：
-
-```text
-Search Shot
-Jump Scene
-Run AI Analysis
-Add Marker
-Change Layout
-Toggle Inspector
-Toggle Timeline
-Export
-```
-
-它是降低 Toolbar Complexity 的关键。
-
----
-
-# 32. Interaction State Model
-
-所有核心对象统一状态：
-
-```text
-Default
-Hover
-Pressed
-Focused
-Selected
-Disabled
-Loading
-Error
-```
-
-设计系统必须确保每个组件状态逻辑一致。
-
----
-
-# 33. Hover Rule
-
-Hover 只用于：
-
-```text
-Reveal
-Preview
-Highlight
-Quick Action
-```
-
-禁止 Hover 导致：
-
-```text
-layout jump
-size change
-major content reflow
-```
-
----
-
-# 34. Selected Rule
-
-Selected 应该意味着：
-
-> 这个对象正在驱动其他 Panel。
-
-例如：
-
-```text
-Selected Shot
-↓
-Player
-Inspector
-Timeline
-Analysis
-```
-
-因此 Selected 必须比 Hover 更明显。
-
----
-
-# 35. Motion
-
-Motion 不是装饰。
-
-负责表达：
-
-```text
-State
-Continuity
-Relationship
-Position
-```
-
-推荐：
-
-```text
-Hover
-80–120ms
-
-Button
-100–140ms
-
-Dropdown
-120–160ms
-
-Popover
-140–180ms
-
-Panel
-180–240ms
-
-Modal
-180–240ms
-
-Layout
-200–280ms
-```
-
-避免：
-
-```text
-> 300ms
-```
-
-用于高频工作流。
-
----
-
-# 36. Easing
-
-推荐：
-
-```css
---ease-standard:
-cubic-bezier(.2,.8,.2,1);
-
---ease-exit:
-cubic-bezier(.4,0,1,1);
-
---ease-enter:
-cubic-bezier(0,0,.2,1);
-```
-
----
-
-# 37. Media First Rule
-
-电影内容必须保持：
-
-```text
-Full color
-Full contrast
-Full visual fidelity
-```
-
-UI：
-
-```text
-Low saturation
-Low contrast
-Neutral
-```
-
-也就是说：
-
-```text
-Media owns color.
-UI owns structure.
-```
-
----
-
-# 38. Density Modes
-
-工作台必须支持不同 Density。
-
-### Visual Mode
-
-适合：
-
-找镜头 / 浏览。
-
-```text
-Large Thumbnail
-Minimal Metadata
-```
-
-### Analysis Mode
-
-```text
-Medium Thumbnail
-More Metadata
-Inspector Open
-```
-
-### Data Mode
-
-```text
-Small Thumbnail
-List
-Dense Metadata
-```
-
----
-
-# 39. Workspace Modes
-
-建议至少设计：
-
-```text
-Watch
-Shots
-Analyze
-Storyboard
-Compare
-```
-
-不是完全不同页面。
-
-而是：
-
-> 同一个 Workspace 的不同 Panel Configuration。
-
-例如：
-
-Watch：
-
-```text
-Navigation
-Viewer
-Shot Strip
-```
-
-Analyze：
-
-```text
-Navigation
-Viewer
-Inspector
-```
-
-Storyboard：
-
-```text
-Navigation
-Large Shot Grid
-Inspector
-```
-
----
-
-# 40. View Preference
-
-用户可以调整：
-
-```text
-Grid / List
-
-Thumbnail Size
-
-Aspect Ratio
-
-Show Title
-
-Show Duration
-
-Show Metadata
-
-Show Shot Number
-
-Show Tags
-```
-
-工作台不应该只有一个设计师规定的 Density。
-
----
-
-# 41. Empty States
-
-Empty State 不要做：
-
-```text
-巨大插画
-营销文案
-```
-
-应该：
-
-```text
-简单 Icon
-一句解释
-一个 Action
-```
-
-例如：
-
-```text
-还没有镜头
-
-拖入影片或开始自动拆镜。
-```
-
----
+低频动作从操作来源附近出现，而不是统一跳到远处。
 
-# 42. Loading
+## 2.3 Direct Manipulation First
 
-避免 Skeleton 满屏闪烁。
+能直接操作对象时，不优先使用表单。
 
 优先：
 
-```text
-已有内容保持
-+
-局部 loading
-```
+- drag boundary；
+- scrub media；
+- resize panel；
+- reorder item；
+- inline rename；
+- click-to-select；
+- double-click / Enter-to-open；
+- context menu；
+- keyboard command。
 
-例如 AI 分析：
+表单只用于真正需要参数输入的任务。
 
-不要：
+## 2.4 Source-Anchored Interaction
 
-```text
-整个 Inspector Loading
-```
-
-应该：
-
-```text
-AI Analysis
-Analyzing...
-```
-
-其他 Metadata 仍然正常显示。
-
----
-
-# 43. AI UI Rule
-
-AI 不应该成为独立视觉世界。
-
-禁止：
-
-```text
-大渐变
-发光紫
-AI everywhere
-```
-
-AI 是一种能力，不是视觉主题。
-
-推荐：
-
-```text
-普通 Surface
-+
-AI Icon
-+
-Accent 状态
-```
-
-AI 输出：
-
-```text
-结构化
-可编辑
-可接受
-可拒绝
-可追溯
-```
-
----
-
-# 44. AI Analysis Component
+Popup / Menu / Quick Action / Inline Editor 应与触发源保持视觉关系。
 
 例如：
 
 ```text
-AI Analysis
+Toolbar button
+   ↓
+Popover from button
 
-Shot Size
-Close Up
-[Accept]
+Timeline boundary
+   ↓
+Boundary quick actions
 
-Movement
-Slow Dolly In
-[Accept]
-
-Lighting
-Soft side lighting
-[Accept]
+Selected Shot
+   ↓
+Inspector + contextual toolbar
 ```
 
-AI 建议与真实 Metadata 必须视觉区分。
+禁止无原因把局部动作跳转到屏幕中央 Modal。
 
-建议：
+## 2.5 Immediate Feedback
+
+每一个可交互元素都要快速回答用户：
+
+- “我 hover 到了什么”
+- “我按下了什么”
+- “什么被选中了”
+- “拖到了哪里”
+- “系统是否接收了命令”
+- “正在保存还是已保存”
+- “这个结果是否 stale / candidate / conflict”
+
+视觉反馈必须早于后台任务完成。
+
+## 2.6 Performance Is Part of Design
+
+“丝滑”不是 Motion 参数，而是运行时能力。
+
+以下都属于 UI 质量：
+
+- drag 不掉帧；
+- scrub 不抖动；
+- panel resize 不触发整棵树重算；
+- playback 不让无关 Inspector 重渲染；
+- 大列表 virtualize；
+- async result 不让 layout jump；
+- overlay 打开不阻塞主线程；
+- background task 不冻结编辑。
+
+任何“视觉设计”如果持续制造昂贵 blur、shadow、layout thrash 或 rerender，应被认为设计失败。
+
+## 2.7 Keyboard + Pointer Parity
+
+专业桌面工作流必须同时适合：
+
+- mouse；
+- trackpad；
+- keyboard；
+- mixed workflow。
+
+高频命令必须有可发现快捷键；右键菜单、Command Palette、Tooltip 和 Menu 中可显示 shortcut。
+
+## 2.8 Personal Workspace
+
+用户可以改变：
+
+- Panel 宽度；
+- Panel 显示/隐藏；
+- Density；
+- Grid/List；
+- Thumbnail Size；
+- Inspector 开关；
+- Timeline 高度；
+- Workspace view/mode。
+
+这些都是 UI Preference，不是 Project canonical fact。
+
+---
+
+# 3. Experience Character
+
+新视觉气质：
 
 ```text
-AI Proposal
-→ Accent-soft background
+Precise
+Fluid
+Spatial
+Dense
+Tactile
+Quietly Premium
+Technical
+Fast
+```
 
-Confirmed Data
-→ Normal Surface
+不是：
+
+```text
+SaaS Dashboard
+Marketing Landing Page
+Game HUD
+Glass Everywhere
+Card Grid Everywhere
+Huge Touch UI
+Decorative Motion
+Neon Cyberpunk
+```
+
+目标不是复刻某个桌面软件，而是让浏览器中的 AisenLens 具备原生专业工具的可信度。
+
+---
+
+# 4. Layer Architecture
+
+AisenLens 使用四个视觉层：
+
+```text
+Layer 0 — Window Background
+Layer 1 — Work Surface
+Layer 2 — Fixed Chrome
+Layer 3 — Floating Chrome
+```
+
+## Layer 0 — Window Background
+
+整个应用窗口的底色。
+
+用途：
+
+- 窗口边缘；
+- panel gap；
+- resize seam；
+- workspace transition 背景。
+
+## Layer 1 — Work Surface
+
+真正承载内容和编辑的主要区域：
+
+- Viewer；
+- Timeline；
+- Data Table；
+- Shot Grid；
+- Inspector body；
+- Structure List。
+
+主要使用稳定、不透明 Surface。
+
+## Layer 2 — Fixed Chrome
+
+持续存在的功能 chrome：
+
+- Global Window Bar；
+- Workspace Rail；
+- Panel Header；
+- Toolbar；
+- Transport controls；
+- Inspector Header。
+
+可以使用轻度材质，但必须稳定、可读。
+
+## Layer 3 — Floating Chrome
+
+真正浮于工作内容上的界面：
+
+- Popover；
+- Context Menu；
+- Command Palette；
+- Floating Toolbar；
+- Drawer；
+- Modal；
+- Toast；
+- Tooltip。
+
+允许更明显的 blur / shadow / material。
+
+---
+
+# 5. Material System
+
+## 5.1 Solid Work Surface
+
+大面积工作区域默认使用 solid / near-solid material。
+
+原因：
+
+- 保持文本和数据可读性；
+- 避免大面积 backdrop blur 性能成本；
+- Timeline / Table / Viewer 在长时间使用时更稳定；
+- 降低视觉噪音。
+
+## 5.2 Studio Glass
+
+Studio Glass 是 AisenLens 的功能层材质，不是背景主题。
+
+适用：
+
+- toolbar group；
+- floating transport；
+- popover；
+- context menu；
+- command palette；
+- overlay inspector；
+- compact workspace rail；
+- source-anchored action group。
+
+不适用：
+
+- 整个 Data Table；
+- 大面积 Timeline track；
+- 所有 Card；
+- 所有 Panel body；
+- 长文本区域。
+
+推荐实现：
+
+```css
+background: var(--material-glass);
+backdrop-filter: blur(22px) saturate(135%);
+border: 1px solid var(--material-glass-stroke);
+box-shadow: var(--shadow-float);
+```
+
+必须有不支持 `backdrop-filter` 时的 opaque fallback。
+
+## 5.3 Depth
+
+Depth 不只依赖 shadow。
+
+组合使用：
+
+- surface luminance；
+- hairline；
+- backdrop material；
+- local shadow；
+- overlap；
+- motion；
+- source anchoring。
+
+---
+
+# 6. Color System
+
+新配色从零设计，不兼容旧 Primary Violet / Blue palette。
+
+视觉主题：
+
+> **Graphite + Frost + Signal Blue**
+
+Signal Blue 用于精确交互、当前选择和工具反馈；不是装饰色。
+
+## 6.1 Dark Theme
+
+```css
+:root,
+[data-theme="dark"] {
+  --window-bg: #080A0D;
+  --workspace-bg: #0D1014;
+  --panel-bg: #11151A;
+  --surface-1: #151A20;
+  --surface-2: #1A2027;
+  --surface-3: #202832;
+
+  --surface-hover: #242D38;
+  --surface-pressed: #2A3541;
+  --surface-selected: #1B3043;
+
+  --viewer-bg: #050609;
+
+  --stroke-soft: rgba(255,255,255,.055);
+  --stroke-default: rgba(255,255,255,.095);
+  --stroke-strong: rgba(255,255,255,.17);
+  --stroke-highlight: rgba(255,255,255,.24);
+
+  --text-primary: #F4F7FB;
+  --text-secondary: #B7C0CC;
+  --text-tertiary: #818C9A;
+  --text-disabled: #59626E;
+
+  --accent: #63B3FF;
+  --accent-hover: #7AC0FF;
+  --accent-pressed: #3F9EEA;
+  --accent-soft: rgba(99,179,255,.16);
+  --accent-strong: #9ACFFF;
+  --accent-foreground: #07111A;
+
+  --success: #4FD49A;
+  --warning: #F2B84B;
+  --danger: #FF6B78;
+  --info: #63B3FF;
+
+  --material-glass: rgba(17,21,26,.72);
+  --material-glass-strong: rgba(17,21,26,.88);
+  --material-glass-stroke: rgba(255,255,255,.12);
+}
+```
+
+## 6.2 Light Theme
+
+```css
+[data-theme="light"] {
+  --window-bg: #E8EBEF;
+  --workspace-bg: #F1F3F6;
+  --panel-bg: #F7F8FA;
+  --surface-1: #FFFFFF;
+  --surface-2: #F2F4F7;
+  --surface-3: #E9EDF2;
+
+  --surface-hover: #E5EAF0;
+  --surface-pressed: #DCE3EB;
+  --surface-selected: #E1F0FF;
+
+  --viewer-bg: #07090C;
+
+  --stroke-soft: rgba(15,23,34,.065);
+  --stroke-default: rgba(15,23,34,.11);
+  --stroke-strong: rgba(15,23,34,.19);
+  --stroke-highlight: rgba(15,23,34,.28);
+
+  --text-primary: #171C24;
+  --text-secondary: #4C5664;
+  --text-tertiary: #778291;
+  --text-disabled: #A6AFBA;
+
+  --accent: #006BDC;
+  --accent-hover: #0A78EC;
+  --accent-pressed: #0058B7;
+  --accent-soft: rgba(0,107,220,.12);
+  --accent-strong: #004E9F;
+  --accent-foreground: #FFFFFF;
+
+  --success: #147A52;
+  --warning: #9B6500;
+  --danger: #C93545;
+  --info: #006BDC;
+
+  --material-glass: rgba(248,250,252,.74);
+  --material-glass-strong: rgba(248,250,252,.9);
+  --material-glass-stroke: rgba(255,255,255,.72);
+}
+```
+
+## 6.3 Intelligence Signal
+
+AI 不拥有另一套完整主题，但允许一个极低频的“Intelligence Signal”。
+
+```css
+--intelligence-a: #7F8CFF;
+--intelligence-b: #55D7C4;
+```
+
+只能用于：
+
+- AI command icon accent；
+- generating indicator；
+- candidate edge / thin highlight；
+- Ask / Suggest 的来源识别。
+
+不得用于：
+
+- 大面积 panel background；
+- 正式 AnalysisRecord；
+- Shot 类型；
+- Timeline 普通轨道；
+- 所有 AI 文本。
+
+Candidate 的主要状态仍通过 label + icon + state token 表达。
+
+## 6.4 Status Mapping
+
+```text
+Confirmed       success
+Candidate       accent + candidate label
+Stale           warning
+Evidence Needed warning
+Conflict        danger
+Save Error      danger
+Saving          info
+Disabled        neutral
+Current         accent
+Playing         accent + motion/current-position cue
+```
+
+颜色永远不是唯一状态信号。Accent-filled control 必须使用主题专用的 `--accent-foreground`，不能假设所有 accent background 都安全承载白字。当前 V2 对比度基线：Dark `#63B3FF` + `#07111A` ≈ 8.53:1；Light `#006BDC` + `#FFFFFF` ≈ 5.08:1。
+
+---
+
+# 7. Token Architecture
+
+Token 单向分四层：
+
+```text
+Primitive
+  ↓
+Semantic
+  ↓
+Component
+  ↓
+State / Mode Override
+```
+
+## 7.1 Primitive
+
+只在中央 token 文件使用：
+
+```text
+graphite-*
+frost-*
+signal-blue-*
+green-*
+amber-*
+red-*
+intelligence-*
+```
+
+Feature 不得直接消费 primitive。
+
+## 7.2 Semantic
+
+跨 Workspace 公共 token：
+
+```text
+window
+workspace
+panel
+surface
+stroke
+text
+accent
+status
+material
+shadow
+focus
+motion
+geometry
+```
+
+## 7.3 Component
+
+仅当 semantic 不足时创建：
+
+```text
+timeline-*
+viewer-*
+shot-card-*
+inspector-*
+toolbar-*
+transport-*
+table-*
+```
+
+禁止页面私有 token namespace。
+
+## 7.4 Framework Adapter
+
+Tailwind / shadcn token 不是 Source of Truth。
+
+```text
+--background
+--foreground
+--card
+--popover
+--primary
+--secondary
+--muted
+--destructive
+--input
+--ring
+```
+
+必须指向 AisenLens semantic tokens。
+
+---
+
+# 8. Typography
+
+仓库已有 Geist，因此 V2 不新增字体依赖。
+
+```css
+--font-ui:
+  "Geist",
+  "PingFang SC",
+  "Microsoft YaHei",
+  "Noto Sans CJK SC",
+  system-ui,
+  sans-serif;
+
+--font-mono:
+  ui-monospace,
+  SFMono-Regular,
+  Menlo,
+  Consolas,
+  monospace;
+```
+
+不再使用 `Arial Narrow` 作为 display identity。
+
+Typography roles：
+
+| Role | Size / Line | Weight |
+|---|---:|---:|
+| Window / Workspace Title | 16 / 22 | 600 |
+| Panel Title | 13 / 18 | 600 |
+| Control | 13 / 18 | 500 |
+| Body | 13 / 19 | 400–450 |
+| Data / Metadata | 12 / 17 | 450 |
+| Caption | 11 / 15 | 450 |
+| Micro / Timecode | 10–11 / 14 | 500 |
+| Mono Data | 12 / 16 | 450 |
+
+原则：
+
+- 桌面软件通过层级、对齐和 weight 建结构，不靠巨大标题；
+- Data / Timeline / Inspector 可以高密度，但不得降到不可读；
+- Timecode、frame、technical identifier 使用 mono；
+- 重要数值使用 tabular numerals。
+
+---
+
+# 9. Spacing & Geometry
+
+V2 使用 **2px precision grid**，不是旧 4px base grid。
+
+```css
+--space-1: 2px;
+--space-2: 4px;
+--space-3: 6px;
+--space-4: 8px;
+--space-5: 10px;
+--space-6: 12px;
+--space-8: 16px;
+--space-10: 20px;
+--space-12: 24px;
+--space-16: 32px;
+--space-20: 40px;
+```
+
+常见：
+
+```text
+Icon ↔ Label        6px
+Control gap         4–8px
+Toolbar group gap   8–12px
+Panel padding       8–12px
+Inspector section   12–16px
+Major region gap    1px seam / 8px floating gap
 ```
 
 ---
 
-# 45. Editing Philosophy
+# 10. Radius & Concentric Geometry
 
-核心原则：
+圆角用于触感和层级，不作为“友好 SaaS”装饰。
 
-> View first, edit second.
+```css
+--radius-control: 6px;
+--radius-input: 7px;
+--radius-surface: 8px;
+--radius-panel: 10px;
+--radius-float: 12px;
+--radius-modal: 14px;
+--radius-pill: 999px;
+```
+
+嵌套浮层应保持近似 concentric geometry：
+
+```text
+outer radius ≈ inner radius + padding
+```
+
+例如 12px floating group 内的 6px button。
+
+---
+
+# 11. Hairlines & Separators
+
+桌面工作台使用 precision hairline。
+
+```css
+--hairline: 1px;
+```
+
+用途：
+
+- panel seam；
+- table header；
+- timeline track；
+- inspector group；
+- resize boundary；
+- selected edge。
+
+避免用粗 border 当主要层级工具。
+
+在高 DPI 屏上可以通过 alpha 而非物理 0.5px 保证一致性。
+
+---
+
+# 12. Shadow & Elevation
+
+V2 允许明确的 floating depth，但只用于真正浮层。
+
+```css
+--shadow-float:
+  0 16px 44px rgba(0,0,0,.28),
+  0 2px 8px rgba(0,0,0,.22);
+
+--shadow-popover:
+  0 12px 32px rgba(0,0,0,.24),
+  0 1px 4px rgba(0,0,0,.18);
+
+--shadow-modal:
+  0 28px 80px rgba(0,0,0,.36);
+```
+
+常规 Panel / Table / Timeline 不使用大 shadow。
+
+---
+
+# 13. Window & Panel Geometry
+
+## 13.1 Global Window Bar
+
+默认高度：
+
+```text
+44px
+```
+
+承载：
+
+- project/back；
+- project name；
+- save/sync state；
+- command/search；
+- global settings；
+- window-level utilities。
+
+不要把 feature toolbar 塞进 Global Window Bar。
+
+## 13.2 Workspace Rail
+
+目标宽度：
+
+```text
+56px compact
+176px expanded
+```
+
+只承担：
+
+- Preparation；
+- Analysis；
+- Results；
+- Project Settings。
+
+支持 compact / expanded。
+
+## 13.3 Navigation / Structure Panel
 
 默认：
 
 ```text
-Label      Value
-Lens       50mm
+240px
+min 180px
+max 360px
 ```
 
-点击后：
+可 resize / collapse。
+
+## 13.4 Inspector
+
+默认：
 
 ```text
-Lens       [50mm ▼]
+320px
+min 280px
+max 480px
 ```
 
-不要默认把 Inspector 做成巨大 Form。
+可 resize / collapse / overlay。
+
+## 13.5 Timeline / Context Panel
+
+默认高度按 Workspace 决定，但用户可 resize。
+
+推荐：
+
+```text
+collapsed  32–36px
+compact    112px
+default    168px
+expanded   260–360px
+```
+
+布局状态持久化。
 
 ---
 
-# 46. Accessibility
+# 14. Resize Behavior
 
-文本最低：
-
-```text
-WCAG AA
-```
-
-重要状态不能只依赖颜色。
-
-例如：
-
-错误：
+Resize handle：
 
 ```text
-Red
-+
-Error icon
-+
-Text
+visible seam: 1px
+interactive hit zone: 6px
 ```
 
-Selected：
+hover 时：
+
+- cursor 立即变更；
+- seam 使用 accent-soft；
+- 不改变 panel 内容布局直到 drag 开始。
+
+drag 时：
+
+- pointer capture；
+- rAF 更新；
+- 不触发昂贵业务 query；
+- release 后再执行需要的持久化；
+- double-click 可恢复默认尺寸（适用时）。
+
+---
+
+# 15. Interaction State Model
+
+共享状态：
+
+```text
+rest
+hover
+pressed
+focus-visible
+selected
+disabled
+loading
+error
+dragging
+drop-target
+```
+
+领域状态附加：
+
+```text
+confirmed
+candidate
+stale
+conflict
+needs-evidence
+playing
+current
+```
+
+## Hover
+
+- 80–100ms；
+- 只改变 luminance / stroke / icon opacity；
+- 不改变布局尺寸；
+- 可 reveal quick actions。
+
+## Pressed
+
+- 立即；
+- 允许 `scale(.985)` 的小型 floating/control feedback；
+- 不用于大型 panel；
+- pointer up / cancel 必须恢复。
+
+## Selected
+
+Selected 表示对象成为当前工作上下文。
+
+必须：
+
+- 比 Hover 更强；
+- 跨 panel 一致；
+- 不覆盖 keyboard focus；
+- 可驱动 Viewer / Inspector / Timeline。
+
+## Focus
+
+Focus-visible 独立于 Selected。
+
+```css
+--focus-ring-color: var(--accent);
+--focus-ring-width: 2px;
+--focus-ring-offset: 1px;
+```
+
+---
+
+# 16. Motion System
+
+动效目标：
+
+> **让 UI 感觉有惯性、有来源、有连续性，但永远不拖慢专业操作。**
+
+## 16.1 Motion Tokens
+
+```css
+--motion-instant: 60ms;
+--motion-hover: 90ms;
+--motion-control: 120ms;
+--motion-reveal: 160ms;
+--motion-panel: 220ms;
+--motion-workspace: 280ms;
+
+--ease-standard: cubic-bezier(.2,.8,.2,1);
+--ease-out-spring: cubic-bezier(.16,1,.3,1);
+--ease-in: cubic-bezier(.4,0,1,1);
+```
+
+## 16.2 Rules
+
+- 禁止全局 `transition: all`；
+- 高频 hover / scrub / selection 不超过 120ms；
+- panel open/close 约 180–240ms；
+- workspace geometry transition 最长约 280ms；
+- animate `transform / opacity` 优先；
+- width/height 动画只用于 bounded panel geometry；
+- source-anchored popover 使用触发点作为 transform-origin；
+- async result 到达时避免大面积 layout shift；
+- drag 路径不加装饰性 easing。
+
+## 16.3 Reduced Motion
+
+`prefers-reduced-motion: reduce`：
+
+- decorative transform 禁用；
+- panel / popover 接近即时；
+- selection/current state 仍清楚；
+- playback/time 本身不被破坏。
+
+---
+
+# 17. Direct Manipulation Contract
+
+所有直接操纵组件遵守：
+
+1. pointerdown 立即进入可预测状态；
+2. drag threshold 区分 click；
+3. drag 中持续显示 target / delta / preview；
+4. invalid target 立即反馈；
+5. pointercancel 可安全恢复；
+6. commit 与 visual preview 分离；
+7. save failure 不假装成功；
+8. Undo/Redo 入口保持可发现。
+
+Timeline / Boundary / Resize / Reorder 禁止依赖“鼠标松开后突然跳到结果”的无预览交互。
+
+---
+
+# 18. Cursor Language
+
+使用标准桌面 cursor 语义：
+
+```text
+default
+pointer
+text
+grab / grabbing
+col-resize
+row-resize
+ew-resize
+crosshair
+not-allowed
+```
+
+不要为普通 UI 制作装饰性 custom cursor。
+
+---
+
+# 19. Button & Control System
+
+## 19.1 Heights
+
+```text
+Compact   24px
+Default   28px
+Comfort   32px
+Primary   34–36px
+```
+
+专业工作台默认使用 28px。
+
+## 19.2 Button Types
 
 ```text
 Accent
-+
-Border
-+
-Surface
+Neutral
+Ghost
+Icon
+Danger
+Toolbar
+Segmented
+```
+
+Primary/Accent 不应出现在每个 section。
+
+## 19.3 Icon Button
+
+默认：
+
+```text
+28 × 28
+icon 14–16
+radius 6
+```
+
+Toolbar 中可以 26–28px。
+
+## 19.4 Inputs
+
+默认高度：
+
+```text
+28px
+```
+
+Editing 状态才提升视觉重量。
+
+---
+
+# 20. Toolbar
+
+Toolbar 是“当前工作表面的操作层”。
+
+原则：
+
+- 高频动作可见；
+- 低频动作进入 More / Context Menu；
+- 功能按组排列；
+- group 可使用 Studio Glass；
+- selected tool 有清晰 pressed/selected state；
+- shortcut 可在 tooltip 显示；
+- toolbar 不因不同对象频繁整体重排。
+
+---
+
+# 21. Context Menu
+
+右键是一级专业交互，不是补充功能。
+
+Context Menu：
+
+- 出现在 pointer source 附近；
+- 根据 selection/context 动态变化；
+- 最常用动作在上；
+- destructive group 放底部；
+- shortcut 右对齐；
+- disabled command 保留位置并可解释原因；
+- 支持 keyboard invocation。
+
+---
+
+# 22. Command Palette
+
+`⌘K / Ctrl+K`：
+
+- 搜索 command；
+- 搜索 navigation target；
+- 打开 Workspace / View；
+- 执行对象级动作（有 context 时）；
+- 展示 shortcut；
+- 不复制整个产品的设置页面。
+
+打开目标：
+
+```text
+< 100ms perceived response
 ```
 
 ---
 
-# 47. Keyboard First
+# 23. Sidebars / Panels
 
-专业工作台必须从一开始考虑快捷键。
+Panel 是持续工作区域，不是 Card。
+
+Panel Header：
+
+- 32–36px；
+- title 左对齐；
+- context action 右侧；
+- sticky；
+- resize/collapse affordance 一致。
+
+Panel body：
+
+- 可独立 scroll；
+- selection 保持；
+- reopen 时恢复 scroll/selection（有意义时）。
+
+Panel collapse 后保留可恢复入口，不让用户猜如何找回。
+
+---
+
+# 24. Viewer
+
+Viewer 是精确操作表面。
+
+必须：
+
+- 永远深色；
+- controls 可淡出但可快速召回；
+- transport 位置稳定；
+- zoom/pan/scrub 直接；
+- selected/current/playback 状态清楚；
+- overlay 不修改源媒体；
+- hover controls 不遮挡关键区域太久。
+
+Transport 可以使用 Studio Glass floating group。
+
+---
+
+# 25. Timeline
+
+Timeline 是桌面应用“原生感”的核心。
+
+视觉：
+
+- track row 高度规则稳定；
+- playhead 高对比；
+- selection 与 playback 不混淆；
+- boundary hit area 大于可见 line；
+- hover 立即显示可操作 affordance；
+- zoom level 改变信息密度而不是缩放整个 DOM。
+
+交互：
+
+- wheel / trackpad zoom 策略一致；
+- drag 有 live preview；
+- snapping 明确；
+- context menu；
+- keyboard navigation；
+- playhead 与 selection 独立；
+- large project virtualize / window。
+
+---
+
+# 26. Inspector
+
+Inspector 是 properties + analysis + evidence 的工作面板。
+
+特点：
+
+- dense；
+- section 可 collapse；
+- reading mode 与 editing mode 明确；
+- selection change 不闪烁整 panel；
+- field autosave 局部显示；
+- technical metadata 使用次级层级；
+- candidate/stale/conflict 有一致 state row。
+
+Inspector 不能退化成巨大网页 Form。
+
+---
+
+# 27. Data Table
+
+Results Data View 使用真正的 desktop data grid 语义：
+
+- sticky header；
+- row selection；
+- column resize；
+- column reorder；
+- keyboard navigation；
+- contextual actions；
+- inline edit（只有 Authority 允许时）；
+- virtualized rows；
+- horizontal scroll；
+- row density preference。
+
+不要把 table 数据拆成 Card 列表来“响应式”。
+
+---
+
+# 28. Shot Grid / Media Grid
+
+Grid 支持：
+
+- card size；
+- aspect ratio；
+- metadata visibility；
+- multi-select；
+- range select；
+- keyboard move；
+- hover scrub（有能力时）；
+- quick action；
+- drag reorder / grouping（有业务语义时）。
+
+Selection 使用统一 Signal Blue，而不是 feature 私有色。
+
+---
+
+# 29. AI Interaction Material
+
+AI 是工具能力，不是另一个 Workspace。
+
+AI interaction 允许：
+
+- Intelligence icon；
+- subtle two-tone edge；
+- generating pulse；
+- source label；
+- candidate badge。
+
+不允许：
+
+- AI 页面拥有完全不同 theme；
+- 大面积渐变背景；
+- “AI 魔法”动画阻塞编辑；
+- Candidate 看起来像已确认数据。
+
+AI generating 动画必须可取消，且不阻塞其他工作。
+
+---
+
+# 30. Loading & Background Work
+
+桌面软件体验原则：
+
+> **后台工作不应该把整个软件锁住。**
+
+优先：
+
+- local spinner；
+- row progress；
+- task shelf；
+- status indicator；
+- progressive result。
+
+避免：
+
+- 全屏 loading；
+- 整页 skeleton；
+- blocking modal 等待 detector/export/AI。
+
+有真实百分比才显示百分比。
+
+---
+
+# 31. Save & Sync Feedback
+
+Save state：
+
+```text
+dirty
+saving
+saved
+error
+conflict
+```
+
+显示位置稳定，不 toast-spam。
+
+Saved 可以安静；
+Error / Conflict 必须可行动。
+
+---
+
+# 32. Empty State
+
+Empty state 像桌面工具的空工作区：
+
+- 明确当前对象为空；
+- 1 个主要行动；
+- 必要 shortcut / drop target；
+- 不做大型营销插画。
+
+---
+
+# 33. Notifications
+
+Toast 只用于短暂结果。
+
+持续任务使用：
+
+- status bar；
+- task panel；
+- inline progress。
+
+Error 需要用户处理时不能只靠 3 秒 toast。
+
+---
+
+# 34. View Preference Ownership
+
+View Preference 不进入 Project canonical domain data。
+
+| Preference / state | Ownership | Persistence |
+|---|---|---|
+| Theme | user UI | persistent client |
+| Workspace rail compact/expanded | user UI | persistent client |
+| Panel width | workspace + user | persistent client |
+| Panel visibility | workspace + user | persistent client |
+| Timeline height | workspace + user | persistent client |
+| Grid/List | workspace view + user | persistent client |
+| Density | workspace view + user | persistent client |
+| Thumbnail size / ratio | media view + user | persistent client |
+| Visible metadata / columns | view + user | persistent client |
+| Last view/mode | workspace + user | persistent client |
+| Selected entity | application/navigation | URL/session where appropriate |
+| ResearchScope | application/navigation | URL/session |
+| Playback position | transient workspace | session by default |
+| Timeline viewport | transient view | session by default |
+| ExportPreset | Results domain contract | not generic UI preference |
+
+如果当前没有统一 preference service，Phase 04 建立版本化 client preference namespace；不得新建 domain canonical store。
+
+---
+
+# 35. Workspace Layout Memory
+
+每个 Workspace 记住自己的布局。
+
+例如：
+
+```text
+Analysis
+  navWidth
+  inspectorWidth
+  timelineHeight
+  inspectorOpen
+  density
+  viewMode
+```
+
+切换 Preparation → Analysis → Results → Analysis 后，应恢复 Analysis 的布局，而不是回到默认值。
+
+提供“Reset Workspace Layout”。
+
+---
+
+# 36. Density
+
+Density 是 UI geometry 维度，不是页面。
+
+```text
+Comfort
+Standard
+Compact
+```
+
+### Comfort
+- 32px row；
+- 更多间距；
+- 更适合浏览/Review。
+
+### Standard
+- 28px row；
+- 默认专业编辑。
+
+### Compact
+- 24px row；
+- Data / Timeline / 大项目。
+
+用户可按 Workspace 记忆。
+
+---
+
+# 37. Workspace View / Mode
+
+Mode 代表 Panel Configuration，不代表新的一级页面。
+
+初始目标：
+
+| Workspace | Modes |
+|---|---|
+| Preparation | Import / Detection / Boundary Review |
+| Analysis | Watch / Shots / Analyze |
+| Results | Data / Export / Creative |
+
+未来可增加 Compare / Storyboard 等，但必须有真实任务再新增。
+
+---
+
+# 38. Responsive Desktop Matrix
+
+AisenLens 是 desktop-first。
+
+## ≥ 1440 — Pro Layout
+
+- Workspace Rail；
+- Navigation；
+- Primary；
+- Inspector；
+- Timeline；
+- 可同时存在；
+- resize 完整开放。
+
+## 1180–1439 — Compact Desktop
+
+- 保证 Primary；
+- Navigation / Inspector 至少一侧允许 collapse；
+- Toolbar 收拢低频动作；
+- Timeline 可 compact。
+
+## 960–1179 — Focus Desktop
+
+- 同时只保留一个 secondary panel；
+- 另一 Panel 以 overlay/drawer 打开；
+- Workspace Rail 默认 compact；
+- 主编辑仍可完成。
+
+## < 960 — Review / Survival Layout
+
+不承诺完整专业编辑等价。
+
+优先：
+
+- Viewer；
+- basic navigation；
+- review / comments / light field work；
+- 单 Panel overlay。
+
+复杂 Timeline boundary editing / dense Data Table 可以限制或提示使用更宽窗口。
+
+---
+
+# 39. Scroll Behavior
+
+- Panel 独立 scroll；
+- Header 可 sticky；
+- Horizontal scroll 只在 Timeline / Data Grid 等真实需要处存在；
+- trackpad gesture 不被无意义拦截；
+- programmatic scroll 必须可取消；
+- selection reveal 使用短、受控 motion；
+- 不使用长 smooth-scroll 穿越大量内容。
+
+---
+
+# 40. Keyboard System
 
 基础：
 
 ```text
-Space
-Play / Pause
-
-← →
-Frame step
-
-↑ ↓
-Previous / Next Shot
-
-M
-Marker
-
-S
-Split
-
-F
-Fullscreen
-
-I
-Toggle Inspector
-
-⌘K
-Command Palette
+Space        Play / Pause
+← / →        Frame / timeline navigation
+↑ / ↓        Previous / Next item
+Enter        Open / Edit / Confirm contextually
+Esc          Exit edit / close top overlay
+M            Marker
+S            Split where legal
+F            Fullscreen / focus viewer
+I            Toggle Inspector
+⌘K / Ctrl+K Command Palette
+⌘Z / Ctrl+Z Undo
+⇧⌘Z / Ctrl+Shift+Z Redo
 ```
 
-所有 Tooltip 可以显示快捷键。
+规则：
+
+- 不抢系统标准快捷键；
+- 文本输入时暂停冲突 command；
+- shortcut 通过 Tooltip/Menu/Command Palette 可发现；
+- keyboard focus 与 selection 分开。
 
 ---
 
-# 48. Tooltip
+# 41. Accessibility
 
-Tooltip delay：
+最低：
 
-```text
-500–700ms
+- WCAG AA；
+- focus-visible 清晰；
+- 状态不只靠颜色；
+- keyboard-only 可完成核心路径；
+- overlay trap / restore 正确；
+- accessible name；
+- icon-only button 必须有 label/tooltip；
+- reduced-motion；
+- high zoom 下不截断关键操作。
+
+专业高密度不等于牺牲可访问性。
+
+---
+
+# 42. Performance Experience Budget
+
+这些不是跨设备硬 FPS SLA，而是实施 gate：
+
+## Pointer / Hover
+
+- hover state 应在下一可用 frame 可见；
+- 禁止 hover 触发网络/重 query；
+- 禁止 hover 导致 layout reflow。
+
+## Drag / Resize / Scrub
+
+- 交互更新使用 rAF / compositor-friendly 路径；
+- drag 中避免 canonical persistence；
+- commit 在 interaction end；
+- expensive derived work 可延迟。
+
+## Large Lists
+
+- 大量 Shot / Result / Timeline item 必须 window/virtualize；
+- 不因为 selected item 改变而重建整个列表。
+
+## Blur / Glass
+
+- 大面积 work surface 禁止 backdrop blur；
+- 同屏高成本 glass layer 数量要受控；
+- slow device / unsupported browser 有 solid fallback。
+
+## Motion
+
+- 不使用 heavy filter animation；
+- 不对 box-shadow 做持续动画；
+- 主要使用 opacity/transform。
+
+---
+
+# 43. Overlay Layer Tokens
+
+```css
+--z-base: 0;
+--z-sticky: 10;
+--z-floating: 20;
+--z-dropdown: 30;
+--z-popover: 40;
+--z-drawer: 50;
+--z-modal: 60;
+--z-toast: 70;
+--z-command: 80;
+--z-tooltip: 90;
 ```
 
-内容：
+禁止 feature arbitrary `z-[9999]`。
 
-```text
-Split Shot    S
-```
-
-而不是长篇解释。
+Portal / focus ownership 统一由 shared overlay system 管理。
 
 ---
 
-# 49. Design Anti-Patterns
+# 44. Current Repository Migration
 
-禁止以下设计：
+当前 `apps/webapp/src/index.css` 是旧实现，不是目标。
 
-### Dashboardization
+已确认旧实现包含：
 
-```text
-一堆 KPI
-一堆统计 Card
-```
+- `--app-*` palette；
+- blue `#3b82f6` accent；
+- 独立 `--ai` purple；
+- `--timeline-shot-*` 自有 palette；
+- hard-coded focus blue；
+- `Arial Narrow` display；
+- raw z-index；
+- legacy responsive panel shadow；
+- `transition-all` 等旧 component style。
 
-拉片是创作工作，不是 BI。
+Phase 04 必须迁移，而不是继续扩展。
 
----
+## 44.1 Migration Mapping
 
-### Card Everything
+| Legacy | Native Studio target |
+|---|---|
+| `--app-bg` | `--window-bg / --workspace-bg` |
+| `--app-bg-nav` | `--panel-bg` |
+| `--app-bg-panel` | `--panel-bg / --surface-1` |
+| `--app-bg-card` | `--surface-1` |
+| `--app-bg-hover` | `--surface-hover` |
+| `--app-selected-bg` | `--surface-selected / --accent-soft` |
+| `--app-text-*` | `--text-*` |
+| `--app-border*` | `--stroke-*` |
+| `--app-accent` | `--accent` |
+| `--viewer-bg` | `--viewer-bg` V2 value |
+| `--playhead` | Timeline current-position component token |
+| `--waveform` | Timeline neutral component token |
+| `--ai` | `--intelligence-a/b` limited signal |
+| `--timeline-shot-*` | semantic-backed Timeline component tokens |
+| shadcn semantic vars | adapter to Native Studio semantic vars |
 
-不是所有东西都需要 Card。
+短期 alias 只能集中存在于中央样式入口，并必须有删除条件。
 
-优先：
-
-```text
-Surface
-Spacing
-Typography
-```
-
----
-
-### Rainbow UI
-
-不要：
-
-```text
-镜头 蓝
-人物 绿
-声音 紫
-动作 红
-AI 粉
-```
-
-颜色只负责语义。
-
----
-
-### Huge Radius
-
-避免大量：
-
-```text
-16px
-20px
-24px
-```
+没有正式用户需要视觉向后兼容，因此不建立长期 legacy theme。
 
 ---
 
-### Heavy Shadow
+# 45. CSS / Component Enforcement
 
-工作区不是营销 Landing Page。
+Phase 04 以后：
 
----
+- 不新增无理由 raw hex / rgb / hsl / oklch；
+- 不新增 feature 私有 palette；
+- 不新增 feature 私有 radius scale；
+- 不新增 feature 私有 shadow system；
+- 不新增 arbitrary z-index；
+- 不新增 `transition-all`；
+- 不让 Tailwind/shadcn 成为第二套设计语义；
+- 不把 View Preference 写进 canonical domain；
+- 不复制 Button/Input/Menu/Popover/Inspector primitives；
+- 不新增“页面级视觉主题”。
 
-### Permanent Controls
+例外：
 
-低频工具不要永久出现。
-
----
-
-### Deep Page Navigation
-
-工作流程尽量不离开 Workspace。
-
----
-
-# 50. Final Visual Rule
-
-任何页面完成后，都需要问：
-
-> 如果把电影画面全部隐藏，这个界面是不是还特别抢眼？
-
-如果答案是：
-
-> 是。
-
-说明 UI 太重。
-
-正确状态应该是：
-
-> 没有电影内容时，界面很安静；电影内容出现后，整个产品才真正“亮起来”。
+- 媒体本身；
+- 用户选择的标注/导出颜色；
+- 可视化数据本身；
+- 第三方嵌入内容；
+- 特殊技术色值（必须局部且有明确语义）。
 
 ---
 
-# 51. Final Design Formula
+# 46. Visual Regression Matrix
 
-AisenFlow Workspace：
+不强制引入第三方视觉回归平台，但真实浏览器 evidence 是硬门。
 
-```text
-Frame.io
-Workspace Architecture
+## Phase 04
 
-+
+至少保存：
 
-Linear
-Interaction Discipline
+- Dark Pro Layout；
+- Light Pro Layout；
+- Compact Desktop；
+- Focus Desktop；
+- Studio Glass toolbar/popover；
+- Panel resize；
+- hover / pressed / selected / focus；
+- modal / popover / context menu；
+- reduced-motion；
+- layout memory restore。
 
-+
+## Phase 05
 
-Craft
-Light Surface Warmth
+- Boundary Review；
+- drag/move boundary；
+- Inspector open/collapsed；
+- save/error；
+- keyboard confirm。
 
-+
+## Phase 06
 
-Cinema
-Content Hierarchy
-```
+- Analysis Watch；
+- Shots；
+- Analyze；
+- Selected ≠ Playing；
+- Evidence；
+- Data Review；
+- AI Review；
+- Correction return。
 
-最终追求：
+## Phase 07
 
-```text
-Simple
-but not Empty
+- Timeline zoom levels；
+- drag；
+- playhead；
+- selection；
+- dense tracks；
+- context menu。
 
-Dense
-but not Heavy
+## Phase 08
 
-Professional
-but not Cold
+- Data table；
+- column resize；
+- Export；
+- Creative；
+- empty/error/loading。
 
-Cinematic
-but not Decorative
-```
+动态媒体帧不要求脆弱的逐像素一致；重点检查 geometry、token、state、focus、overflow、layer、density、motion continuity。
 
 ---
 
-# 52. One Sentence Design Principle
+# 47. Phase Responsibility
 
-> UI 是电影的工作环境，而不是电影的竞争者。
+## Phase 04
+
+冻结并实现：
+
+- Native Studio token；
+- global chrome；
+- shared panel；
+- resize/collapse；
+- Studio Glass primitives；
+- Button/Input/Menu/Popover/Overlay；
+- motion；
+- preference service；
+- layout memory；
+- keyboard/focus；
+- static visual-token gate。
+
+## Phase 05–08
+
+只消费 Design System。
+
+如果需要新增全局视觉语义：
+
+1. 先判断是否可由现有 semantic/component token 表达；
+2. 不能表达才修改本文件；
+3. 不得在 feature 内偷偷创建第二套。
+
+## Phase 09
+
+AI 只扩展 Intelligence Signal，不重做视觉主题。
+
+## Phase 10
+
+做 performance / accessibility / visual regression hardening。
+
+## Phase 11
+
+清除 legacy token、临时 adapter、无 owner visual exception。
+
+---
+
+# 48. Native Studio Acceptance
+
+AisenLens 的 UI 只有同时满足下面这些条件，才算达到目标：
+
+1. 浏览器中看起来和操作起来像持续存在的桌面工作台；
+2. Panel geometry 可控、可记忆、可恢复；
+3. pointer / keyboard 都高效；
+4. Selection、Playback、Focus、Research Context 不混乱；
+5. drag / scrub / resize 连续；
+6. overlay 从来源出现并恢复 focus；
+7. loading/save/background task 不冻结主工作面；
+8. 大项目仍保持可操作；
+9. 颜色、材质、动效和深度属于同一系统；
+10. 用户不需要因为切换任务反复“进入新页面”。
+
+---
+
+# 49. One Sentence Design Principle
+
+> **AisenLens 应该像一款装进浏览器的专业桌面创作软件：精确、连续、可塑、即时，而且每一次操作都有自然的空间与触感反馈。**

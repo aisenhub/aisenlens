@@ -4,6 +4,8 @@ import { mixAudioOffline, resolveAudioMixClips } from "../../media/services/audi
 import projectRepository from "../../project/services/projectRepository";
 import type { MediaAsset, ProjectRecord, ProjectTemplateSnapshotRecord, StoredShotRecord } from "../../project/types";
 import resolveAnalysisProfile from "../../template/services/resolveAnalysisProfile";
+import { analysisEntriesByShotId, shotNotesByShotId } from "../../analysis/services/analysisRecordService.ts";
+import type { AnalysisRecord } from "../../analysis/types.ts";
 import type { VideoExportAudioData, VideoExportFormat, VideoExportOverlaySegment, VideoExportPhase, VideoExportSettings, VideoExportWorkerResponse, VideoExportWriteChunk } from "./videoExportProtocol";
 
 export interface VideoExportProgress {
@@ -96,9 +98,11 @@ function formatTimecode(seconds: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
-function createOverlaySegments(project: ProjectRecord, shots: StoredShotRecord[], template: ProjectTemplateSnapshotRecord | null, settings: VideoExportSettings): VideoExportOverlaySegment[] {
+function createOverlaySegments(project: ProjectRecord, shots: StoredShotRecord[], analysisRecords: AnalysisRecord[], template: ProjectTemplateSnapshotRecord | null, settings: VideoExportSettings): VideoExportOverlaySegment[] {
   if (!settings.includeContentOverlay || !project.contentOverlay.enabled) return [];
   const fields = template ? resolveAnalysisProfile(template).fields : [];
+  const entries = analysisEntriesByShotId(analysisRecords, { includeStale: false });
+  const notes = shotNotesByShotId(analysisRecords.filter((record) => record.status === "confirmed"));
   return shots.slice().sort((left, right) => left.order - right.order).map((shot, index) => ({
     startFrame: shot.startFrame,
     endFrame: shot.endFrame,
@@ -107,9 +111,9 @@ function createOverlaySegments(project: ProjectRecord, shots: StoredShotRecord[]
       model: resolveContentOverlay({
         settings: project.contentOverlay,
         fields,
-        values: shot.analysisFields,
-        description: shot.description,
-        analysis: shot.notes,
+        values: entries[shot.id] ?? {},
+        description: notes[shot.id]?.content ?? "",
+        analysis: notes[shot.id]?.analysis ?? "",
         shotIndex: index,
         currentTimecode: formatTimecode(shot.startFrame / settings.frameRate),
         durationSeconds: (shot.endFrame - shot.startFrame) / settings.frameRate,
@@ -174,15 +178,16 @@ export function startVideoExport({ project, settings: settingsInput, onProgress,
     const durationSeconds = primaryVideo.metadata!.durationSeconds;
     const durationFrames = primaryVideo.metadata!.durationFrames ?? Math.max(1, Math.round(durationSeconds * settings.frameRate));
     onProgress?.({ phase: "preparing", completedFrames: 0, totalFrames: durationFrames });
-    const [source, shots, template] = await Promise.all([
+    const [source, shots, analysisRecords, template] = await Promise.all([
       loadMediaAssetBlob(primaryVideo),
       projectRepository.listProjectShots(project.id),
+      projectRepository.listProjectAnalysisRecords(project.id),
       projectRepository.getProjectTemplate(project.id),
     ]);
     if (cancelled) throw new Error("导出已取消。");
     const audio = await prepareAudio(project, primaryVideo, settings, durationSeconds, (phase) => onProgress?.({ phase, completedFrames: 0, totalFrames: durationFrames }), abortController.signal);
     if (cancelled) throw new Error("导出已取消。");
-    const overlaySegments = createOverlaySegments(project, shots, template, settings);
+    const overlaySegments = createOverlaySegments(project, shots, analysisRecords, template, settings);
 
     return new Promise<VideoExportResult>((resolve, reject) => {
       worker = new Worker(new URL("./videoExport.worker.ts", import.meta.url), { type: "module" });

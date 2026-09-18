@@ -2,8 +2,8 @@
 title: "AisenLens Optimization Design Index"
 doc_type: design-index
 status: approved
-version: 1.0
-last_reviewed: 2026-09-17
+version: 1.1
+last_reviewed: 2026-09-18
 scope:
   - repository-docs
   - webapp
@@ -41,6 +41,7 @@ source_of_truth_for:
 04-domain/
   timeline/TIMELINE_ARCHITECTURE.md
   analysis-data/ANALYSIS_DATA_MODEL.md
+  ai/AI_ANALYSIS_CONTRACT.md
   shot-structure/SHOT_STRUCTURE_CONTRACT.md
   evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md
   template/TEMPLATE_CONTRACT.md
@@ -104,13 +105,14 @@ Shot Authority → Analysis Authority → Consumption Authority
 | 问题 | 唯一权威文档 |
 | --- | --- |
 | 三大 Workspace、全局导航、IA、跨工作区数据流 | `00-global/GLOBAL_WORKSPACE_ARCHITECTURE.md` |
-| Surface、色彩、间距、组件视觉、交互状态、可访问性 | `00-global/WORKSPACE_DESIGN_SYSTEM.md` |
+| Native Studio 桌面体验、颜色/材质/token、Panel、direct manipulation、motion、Preference、可访问性、视觉回归 | `00-global/WORKSPACE_DESIGN_SYSTEM.md` |
 | 导入、自动切分、Boundary Review、正式 Shot 形成 | `01-preparation/PREPARATION_WORKSPACE.md` |
 | 逐镜分析编排、选择/播放/研究范围、跨工作区纠错 | `02-analysis/ANALYSIS_WORKSPACE.md` |
 | Inspector UI、Field UI、AI Review UI、Evidence UI | `02-analysis/inspector/ANALYSIS_INSPECTOR.md` |
 | 数据表、导出分享、创作转化 | `03-results/RESULTS_WORKSPACE.md` |
 | 时间坐标、结构层级、Track、Marker、LOD、Timeline 渲染契约 | `04-domain/timeline/TIMELINE_ARCHITECTURE.md` |
 | AnalysisRecord、Candidate、状态、stale、数据传播 | `04-domain/analysis-data/ANALYSIS_DATA_MODEL.md` |
+| AI Candidate 生命周期、ContextManifest、Provider 边界、accept transaction | `04-domain/ai/AI_ANALYSIS_CONTRACT.md` |
 | Official Shot / Boundary / revision / split / merge 权责 | `04-domain/shot-structure/SHOT_STRUCTURE_CONTRACT.md` |
 | Provenance、EvidenceRef、Evidence Policy | `04-domain/evidence-provenance/EVIDENCE_PROVENANCE_CONTRACT.md` |
 | Template/Profile、UI Layout、Prompt/Context、Export Mapping 边界 | `04-domain/template/TEMPLATE_CONTRACT.md` |
@@ -136,7 +138,9 @@ Shot Authority → Analysis Authority → Consumption Authority
 3. 任何 Shot 结构变更都先经过 Shot Authority；Analysis 只接收 revision 并产生 stale/review 影响。
 4. AI Candidate 与正式 Analysis Record 永远分离，必须经过显式审核才能成为正式值。
 5. Canonical persistence、异步任务、外部输入与 AI Provider 必须遵守 Runtime Architecture 的 revision / validation / recovery 边界。
-6. 原始输入保存在 `99-archive/original-input/`，仅用于追溯，不作为新的实施 Source of Truth。
+6. 当前 frozen persistence baseline 为 IndexedDB v19；Timeline/Results 是派生 read model，Shot/Analysis 不得重新双写；v18→v19 development-reset 仅是正式用户数据产生前的一次性例外。
+7. 原始输入保存在 `99-archive/original-input/`，仅用于追溯，不作为新的实施 Source of Truth。
+8. UI/UX 只以 `WORKSPACE_DESIGN_SYSTEM.md` 当前版本为正式设计依据；2026-09-18 的 V2 Native Studio 已显式 supersede 旧 Calm/Cinematic/Violet 设计，旧视觉只在 Git/Archive 历史中追溯，不形成视觉兼容要求。
 
 
 ## 内容守恒规则（本轮新增硬约束）
@@ -144,4 +148,4 @@ Shot Authority → Analysis Authority → Consumption Authority
 - 除重复内容确需合并外，不得为了简化、统一风格或缩短篇幅而删除原始信息。
 - `MOVE / SPLIT / MERGE / REWRITE / REFERENCE ONLY` 必须保持信息可追溯；语义被移动后，旧位置应给出引用或在 CHANGELOG 中给出去向。
 - 所有用户提供的原始材料完整保存在 `99-archive/original-input/`；Archive 只用于追溯，不参与正式 Source of Truth。
-- 本轮对既有正式文档采取“原文保留 + Authority 注记 + 新增治理契约”的方式，避免无必要重写造成信息损失。
+- 默认对既有正式文档采取“原文保留 + Authority 注记 + 新增治理契约”的方式；当用户明确批准 Source of Truth 换代时，可以整体 supersede 旧设计，但必须在 CHANGELOG 记录替代关系并保留 Git/Archive 可追溯性。

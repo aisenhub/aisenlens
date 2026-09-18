@@ -1608,53 +1608,19 @@ LEVEL 5
 
 ---
 
-# 42. 视觉风格建议
+# 42. Native Studio 视觉与交互继承
 
-## 42.1 减少 Border Card
+Preparation 不再维护独立视觉风格；颜色、材质、Panel geometry、motion、cursor、focus、overlay、Density 与 View Preference 全部由 `00-global/WORKSPACE_DESIGN_SYSTEM.md` V2 Native Studio 定义。
 
-目前多层 Card 会造成：
+本 Workspace 只定义任务特有的组合：
 
-> 所有模块看起来一样重要。
-
-建议更多使用：
-
-- 主对象
-- Section heading
-- Inline status
-- Divider
-
-Card 只用于真正独立交互对象：
-
-- Dropzone
-- Error
-- Review item
-- 重要确认
-
----
-
-## 42.2 正常状态弱化，异常状态强化
-
-例如：
-
-正常：
-
-```text
-✓ 已保存
-```
-
-异常：
-
-```text
-⚠ 保存失败      重试
-```
-
-这一原则适用于：
-
-- 素材关联
-- 保存
-- 扫描
-- 解码
-- 草稿冲突
+- Import / Detection / Boundary Review 都发生在同一持续工作窗口内；
+- Boundary Frame Pair、Viewer、Queue、Inspector、Timeline 使用可 resize/collapse 的共享 Panel system；
+- Move / Split / Delete / Fine-tune 等结构操作优先 direct manipulation + source-anchored actions，并有 live preview / safe cancel；
+- Detection / decode / save 是后台任务，不使用阻塞整个工作台的全屏 loading；
+- Confirm / saving / saved / error / conflict 使用共享 state token 与明确文字/图标反馈；
+- 桌面指针、键盘、Context Menu、Undo/Redo 是正式工作流，不是附加增强；
+- 不得因为复用旧 Calibration UI 而恢复旧 palette、Card grammar 或页面级视觉主题。
 
 ---
 
